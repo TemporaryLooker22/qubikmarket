@@ -16,7 +16,12 @@ export default async function CatalogPage({ searchParams }: { searchParams: Sear
       ...(category && { category }),
       ...(price === "free" && { priceCents: 0 }),
       ...(price === "paid" && { priceCents: { gt: 0 } }),
-      ...(q && { OR: [{ title: { contains: q } }, { summary: { contains: q } }] }),
+      ...(q && {
+        OR: [
+          { title: { contains: q, mode: "insensitive" as const } },
+          { summary: { contains: q, mode: "insensitive" as const } },
+        ],
+      }),
     },
     orderBy: { createdAt: "desc" },
     take: 60,

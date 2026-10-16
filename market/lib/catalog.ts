@@ -17,7 +17,8 @@ export function categoryLabel(id: string) {
 }
 
 export const ALLOWED_EXTENSIONS = [".rbxm", ".rbxmx", ".rbxl", ".rbxlx", ".lua", ".luau"];
-export const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 Mo
+// Vercel limite la taille d'une requête à 4,5 Mo
+export const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4 Mo
 
 export function formatPrice(cents: number) {
   if (cents === 0) return "Gratuit";

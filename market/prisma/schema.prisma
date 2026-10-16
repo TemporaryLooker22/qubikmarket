@@ -1,13 +1,14 @@
-// Base de données de Qubik.
-// En développement, on utilise SQLite (un simple fichier). En production, on passera à PostgreSQL.
+// Base de données de Qubik (PostgreSQL).
+// Sur Vercel, la base est fournie par Neon : les deux adresses sont ajoutées automatiquement.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // connexion "poolée", pour le site
+  directUrl = env("DATABASE_URL_UNPOOLED") // connexion directe, pour les migrations
 }
 
 model User {

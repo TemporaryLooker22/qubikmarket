@@ -96,7 +96,7 @@ export async function publishResource(_: FormState, formData: FormData): Promise
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return { error: "Ajoute le fichier de ta ressource" };
-  if (file.size > MAX_FILE_SIZE) return { error: "Fichier trop lourd (20 Mo maximum)" };
+  if (file.size > MAX_FILE_SIZE) return { error: "Fichier trop lourd (4 Mo maximum)" };
   const ext = path.extname(file.name).toLowerCase();
   if (!ALLOWED_EXTENSIONS.includes(ext)) {
     return { error: `Format non accepté. Formats autorisés : ${ALLOWED_EXTENSIONS.join(", ")}` };

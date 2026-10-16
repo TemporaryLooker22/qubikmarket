@@ -47,7 +47,7 @@ export function SellForm() {
       <div>
         <label className="label" htmlFor="file">Fichier</label>
         <input id="file" name="file" type="file" required accept={ALLOWED_EXTENSIONS.join(",")} className="input file:mr-3 file:rounded-md file:border-0 file:bg-surface-2 file:px-3 file:py-1 file:text-text" />
-        <p className="mt-1 text-xs text-muted">{ALLOWED_EXTENSIONS.join(", ")} · 20 Mo maximum</p>
+        <p className="mt-1 text-xs text-muted">{ALLOWED_EXTENSIONS.join(", ")} · 4 Mo maximum</p>
       </div>
 
       <div className="rounded-xl border border-border bg-bg p-4 text-sm text-muted">
