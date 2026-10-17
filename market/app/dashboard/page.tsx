@@ -5,7 +5,6 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatAmount, formatDate, formatNumber } from "@/lib/i18n/format";
-import { sellerNetCents } from "@/lib/payments";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { SalesChart, type ChartDay } from "@/components/dashboard/SalesChart";
 import { Thumb } from "@/components/dashboard/Thumb";
@@ -40,19 +39,24 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         status: true,
         images: true,
         updatedAt: true,
-        purchases: { where: { status: "PAID" }, select: { amountCents: true } },
+        purchases: { where: { status: "PAID" }, select: { amountCents: true, earning: { select: { amountCents: true } } } },
       },
     }),
-    // Ventes et téléchargements des 60 derniers jours (30 jours affichés + 30 jours pour comparer)
-    db.purchase.findMany({
-      where: { status: "PAID", resource: { sellerId: user.id }, createdAt: { gte: since60 } },
+    // Gains des ventes des 60 derniers jours (30 jours affichés + 30 jours pour comparer), hors ventes remboursées
+    db.sellerEarning.findMany({
+      where: { sellerId: user.id, purchaseId: { not: null }, status: { not: "CANCELED" }, createdAt: { gte: since60 } },
       select: { amountCents: true, createdAt: true },
     }),
-    db.purchase.findMany({
-      where: { status: "PAID", amountCents: { gt: 0 }, resource: { sellerId: user.id } },
+    db.sellerEarning.findMany({
+      where: { sellerId: user.id, purchaseId: { not: null }, status: { not: "CANCELED" } },
       orderBy: { createdAt: "desc" },
       take: 4,
-      select: { id: true, amountCents: true, createdAt: true, user: { select: { username: true } }, resource: { select: { title: true, slug: true } } },
+      select: {
+        id: true,
+        amountCents: true,
+        createdAt: true,
+        purchase: { select: { user: { select: { username: true } }, resource: { select: { title: true, slug: true } } } },
+      },
     }),
   ]);
 
@@ -60,9 +64,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   if (resources.length === 0) redirect("/dashboard/purchases");
 
   // Chiffres des 30 derniers jours, comparés aux 30 jours d'avant
-  const paid = recentPurchases.filter((p) => p.amountCents > 0 && p.createdAt >= since60);
+  const paid = recentPurchases;
   const inLast30 = (p: { createdAt: Date }) => p.createdAt >= since30;
-  const net = (list: typeof paid) => list.reduce((n, p) => n + sellerNetCents(p.amountCents), 0);
+  const net = (list: typeof paid) => list.reduce((n, e) => n + e.amountCents, 0);
   const current = { net: net(paid.filter(inLast30)), sales: paid.filter(inLast30).length };
   const previous = { net: net(paid.filter((p) => !inLast30(p))), sales: paid.filter((p) => !inLast30(p)).length };
   const freeDownloads = resources.flatMap((r) => r.purchases).filter((p) => p.amountCents === 0).length;
@@ -75,7 +79,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     const day = byDate.get(dayKey(p.createdAt));
     if (day) {
       day.sales++;
-      day.netCents += sellerNetCents(p.amountCents);
+      day.netCents += p.amountCents;
     }
   }
 
@@ -85,8 +89,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // Meilleures ressources : celles qui ont rapporté le plus (ventes payantes seulement)
   const top = resources
     .map((r) => {
-      const sold = r.purchases.filter((p) => p.amountCents > 0);
-      return { ...r, sales: sold.length, net: sold.reduce((n, p) => n + sellerNetCents(p.amountCents), 0) };
+      const sold = r.purchases.filter((p) => p.earning);
+      return { ...r, sales: sold.length, net: sold.reduce((n, p) => n + (p.earning?.amountCents ?? 0), 0) };
     })
     .filter((r) => r.sales > 0)
     .sort((a, b) => b.net - a.net || b.sales - a.sales)
@@ -148,19 +152,21 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <p className="py-4 text-sm text-muted">{t.dashboard.noSalesYet}</p>
           ) : (
             <ul className="divide-y divide-border">
-              {recentSales.map((s) => (
-                <li key={s.id} className="flex items-center gap-3 py-2.5">
-                  <div className="min-w-0 flex-1">
-                    <Link href={`/resources/${s.resource.slug}`} className="block truncate text-sm font-semibold hover:underline">
-                      {s.resource.title}
-                    </Link>
-                    <p className="truncate text-xs text-muted">
-                      {s.user.username} · {formatDate(s.createdAt, locale)}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-sm font-bold">+{formatAmount(sellerNetCents(s.amountCents), locale)}</span>
-                </li>
-              ))}
+              {recentSales.map(({ id, amountCents, createdAt, purchase }) =>
+                purchase ? (
+                  <li key={id} className="flex items-center gap-3 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <Link href={`/resources/${purchase.resource.slug}`} className="block truncate text-sm font-semibold hover:underline">
+                        {purchase.resource.title}
+                      </Link>
+                      <p className="truncate text-xs text-muted">
+                        {purchase.user.username} · {formatDate(createdAt, locale)}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-sm font-bold">+{formatAmount(amountCents, locale)}</span>
+                  </li>
+                ) : null,
+              )}
             </ul>
           )}
         </section>

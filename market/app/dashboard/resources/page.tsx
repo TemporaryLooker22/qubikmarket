@@ -7,7 +7,6 @@ import { setListed } from "@/app/actions";
 import { categoryLabel } from "@/lib/catalog";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatAmount, formatPrice } from "@/lib/i18n/format";
-import { sellerNetCents } from "@/lib/payments";
 import type { ScanReport } from "@/lib/scan";
 import { ScanReportView } from "@/components/ScanReportView";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -40,7 +39,7 @@ export default async function DashboardResourcesPage({ searchParams }: { searchP
       status: true,
       images: true,
       reviewNote: true,
-      purchases: { where: { status: "PAID" }, select: { amountCents: true } },
+      purchases: { where: { status: "PAID" }, select: { earning: { select: { amountCents: true } } } },
     },
   });
   if (all.length === 0) redirect("/dashboard/purchases");
@@ -105,7 +104,7 @@ export default async function DashboardResourcesPage({ searchParams }: { searchP
         <ul className="divide-y divide-border">
           {list.map((r) => {
             const sales = r.purchases.length;
-            const net = r.purchases.reduce((n, p) => n + sellerNetCents(p.amountCents), 0);
+            const net = r.purchases.reduce((n, p) => n + (p.earning?.amountCents ?? 0), 0);
             const showReport = report !== null && reportId === r.id;
             return (
               <li key={r.id} id={r.id} className="scroll-mt-28 py-3">

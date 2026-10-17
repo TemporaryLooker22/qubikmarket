@@ -14,6 +14,7 @@ import { scanFile } from "@/lib/scan";
 import { detectImage, saveImage, saveUpload } from "@/lib/storage";
 import { ALLOWED_EXTENSIONS, CATEGORIES, MAX_FILE_SIZE, MAX_IMAGE_SIZE, MAX_IMAGES, slugify } from "@/lib/catalog";
 import { createCheckoutSession, isDemoMode } from "@/lib/payments";
+import { grantFounderIfEligible } from "@/lib/sellers";
 import { cookies } from "next/headers";
 import { isLocale, type Dictionary } from "@/lib/i18n/dictionaries";
 import { getDictionary, LOCALE_COOKIE } from "@/lib/i18n/server";
@@ -199,6 +200,9 @@ export async function publishResource(_: FormState, formData: FormData): Promise
     },
   });
 
+  // Première ressource en ligne : le vendeur devient fondateur s'il reste des places
+  if (status === "APPROVED") await grantFounderIfEligible(user.id);
+
   revalidatePath("/");
   redirect(`/dashboard?published=${status.toLowerCase()}`);
 }
@@ -249,13 +253,15 @@ export async function buyResource(formData: FormData) {
   const purchase = await db.purchase.upsert({
     where: { userId_resourceId: { userId: user.id, resourceId } },
     create: { userId: user.id, resourceId, amountCents: resource.priceCents },
-    update: { amountCents: resource.priceCents },
+    // Nouvel essai (ou nouvel achat après un remboursement) : l'achat repart « en attente »
+    update: { amountCents: resource.priceCents, status: "PENDING" },
   });
   const session = await createCheckoutSession({
     purchaseId: purchase.id,
     title: resource.title,
     priceCents: resource.priceCents,
     slug: resource.slug,
+    email: user.email,
   });
   await db.purchase.update({ where: { id: purchase.id }, data: { stripeSessionId: session.id } });
   redirect(session.url!);
@@ -269,10 +275,11 @@ export async function moderateResource(formData: FormData) {
   const decision = formData.get("decision") === "approve" ? "APPROVED" : "REJECTED";
   const note = String(formData.get("note") ?? "").trim() || null;
 
-  await db.resource.update({
+  const resource = await db.resource.update({
     where: { id: resourceId },
     data: { status: decision, reviewNote: note },
   });
+  if (decision === "APPROVED") await grantFounderIfEligible(resource.sellerId);
   revalidatePath("/admin");
   revalidatePath("/");
 }

@@ -65,7 +65,9 @@ export function SellForm({ feePercent, username }: { feePercent: number; usernam
   };
 
   const priceCents = paid ? Math.round((Number(price) || 0) * 100) : 0;
-  const feeCents = Math.round((priceCents * feePercent) / 100);
+  // Estimation avec la TVA belge (21 %) : le vrai calcul se fait à chaque vente (lib/earnings.ts)
+  const taxCents = priceCents - Math.round(priceCents / 1.21);
+  const feeCents = Math.round(((priceCents - taxCents) * feePercent) / 100);
   const priceOk = !paid || (priceCents >= PRICE.min * 100 && priceCents <= PRICE.max * 100);
 
   // Ce qui est prêt (colonne de droite et pastilles des sections)
@@ -203,8 +205,8 @@ export function SellForm({ feePercent, username }: { feePercent: number; usernam
                   <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 font-semibold text-muted">€</span>
                 </div>
                 <div className="flex min-w-56 flex-1 flex-col justify-center rounded-xl bg-accent-soft px-4 py-2">
-                  <p className="text-lg font-bold">{t.sell.earn(formatAmount(priceCents - feeCents, locale))}</p>
-                  <p className="text-xs text-text/70">{t.sell.earnDetail(feePercent, formatAmount(feeCents, locale))}</p>
+                  <p className="text-lg font-bold">{t.sell.earn(formatAmount(priceCents - taxCents - feeCents, locale))}</p>
+                  <p className="text-xs text-text/70">{t.sell.earnDetail(feePercent, formatAmount(taxCents, locale))}</p>
                 </div>
               </div>
               <p className="mt-2.5 text-xs text-muted">{t.sell.priceHelp}</p>

@@ -2,7 +2,8 @@ import Link from "next/link";
 import { ChevronRight, ShieldCheck } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/i18n/server";
-import { PLATFORM_FEE_PERCENT } from "@/lib/payments";
+import { db } from "@/lib/db";
+import { feePercentFor } from "@/lib/earnings";
 import { SellForm } from "@/components/SellForm";
 
 export async function generateMetadata() {
@@ -13,7 +14,9 @@ export async function generateMetadata() {
 // Page « Vendre une ressource » (réservée aux membres connectés)
 export default async function SellPage() {
   const user = await requireUser("/sell");
-  const { t } = await getDictionary();
+  const [{ t }, seller] = await Promise.all([getDictionary(), db.user.findUnique({ where: { id: user.id }, select: { founderUntil: true } })]);
+  // Commission du vendeur aujourd'hui (taux réduit s'il est fondateur)
+  const feePercent = feePercentFor({ founderUntil: seller?.founderUntil ?? null }, new Date());
   return (
     <div className="full-bleed">
       <div className="container-q pt-8">
@@ -29,7 +32,7 @@ export default async function SellPage() {
           <ShieldCheck className="h-4 w-4 shrink-0 text-ok" aria-hidden="true" />
           {t.sell.intro}
         </p>
-        <SellForm feePercent={PLATFORM_FEE_PERCENT} username={user.username} />
+        <SellForm feePercent={feePercent} username={user.username} />
       </div>
     </div>
   );

@@ -12,14 +12,17 @@ datasource db {
 }
 
 model User {
-  id           String     @id @default(cuid())
-  username     String     @unique
-  email        String     @unique
+  id           String          @id @default(cuid())
+  username     String          @unique
+  email        String          @unique
   passwordHash String
-  role         String     @default("USER") // USER ou ADMIN
-  createdAt    DateTime   @default(now())
+  role         String          @default("USER") // USER ou ADMIN
+  createdAt    DateTime        @default(now())
+  // Vendeur fondateur : commission réduite jusqu'à cette date (voir lib/sellers.ts)
+  founderUntil DateTime?
   resources    Resource[]
   purchases    Purchase[]
+  earnings     SellerEarning[]
 }
 
 model Resource {
@@ -65,10 +68,39 @@ model Purchase {
   stripeSessionId       String?   @unique
   stripePaymentIntentId String?   @unique // pour retrouver l'achat lors d'un remboursement ou d'une contestation
   paidAt                DateTime? // moment du paiement (createdAt = début du paiement)
+  taxCents              Int       @default(0) // TVA comprise dans amountCents (calculée par Stripe Tax)
   createdAt             DateTime  @default(now())
 
-  user     User     @relation(fields: [userId], references: [id])
-  resource Resource @relation(fields: [resourceId], references: [id])
+  user     User           @relation(fields: [userId], references: [id])
+  resource Resource       @relation(fields: [resourceId], references: [id])
+  earning  SellerEarning?
 
   @@unique([userId, resourceId])
+}
+
+// Registre des gains des vendeurs : une ligne par vente payée (et une ligne négative pour une
+// régularisation, quand une vente déjà versée au vendeur est remboursée).
+// Les versements chaque semaine additionnent les lignes « PENDING » dont le délai de sécurité est passé.
+model SellerEarning {
+  id          String   @id @default(cuid())
+  sellerId    String
+  purchaseId  String?  @unique // la vente d'origine (vide pour une régularisation)
+  reversesId  String?  @unique // régularisation : le gain déjà versé qu'elle annule
+  amountCents Int // ce que touche le vendeur (négatif pour une régularisation)
+  grossCents  Int      @default(0) // payé par l'acheteur, TVA comprise
+  taxCents    Int      @default(0) // TVA reversée par Qubik
+  feeCents    Int      @default(0) // commission de Qubik
+  feePercent  Int      @default(10)
+  // PENDING (à verser), PAID (versé au vendeur), CANCELED (vente remboursée ou contestée avant le versement)
+  status      String   @default("PENDING")
+  availableAt DateTime // fin du délai de sécurité (7 jours après le paiement) : versable à partir de cette date
+  transferId  String? // virement Stripe qui l'a versé
+  createdAt   DateTime @default(now())
+
+  seller   User           @relation(fields: [sellerId], references: [id])
+  purchase Purchase?      @relation(fields: [purchaseId], references: [id])
+  reverses SellerEarning? @relation("Reversal", fields: [reversesId], references: [id])
+  reversal SellerEarning? @relation("Reversal")
+
+  @@index([sellerId, status])
 }
