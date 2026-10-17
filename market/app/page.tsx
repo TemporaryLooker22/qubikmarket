@@ -103,7 +103,7 @@ export default async function HomePage() {
         </section>
 
         {/* 2. Catégories : juste sous la recherche, visibles sans défiler */}
-        <section className="container-q pb-6">
+        <section className="container-q pb-3">
           {/* Petits rectangles discrets : icône + nom sur une ligne */}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8">
             {CATEGORIES.map((c, i) => (
@@ -123,7 +123,7 @@ export default async function HomePage() {
 
       {/* 3. Les plus vendues en ce moment (cachée tant qu'il n'y a aucune vente) */}
       {bestSellers.length > 0 && (
-        <section className="reveal container-q mt-8">
+        <section className="reveal container-q mt-4">
           <SectionTitle title={t.home.bestSellers} subtitle={t.home.bestSellersSub} href="/resources" seeAll={t.home.seeAll} />
           <Gallery>
             {bestSellers.map(({ resource, sales }, i) => (
@@ -142,7 +142,7 @@ export default async function HomePage() {
 
       {/* 4. Les plus récentes (cachée tant qu'il n'y a aucune ressource) */}
       {latestResources.length > 0 && (
-        <section className="reveal container-q mt-8">
+        <section className="reveal container-q mt-4">
           <SectionTitle title={t.home.latest} subtitle={t.home.latestSub} href="/resources" seeAll={t.home.seeAll} />
           <Gallery>
             {latestResources.map((r) => (
@@ -224,7 +224,7 @@ export default async function HomePage() {
 
 function SectionTitle({ title, subtitle, href, seeAll }: { title: string; subtitle?: string; href?: string; seeAll?: string }) {
   return (
-    <div className="mb-6 flex items-end justify-between gap-4">
+    <div className="mb-4 flex items-end justify-between gap-4">
       <div>
         <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">{title}</h2>
         {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
