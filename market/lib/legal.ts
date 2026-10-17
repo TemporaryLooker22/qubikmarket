@@ -40,7 +40,7 @@ You may **not** resell, share, publish or redistribute the resource (as is or mo
 - You may only publish resources that **you created or have the right to sell**. Publishing someone else's work, leaked or stolen content is forbidden.
 - Every file is **automatically scanned** for backdoors and malicious code. Depending on the result, a resource is published immediately, reviewed by a moderator, or rejected. We may remove any resource at any time if it breaks these terms.
 - Forbidden content: malware, backdoors, hidden remote code, obfuscated code meant to hide its behaviour, content that breaks the Roblox Terms of Use or Community Standards, illegal, hateful, sexual or violent content, and content that infringes someone's rights.
-- Qubik keeps a **10% commission** on each sale. Payouts to sellers [to be completed: payment method, schedule and minimum amount]. To receive payouts for paid resources, you must be at least 18 or act through a parent or legal guardian, and complete the identity checks required by our payment provider.
+- Qubik keeps a **4% commission** on each sale. Payouts to sellers [to be completed: payment method, schedule and minimum amount]. To receive payouts for paid resources, you must be at least 18 or act through a parent or legal guardian, and complete the identity checks required by our payment provider.
 - You remain the owner of your resources. You grant Qubik a licence to host, display, scan and distribute them to buyers, and to show their images and descriptions to promote the marketplace.
 
 ## 5. Acceptable use
@@ -103,7 +103,7 @@ Tu ne peux **pas** revendre, partager, publier ou redistribuer la ressource (tel
 - Tu ne peux publier que des ressources **que tu as créées ou que tu as le droit de vendre**. Publier le travail de quelqu'un d'autre, du contenu leaké ou volé est interdit.
 - Chaque fichier est **scanné automatiquement** à la recherche de backdoors et de code malveillant. Selon le résultat, la ressource est publiée tout de suite, relue par un modérateur ou refusée. Nous pouvons retirer une ressource à tout moment si elle ne respecte pas ces conditions.
 - Contenus interdits : logiciels malveillants, backdoors, code distant caché, code obfusqué pour cacher son fonctionnement, contenus contraires aux Conditions d'utilisation ou aux Standards de la communauté Roblox, contenus illégaux, haineux, sexuels ou violents, et contenus qui portent atteinte aux droits d'autrui.
-- Qubik garde une **commission de 10 %** sur chaque vente. Paiement des vendeurs : [à compléter : moyen de paiement, fréquence et montant minimum]. Pour recevoir les gains des ressources payantes, tu dois avoir au moins 18 ans ou passer par un parent ou ton représentant légal, et réussir les vérifications d'identité demandées par notre prestataire de paiement.
+- Qubik garde une **commission de 4 %** sur chaque vente. Paiement des vendeurs : [à compléter : moyen de paiement, fréquence et montant minimum]. Pour recevoir les gains des ressources payantes, tu dois avoir au moins 18 ans ou passer par un parent ou ton représentant légal, et réussir les vérifications d'identité demandées par notre prestataire de paiement.
 - Tu restes propriétaire de tes ressources. Tu accordes à Qubik une licence pour les héberger, les afficher, les scanner et les fournir aux acheteurs, et pour montrer leurs images et descriptions afin de promouvoir la marketplace.
 
 ## 5. Bon usage

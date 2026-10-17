@@ -3,7 +3,7 @@ import { db } from "./db";
 
 // Programme « vendeurs fondateurs » : les premiers vendeurs payent une commission réduite pendant quelques mois.
 export const FOUNDER_SPOTS = 50;
-export const FOUNDER_FEE_PERCENT = 5;
+export const FOUNDER_FEE_PERCENT = 3;
 export const FOUNDER_MONTHS = 6;
 
 // Places restantes : un vendeur devient fondateur quand sa première ressource passe en ligne

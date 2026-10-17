@@ -59,7 +59,7 @@ export function AuthShowcase({ images, t }: { images: string[]; t: Dictionary })
           {[
             { value: "20", label: t.auth.stats.rules },
             { value: "10 s", label: t.auth.stats.publish },
-            { value: "10 %", label: t.auth.stats.fee },
+            { value: "4 %", label: t.auth.stats.fee },
           ].map((s) => (
             <div key={s.label}>
               <dt className="sr-only">{s.label}</dt>

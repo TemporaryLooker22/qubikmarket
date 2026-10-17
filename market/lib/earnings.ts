@@ -6,7 +6,7 @@ import { FOUNDER_FEE_PERCENT } from "./sellers";
 // Une vente payée crée un gain « PENDING », versable après le délai de sécurité.
 // Un remboursement ou une contestation l'annule (ou crée une régularisation négative s'il a déjà été versé).
 
-export const PLATFORM_FEE_PERCENT = 10; // commission de Qubik, sur le prix hors TVA
+export const PLATFORM_FEE_PERCENT = 4; // commission de Qubik, sur le prix hors TVA
 export const HOLD_DAYS = 7; // délai avant de pouvoir verser un gain (remboursements, contestations)
 const DAY = 24 * 60 * 60 * 1000;
 

@@ -77,7 +77,7 @@ export const en = {
       },
       {
         q: "How much does Qubik take on a sale?",
-        a: "10% of the sale price. The rest goes to the seller. Publishing a free resource costs nothing.",
+        a: "4% of the sale price. The rest goes to the seller. Publishing a free resource costs nothing.",
       },
       {
         q: "Is Qubik related to Roblox?",
@@ -87,7 +87,7 @@ export const en = {
     prev: "Previous",
     next: "Next",
     sellerBlockTitle: "Do you create on Roblox?",
-    sellerBlockText: "Sell your systems, maps and models on Qubik. Published in 10 seconds, 90% for you.",
+    sellerBlockText: "Sell your systems, maps and models on Qubik. Published in 10 seconds, 96% for you.",
     sellerBlockCta: "Become a seller",
   },
   card: {
@@ -410,7 +410,7 @@ export const en = {
     newVersionBadge: (v: string) => `New version ${v}`,
     downloadVersion: (v: string) => `Download v${v}`,
     sellerCtaTitle: "Do you create on Roblox?",
-    sellerCtaText: "Sell your systems, maps and models. Live in 10 seconds, 90% for you.",
+    sellerCtaText: "Sell your systems, maps and models. Live in 10 seconds, 96% for you.",
     sellerCtaButton: "Start selling",
   },
   ai: {
@@ -500,7 +500,7 @@ export const en = {
     metaTitle: "Sell on Qubik",
     eyebrow: "Sell on Qubik",
     titleA: "Publish in 10 seconds.",
-    titleB: "Keep 90%.",
+    titleB: "Keep 96%.",
     intro: "Your file is scanned automatically: no review queue, no week-long wait. Buyers trust what they download, so they buy more.",
     cta: "Start selling",
     cleanScan: "Clean scan",
@@ -515,7 +515,7 @@ export const en = {
     why: [
       { title: "Live in 10 seconds", text: "Clean scan = published right away. Only suspicious files go to a moderator." },
       { title: "Buyers who trust you", text: "Every resource carries a security scan. Fewer doubts, more sales." },
-      { title: "Only 10%", text: "You keep 90% of every sale. No subscription, nothing to pay for free resources." },
+      { title: "Only 4%", text: "You keep 96% of every sale. No subscription, nothing to pay for free resources." },
       { title: "Pages that sell", text: "Image gallery, formatted description, seller profile and reviews." },
     ],
     howTitle: "How it works",
@@ -545,7 +545,7 @@ export const en = {
       },
       {
         q: "How much does it cost?",
-        a: "Nothing to start. Qubik takes 10% of each sale (5% for founding sellers during their first 6 months). Free resources cost nothing.",
+        a: "Nothing to start. Qubik takes 4% of each sale (3% for founding sellers during their first 6 months). Free resources cost nothing.",
       },
     ],
     finalTitle: "Ready to sell your first resource?",
@@ -672,7 +672,7 @@ export const fr: Dictionary = {
       },
       {
         q: "Combien prend Qubik sur une vente ?",
-        a: "10 % du prix de vente. Le reste revient au vendeur. Publier une ressource gratuite ne coûte rien.",
+        a: "4 % du prix de vente. Le reste revient au vendeur. Publier une ressource gratuite ne coûte rien.",
       },
       {
         q: "Qubik est-il lié à Roblox ?",
@@ -682,7 +682,7 @@ export const fr: Dictionary = {
     prev: "Précédent",
     next: "Suivant",
     sellerBlockTitle: "Tu crées sur Roblox ?",
-    sellerBlockText: "Vends tes systèmes, maps et modèles sur Qubik. En ligne en 10 secondes, 90 % pour toi.",
+    sellerBlockText: "Vends tes systèmes, maps et modèles sur Qubik. En ligne en 10 secondes, 96 % pour toi.",
     sellerBlockCta: "Devenir vendeur",
   },
   card: {
@@ -991,7 +991,7 @@ export const fr: Dictionary = {
     newVersionBadge: (v) => `Nouvelle version ${v}`,
     downloadVersion: (v) => `Télécharger la v${v}`,
     sellerCtaTitle: "Tu crées sur Roblox ?",
-    sellerCtaText: "Vends tes systèmes, maps et modèles. En ligne en 10 secondes, 90 % pour toi.",
+    sellerCtaText: "Vends tes systèmes, maps et modèles. En ligne en 10 secondes, 96 % pour toi.",
     sellerCtaButton: "Commencer à vendre",
   },
   ai: {
@@ -1079,7 +1079,7 @@ export const fr: Dictionary = {
     metaTitle: "Vendre sur Qubik",
     eyebrow: "Vendre sur Qubik",
     titleA: "Publie en 10 secondes.",
-    titleB: "Garde 90 %.",
+    titleB: "Garde 96 %.",
     intro: "Ton fichier est scanné automatiquement : pas de file d'attente, pas de semaine d'attente. Les acheteurs ont confiance dans ce qu'ils téléchargent, donc ils achètent plus.",
     cta: "Commencer à vendre",
     cleanScan: "Scan propre",
@@ -1094,7 +1094,7 @@ export const fr: Dictionary = {
     why: [
       { title: "En ligne en 10 secondes", text: "Scan propre = publié tout de suite. Seuls les fichiers suspects passent par un modérateur." },
       { title: "Des acheteurs en confiance", text: "Chaque ressource affiche un scan de sécurité. Moins de doutes, plus de ventes." },
-      { title: "Seulement 10 %", text: "Tu gardes 90 % de chaque vente. Pas d'abonnement, rien à payer pour les ressources gratuites." },
+      { title: "Seulement 4 %", text: "Tu gardes 96 % de chaque vente. Pas d'abonnement, rien à payer pour les ressources gratuites." },
       { title: "Des pages qui vendent", text: "Galerie d'images, description mise en forme, profil vendeur et avis." },
     ],
     howTitle: "Comment ça marche",
@@ -1124,7 +1124,7 @@ export const fr: Dictionary = {
       },
       {
         q: "Combien ça coûte ?",
-        a: "Rien pour commencer. Qubik prend 10 % de chaque vente (5 % pour les vendeurs fondateurs pendant leurs 6 premiers mois). Les ressources gratuites ne coûtent rien.",
+        a: "Rien pour commencer. Qubik prend 4 % de chaque vente (3 % pour les vendeurs fondateurs pendant leurs 6 premiers mois). Les ressources gratuites ne coûtent rien.",
       },
     ],
     finalTitle: "Prêt à vendre ta première ressource ?",
