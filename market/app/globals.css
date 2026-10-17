@@ -29,6 +29,7 @@
 body {
   background: var(--color-bg);
   color: var(--color-text);
+  overflow-x: clip; /* jamais de défilement horizontal de la page */
 }
 
 /* Texte sélectionné à la souris : surligné en jaune */
@@ -50,8 +51,13 @@ body {
   }
   /* Surligneur jaune sous un mot (ex. le titre de l'accueil) */
   .highlight {
-    background: linear-gradient(transparent 58%, var(--color-accent) 58%, var(--color-accent) 92%, transparent 92%);
+    background-image: linear-gradient(var(--color-accent), var(--color-accent));
+    background-repeat: no-repeat;
+    background-position: 0 88%;
+    background-size: 100% 34%;
     padding-inline: 0.08em;
+    /* Le surligneur se dessine de gauche à droite à l'arrivée sur la page */
+    animation: marker 0.7s 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   }
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium transition hover:bg-surface;
@@ -92,5 +98,82 @@ body {
   }
   main pre:not([class]) {
     @apply overflow-x-auto rounded-lg bg-surface p-3 text-xs;
+  }
+}
+
+/* ---------- Animations ---------- */
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes marker {
+  from {
+    background-size: 0% 34%;
+  }
+  to {
+    background-size: 100% 34%;
+  }
+}
+
+@layer utilities {
+  /* Apparition en fondu vers le haut (le délai se règle avec animation-delay) */
+  .animate-fade-up {
+    animation: fade-up 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  /* Ouverture des menus déroulants */
+  .animate-pop {
+    animation: pop 0.18s ease-out both;
+  }
+  /* Trait jaune sous la page active */
+  .animate-grow-x {
+    transform-origin: left;
+    animation: grow-x 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+}
+
+/* Sections qui apparaissent quand on fait défiler la page.
+   En pur CSS : les navigateurs qui ne savent pas le faire affichent simplement la section. */
+@supports (animation-timeline: view()) {
+  .reveal {
+    animation: fade-up linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 40%;
+  }
+}
+
+/* Respect du réglage « réduire les animations » du système */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

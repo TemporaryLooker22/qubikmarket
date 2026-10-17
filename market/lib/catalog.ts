@@ -1,4 +1,4 @@
-// Données partagées par les pages : catégories, formats acceptés, mise en forme
+// Données partagées par les pages : catégories, formats acceptés
 
 // Catégories de vente. L'id est enregistré en base : ne pas le changer une fois des ressources publiées.
 export const CATEGORIES = [
@@ -22,17 +22,6 @@ export const ALLOWED_EXTENSIONS = [".rbxm", ".rbxmx", ".rbxl", ".rbxlx", ".lua",
 // Vercel limite la taille d'une requête à 4,5 Mo
 export const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4 Mo
 
-export function formatPrice(cents: number) {
-  if (cents === 0) return "Gratuit";
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
-}
-
-export function formatSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} o`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} Mo`;
-}
-
 // "Système de porte automatique !" -> "systeme-de-porte-automatique"
 export function slugify(text: string) {
   return text
@@ -44,14 +33,4 @@ export function slugify(text: string) {
     .slice(0, 60);
 }
 
-export const VERDICT_LABELS = {
-  clean: "Scan propre",
-  suspicious: "Scan : à vérifier",
-  dangerous: "Scan : dangereux",
-} as const;
-
-export const STATUS_LABELS = {
-  APPROVED: "En ligne",
-  PENDING: "En vérification",
-  REJECTED: "Refusée",
-} as const;
+// Prix, tailles et dates : voir lib/i18n/format.ts (ils dépendent de la langue)

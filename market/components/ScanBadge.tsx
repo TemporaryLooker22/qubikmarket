@@ -1,6 +1,7 @@
-import { VERDICT_LABELS } from "@/lib/catalog";
+import { getDictionary } from "@/lib/i18n/server";
 
-export function ScanBadge({ verdict }: { verdict: string }) {
-  const v = (verdict in VERDICT_LABELS ? verdict : "suspicious") as keyof typeof VERDICT_LABELS;
-  return <span>[{VERDICT_LABELS[v]}]</span>;
+export async function ScanBadge({ verdict }: { verdict: string }) {
+  const { t } = await getDictionary();
+  const v = (verdict in t.verdict ? verdict : "suspicious") as keyof typeof t.verdict;
+  return <span>[{t.verdict[v]}]</span>;
 }

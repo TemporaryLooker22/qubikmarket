@@ -7,7 +7,7 @@ export function SubmitButton({ children, pendingText }: { children: React.ReactN
   const { pending } = useFormStatus();
   return (
     <button type="submit" disabled={pending}>
-      {pending ? pendingText ?? "Patiente…" : children}
+      {pending ? pendingText ?? "…" : children}
     </button>
   );
 }

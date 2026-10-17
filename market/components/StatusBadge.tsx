@@ -1,6 +1,7 @@
-import { STATUS_LABELS } from "@/lib/catalog";
+import { getDictionary } from "@/lib/i18n/server";
 
-export function StatusBadge({ status }: { status: string }) {
-  const s = (status in STATUS_LABELS ? status : "PENDING") as keyof typeof STATUS_LABELS;
-  return <span>[{STATUS_LABELS[s]}]</span>;
+export async function StatusBadge({ status }: { status: string }) {
+  const { t } = await getDictionary();
+  const s = (status in t.status ? status : "PENDING") as keyof typeof t.status;
+  return <span>[{t.status[s]}]</span>;
 }

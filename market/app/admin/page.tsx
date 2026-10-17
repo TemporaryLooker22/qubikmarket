@@ -1,16 +1,22 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
-import { categoryLabel, formatPrice } from "@/lib/catalog";
+import { categoryLabel } from "@/lib/catalog";
+import { getDictionary } from "@/lib/i18n/server";
+import { formatPrice } from "@/lib/i18n/format";
 import type { ScanReport } from "@/lib/scan";
 import { moderateResource } from "@/app/actions";
 import { ScanBadge } from "@/components/ScanBadge";
 import { ScanReportView } from "@/components/ScanReportView";
 
-export const metadata = { title: "Modération" };
+export async function generateMetadata() {
+  const { t } = await getDictionary();
+  return { title: t.admin.title };
+}
 
 export default async function AdminPage() {
   await requireAdmin();
+  const { locale, t } = await getDictionary();
 
   const [pending, stats] = await Promise.all([
     db.resource.findMany({
@@ -24,19 +30,17 @@ export default async function AdminPage() {
 
   return (
     <>
-      <h1>Modération</h1>
-      <p>
-        Seules les ressources au scan « à vérifier » arrivent ici. Les propres sont publiées automatiquement, les dangereuses refusées.
-      </p>
+      <h1>{t.admin.title}</h1>
+      <p>{t.admin.intro}</p>
 
       <ul>
-        <li>En attente : {count("PENDING")}</li>
-        <li>En ligne : {count("APPROVED")}</li>
-        <li>Refusées : {count("REJECTED")}</li>
+        <li>{t.admin.pending}: {count("PENDING")}</li>
+        <li>{t.admin.live}: {count("APPROVED")}</li>
+        <li>{t.admin.rejected}: {count("REJECTED")}</li>
       </ul>
 
       {pending.length === 0 ? (
-        <p>File d&apos;attente vide.</p>
+        <p>{t.admin.empty}</p>
       ) : (
         pending.map((r) => {
           const report = JSON.parse(r.scanReport) as ScanReport;
@@ -47,19 +51,17 @@ export default async function AdminPage() {
               <h2>
                 <Link href={`/resources/${r.slug}`}>{r.title}</Link> <ScanBadge verdict={r.scanVerdict} />
               </h2>
-              <p>
-                {categoryLabel(r.category)} · {formatPrice(r.priceCents)} · par {r.seller.username} · en attente depuis {waitingHours} h
-              </p>
+              <p>{t.admin.meta(categoryLabel(r.category), formatPrice(r.priceCents, locale), r.seller.username, waitingHours)}</p>
 
               <ScanReportView report={report} />
 
               <form action={moderateResource}>
                 <input type="hidden" name="resourceId" value={r.id} />
-                <label htmlFor={`note-${r.id}`}>Note au vendeur (facultatif)</label>
+                <label htmlFor={`note-${r.id}`}>{t.admin.note}</label>
                 <br />
-                <input id={`note-${r.id}`} name="note" placeholder="Ex. le loadstring est justifié, c'est un éditeur de code" />{" "}
-                <button name="decision" value="approve">Approuver</button>{" "}
-                <button name="decision" value="reject">Refuser</button>
+                <input id={`note-${r.id}`} name="note" placeholder={t.admin.notePh} />{" "}
+                <button name="decision" value="approve">{t.admin.approve}</button>{" "}
+                <button name="decision" value="reject">{t.admin.reject}</button>
               </form>
             </article>
           );

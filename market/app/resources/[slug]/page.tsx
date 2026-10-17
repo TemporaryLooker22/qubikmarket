@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { categoryLabel, formatPrice, formatSize } from "@/lib/catalog";
+import { categoryLabel } from "@/lib/catalog";
+import { getDictionary } from "@/lib/i18n/server";
+import { formatDate, formatPrice, formatSize } from "@/lib/i18n/format";
 import { isDemoMode } from "@/lib/payments";
 import type { ScanReport } from "@/lib/scan";
 import { buyResource } from "@/app/actions";
@@ -16,7 +18,7 @@ type SearchParams = Promise<{ bought?: string }>;
 export default async function ResourcePage({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
   const { slug } = await params;
   const { bought } = await searchParams;
-  const user = await getCurrentUser();
+  const [user, { locale, t }] = await Promise.all([getCurrentUser(), getDictionary()]);
 
   const resource = await db.resource.findUnique({
     where: { slug },
@@ -43,57 +45,52 @@ export default async function ResourcePage({ params, searchParams }: { params: P
       <h1>{resource.title}</h1>
       <p>{resource.summary}</p>
       <p>
-        par <strong>{resource.seller.username}</strong> <ScanBadge verdict={resource.scanVerdict} />{" "}
+        {t.resource.by} <strong>{resource.seller.username}</strong> <ScanBadge verdict={resource.scanVerdict} />{" "}
         {resource.status !== "APPROVED" && <StatusBadge status={resource.status} />}
       </p>
 
-      <h2>{formatPrice(resource.priceCents)}</h2>
+      <h2>{formatPrice(resource.priceCents, locale)}</h2>
 
-      {bought && <p>C&apos;est à toi ! Tu peux télécharger le fichier.</p>}
+      {bought && <p>{t.resource.bought}</p>}
 
       {canDownload ? (
         <p>
-          <a href={`/api/download/${resource.id}`}>Télécharger</a>
+          <a href={`/api/download/${resource.id}`}>{t.resource.download}</a>
         </p>
       ) : resource.status === "APPROVED" ? (
         <form action={buyResource}>
           <input type="hidden" name="resourceId" value={resource.id} />
-          <button>{resource.priceCents === 0 ? "Obtenir gratuitement" : "Acheter"}</button>
+          <button>{resource.priceCents === 0 ? t.resource.getFree : t.resource.buy}</button>
         </form>
       ) : null}
 
-      {!user && resource.priceCents > 0 && <p>Tu devras te connecter pour acheter.</p>}
-      {isDemoMode && resource.priceCents > 0 && !canDownload && (
-        <p>Mode démo : le paiement est simulé, aucun argent n&apos;est débité.</p>
-      )}
+      {!user && resource.priceCents > 0 && <p>{t.resource.loginToBuy}</p>}
+      {isDemoMode && resource.priceCents > 0 && !canDownload && <p>{t.resource.demo}</p>}
 
       <ul>
-        <li>Fichier : {resource.fileName}</li>
-        <li>Taille : {formatSize(resource.fileSize)}</li>
-        <li>Téléchargements : {resource._count.purchases}</li>
-        <li>Publiée le : {resource.createdAt.toLocaleDateString("fr-FR")}</li>
+        <li>{t.resource.file}: {resource.fileName}</li>
+        <li>{t.resource.size}: {formatSize(resource.fileSize, locale)}</li>
+        <li>{t.resource.downloads}: {resource._count.purchases}</li>
+        <li>{t.resource.published}: {formatDate(resource.createdAt, locale)}</li>
       </ul>
 
       {resource.reviewNote && (isOwner || isAdmin) && (
         <>
-          <h2>Note de modération</h2>
+          <h2>{t.resource.reviewNote}</h2>
           <p>{resource.reviewNote}</p>
         </>
       )}
 
-      <h2>Description</h2>
+      <h2>{t.resource.description}</h2>
       <p style={{ whiteSpace: "pre-line" }}>{resource.description}</p>
 
-      <h2>Rapport de sécurité</h2>
+      <h2>{t.resource.security}</h2>
       {isOwner || isAdmin ? (
         <ScanReportView report={report} />
       ) : (
         <p>
-          Ce fichier a été analysé par le scanner Qubik : {report.scriptCount} script(s) vérifié(s) à la recherche de
-          backdoors (require cachés, code obfusqué, loadstring, webhooks, virus…).
-          {resource.scanVerdict === "clean"
-            ? " Aucun problème détecté."
-            : " Certains éléments ont été relus et validés par un modérateur."}
+          {t.resource.securityPublic(report.scriptCount)}
+          {resource.scanVerdict === "clean" ? t.resource.securityClean : t.resource.securityReviewed}
         </p>
       )}
     </>

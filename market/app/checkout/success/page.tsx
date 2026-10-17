@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { stripe } from "@/lib/payments";
+import { getDictionary } from "@/lib/i18n/server";
 
 // Page de retour après un paiement Stripe : on vérifie auprès de Stripe que le paiement est bien passé
 export default async function CheckoutSuccessPage({ searchParams }: { searchParams: Promise<{ session_id?: string }> }) {
@@ -20,13 +21,14 @@ export default async function CheckoutSuccessPage({ searchParams }: { searchPara
   }
 
   const paid = session.payment_status === "paid";
+  const { t } = await getDictionary();
   return (
     <>
-      <h1>{paid ? "Paiement confirmé ✓" : "Paiement en cours…"}</h1>
+      <h1>{paid ? t.checkout.paid : t.checkout.pending}</h1>
       <p>
-        {paid ? `« ${purchase.resource.title} » est maintenant dans tes achats.` : "Rafraîchis la page dans quelques instants."}
+        {paid ? t.checkout.paidText(purchase.resource.title) : t.checkout.pendingText}
       </p>
-      <Link href={`/resources/${purchase.resource.slug}`}>Voir la ressource</Link>
+      <Link href={`/resources/${purchase.resource.slug}`}>{t.checkout.see}</Link>
     </>
   );
 }

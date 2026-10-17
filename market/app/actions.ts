@@ -14,29 +14,45 @@ import { scanFile } from "@/lib/scan";
 import { saveUpload } from "@/lib/storage";
 import { ALLOWED_EXTENSIONS, CATEGORIES, MAX_FILE_SIZE, slugify } from "@/lib/catalog";
 import { createCheckoutSession, isDemoMode } from "@/lib/payments";
+import { cookies } from "next/headers";
+import { isLocale, type Dictionary } from "@/lib/i18n/dictionaries";
+import { getDictionary, LOCALE_COOKIE } from "@/lib/i18n/server";
 
 export type FormState = { error?: string } | undefined;
 
+// ---------- Langue ----------
+
+// Sélecteur EN / FR : on retient le choix dans un cookie pendant un an
+export async function setLocale(formData: FormData) {
+  const locale = formData.get("locale");
+  if (!isLocale(locale)) return;
+  (await cookies()).set(LOCALE_COOKIE, locale, { maxAge: 60 * 60 * 24 * 365, path: "/", sameSite: "lax" });
+  revalidatePath("/", "layout");
+}
+
 // ---------- Comptes ----------
 
-const registerSchema = z.object({
-  username: z
-    .string()
-    .trim()
-    .min(3, "Le pseudo doit faire au moins 3 caractères")
-    .max(20, "Le pseudo doit faire au plus 20 caractères")
-    .regex(/^[a-zA-Z0-9_]+$/, "Le pseudo ne peut contenir que des lettres, chiffres et _"),
-  email: z.string().trim().toLowerCase().email("Adresse email invalide"),
-  password: z.string().min(8, "Le mot de passe doit faire au moins 8 caractères"),
-});
+// Les messages d'erreur sont dans la langue du visiteur
+const registerSchema = (e: Dictionary["errors"]) =>
+  z.object({
+    username: z
+      .string()
+      .trim()
+      .min(3, e.usernameMin)
+      .max(20, e.usernameMax)
+      .regex(/^[a-zA-Z0-9_]+$/, e.usernameChars),
+    email: z.string().trim().toLowerCase().email(e.email),
+    password: z.string().min(8, e.passwordMin),
+  });
 
 export async function register(_: FormState, formData: FormData): Promise<FormState> {
-  const parsed = registerSchema.safeParse(Object.fromEntries(formData));
+  const { t } = await getDictionary();
+  const parsed = registerSchema(t.errors).safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const { username, email, password } = parsed.data;
 
   const existing = await db.user.findFirst({ where: { OR: [{ email }, { username }] } });
-  if (existing) return { error: "Ce pseudo ou cet email est déjà utilisé" };
+  if (existing) return { error: t.errors.taken };
 
   // Le tout premier compte créé devient administrateur (pratique pour démarrer)
   const isFirstUser = (await db.user.count()) === 0;
@@ -60,7 +76,8 @@ export async function login(_: FormState, formData: FormData): Promise<FormState
 
   const user = await db.user.findUnique({ where: { email } });
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-    return { error: "Email ou mot de passe incorrect" };
+    const { t } = await getDictionary();
+    return { error: t.errors.badLogin };
   }
 
   await createSession(user.id);
@@ -76,30 +93,32 @@ export async function logout() {
 
 // ---------- Publication d'une ressource ----------
 
-const resourceSchema = z.object({
-  title: z.string().trim().min(4, "Le titre doit faire au moins 4 caractères").max(80, "Titre trop long (80 max)"),
-  summary: z.string().trim().min(10, "Le résumé doit faire au moins 10 caractères").max(160, "Résumé trop long (160 max)"),
-  description: z.string().trim().min(30, "La description doit faire au moins 30 caractères").max(10000),
-  category: z.enum(CATEGORIES.map((c) => c.id) as [string, ...string[]], { message: "Choisis une catégorie" }),
-  price: z.coerce.number().min(0, "Prix invalide").max(500, "Prix maximum : 500 €"),
-});
+const resourceSchema = (e: Dictionary["errors"]) =>
+  z.object({
+    title: z.string().trim().min(4, e.titleMin).max(80, e.titleMax),
+    summary: z.string().trim().min(10, e.summaryMin).max(160, e.summaryMax),
+    description: z.string().trim().min(30, e.descriptionMin).max(10000),
+    category: z.enum(CATEGORIES.map((c) => c.id) as [string, ...string[]], { message: e.category }),
+    price: z.coerce.number().min(0, e.price).max(500, e.priceMax),
+  });
 
 export async function publishResource(_: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
+  const { t } = await getDictionary();
 
-  const parsed = resourceSchema.safeParse(Object.fromEntries(formData));
+  const parsed = resourceSchema(t.errors).safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const data = parsed.data;
 
   const priceCents = Math.round(data.price * 100);
-  if (priceCents > 0 && priceCents < 100) return { error: "Le prix minimum est de 1 € (ou 0 pour gratuit)" };
+  if (priceCents > 0 && priceCents < 100) return { error: t.errors.priceMin };
 
   const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) return { error: "Ajoute le fichier de ta ressource" };
-  if (file.size > MAX_FILE_SIZE) return { error: "Fichier trop lourd (4 Mo maximum)" };
+  if (!(file instanceof File) || file.size === 0) return { error: t.errors.fileMissing };
+  if (file.size > MAX_FILE_SIZE) return { error: t.errors.fileTooBig };
   const ext = path.extname(file.name).toLowerCase();
   if (!ALLOWED_EXTENSIONS.includes(ext)) {
-    return { error: `Format non accepté. Formats autorisés : ${ALLOWED_EXTENSIONS.join(", ")}` };
+    return { error: t.errors.fileFormat(ALLOWED_EXTENSIONS.join(", ")) };
   }
 
   // 1) Scan anti-backdoor automatique
@@ -108,7 +127,7 @@ export async function publishResource(_: FormState, formData: FormData): Promise
   try {
     report = scanFile(bytes, file.name);
   } catch (err) {
-    return { error: `Impossible de lire ce fichier Roblox : ${(err as Error).message}` };
+    return { error: t.errors.fileUnreadable((err as Error).message) };
   }
 
   // 2) Décision selon le verdict :
@@ -116,10 +135,8 @@ export async function publishResource(_: FormState, formData: FormData): Promise
   //    suspect -> vérification par un modérateur
   //    dangereux -> refus automatique
   const status = report.verdict === "clean" ? "APPROVED" : report.verdict === "suspicious" ? "PENDING" : "REJECTED";
-  const reviewNote =
-    report.verdict === "dangerous"
-      ? "Refus automatique : le scanner a détecté du code dangereux. Consulte le rapport, corrige ton fichier et republie."
-      : null;
+  // Note enregistrée dans la langue du vendeur au moment de la publication
+  const reviewNote = report.verdict === "dangerous" ? t.errors.autoReject : null;
 
   // 3) Enregistrement
   const storedName = await saveUpload(bytes, file.name);

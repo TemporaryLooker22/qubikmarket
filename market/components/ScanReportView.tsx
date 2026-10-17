@@ -1,9 +1,11 @@
 import type { ScanReport } from "@/lib/scan";
-
-const SEVERITY_LABELS = { critical: "Critique", high: "Élevé", medium: "Moyen", low: "Info" } as const;
+import { getDictionary } from "@/lib/i18n/server";
 
 // Affiche le détail du scan (pour le vendeur et les modérateurs)
-export function ScanReportView({ report }: { report: ScanReport }) {
+// Les titres et explications des détections viennent du scanner (en français pour l'instant)
+export async function ScanReportView({ report }: { report: ScanReport }) {
+  const { t } = await getDictionary();
+
   // Regroupe les détections identiques (même règle dans le même script)
   const groups = new Map<string, ScanReport["findings"][number] & { extra: number }>();
   for (const f of report.findings) {
@@ -15,19 +17,19 @@ export function ScanReportView({ report }: { report: ScanReport }) {
 
   return (
     <div>
-      <p>
-        {report.scriptCount} script(s) analysé(s) · {report.instanceCount} objet(s) · score de risque {report.score}
-      </p>
-      {groups.size === 0 && <p>Aucun problème détecté.</p>}
+      <p>{t.report.summary(report.scriptCount, report.instanceCount, report.score)}</p>
+      {groups.size === 0 && <p>{t.report.noIssue}</p>}
       <ul>
         {[...groups.values()].map((f, i) => (
           <li key={i}>
-            <strong>[{SEVERITY_LABELS[f.severity]}] {f.title}</strong>
+            <strong>
+              [{t.severity[f.severity]}] {f.title}
+            </strong>
             <br />
             <code>
               {f.script}
-              {f.line ? ` · ligne ${f.line}` : ""}
-              {f.extra ? ` · +${f.extra} autre(s)` : ""}
+              {f.line ? ` · ${t.report.line(f.line)}` : ""}
+              {f.extra ? ` · ${t.report.more(f.extra)}` : ""}
             </code>
             <p>{f.explain}</p>
             <pre>{f.snippet}</pre>

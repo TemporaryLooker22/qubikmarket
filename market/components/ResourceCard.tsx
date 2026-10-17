@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { categoryLabel, formatPrice } from "@/lib/catalog";
+import { categoryLabel } from "@/lib/catalog";
+import { dictionaries, type Locale } from "@/lib/i18n/dictionaries";
+import { formatPrice } from "@/lib/i18n/format";
 import { CategoryIcon } from "./CategoryIcon";
 
 type Props = {
@@ -10,31 +12,48 @@ type Props = {
     priceCents: number;
     seller: { username: string };
   };
+  locale: Locale;
   // "large" : la grande carte du bandeau Game Setups, "compact" : les petites cartes à côté
   size?: "normal" | "large" | "compact";
+  rank?: number; // position dans le classement des ventes (#1, #2…)
+  sales?: number; // nombre de ventes à afficher
 };
 
 const THUMB_SIZES = { normal: "aspect-[4/3]", large: "min-h-48 flex-1", compact: "h-28" };
 
-export function ResourceCard({ resource, size = "normal" }: Props) {
+export function ResourceCard({ resource, locale, size = "normal", rank, sales }: Props) {
+  const t = dictionaries[locale];
   const large = size === "large";
+  const free = resource.priceCents === 0;
   return (
     <Link
       href={`/resources/${resource.slug}`}
-      className="group flex h-full flex-col rounded-xl border border-border bg-card p-2 transition hover:border-border-strong"
+      className="group flex h-full flex-col rounded-2xl border border-border bg-card p-2 transition duration-300 hover:-translate-y-1 hover:border-border-strong hover:shadow-[0_12px_32px_-12px_rgba(0,0,0,0.18)]"
     >
       {/* Vignette : icône de la catégorie, en attendant les images des ressources */}
-      <div
-        className={`flex items-center justify-center rounded-lg bg-surface text-muted transition group-hover:bg-surface-2 ${THUMB_SIZES[size]}`}
-      >
-        <CategoryIcon category={resource.category} className={large ? "h-12 w-12" : "h-8 w-8"} />
+      <div className={`relative flex items-center justify-center overflow-hidden rounded-xl bg-surface text-muted ${THUMB_SIZES[size]}`}>
+        <CategoryIcon
+          category={resource.category}
+          className={`transition duration-500 group-hover:-rotate-6 group-hover:scale-110 group-hover:text-text ${large ? "h-12 w-12" : "h-9 w-9"}`}
+        />
+        {rank && (
+          <span className="absolute left-2 top-2 flex h-7 min-w-7 items-center justify-center rounded-full bg-text px-2 text-xs font-bold text-bg">
+            #{rank}
+          </span>
+        )}
+        <span
+          className={`absolute bottom-2 right-2 rounded-full px-2.5 py-1 text-xs font-bold ${free ? "bg-card text-text" : "bg-accent text-text"}`}
+        >
+          {formatPrice(resource.priceCents, locale)}
+        </span>
       </div>
-      <div className="px-1 pb-1 pt-3">
-        <p className={`truncate font-medium ${large ? "text-lg" : "text-sm"}`}>{resource.title}</p>
-        <p className="mt-0.5 truncate text-xs text-muted">
-          {categoryLabel(resource.category)} · par {resource.seller.username}
+      <div className="px-1.5 pb-1.5 pt-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">{categoryLabel(resource.category)}</p>
+        <p className={`mt-0.5 truncate font-semibold ${large ? "text-lg" : "text-[15px]"}`}>{resource.title}</p>
+        <p className="mt-1 flex items-center justify-between gap-2 truncate text-xs text-muted">
+          <span className="truncate">{t.card.by(resource.seller.username)}</span>
+          {sales !== undefined && <span className="shrink-0 font-medium text-text">{t.card.sales(sales)}</span>}
         </p>
-        <p className={`mt-2 font-semibold ${large ? "text-base" : "text-sm"}`}>{formatPrice(resource.priceCents)}</p>
       </div>
     </Link>
   );

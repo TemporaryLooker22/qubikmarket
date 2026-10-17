@@ -1,11 +1,13 @@
 import Link from "next/link";
+import { getDictionary } from "@/lib/i18n/server";
 
-export default function NotFound() {
+export default async function NotFound() {
+  const { t } = await getDictionary();
   return (
     <>
-      <h1>Page introuvable</h1>
-      <p>Cette ressource n&apos;existe pas ou n&apos;est plus disponible.</p>
-      <Link href="/resources">Retour au catalogue</Link>
+      <h1>{t.notFound.title}</h1>
+      <p>{t.notFound.text}</p>
+      <Link href="/resources">{t.notFound.back}</Link>
     </>
   );
 }
