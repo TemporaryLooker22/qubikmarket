@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Download, Plus, ScanSearch, Search, ShieldCheck, Upload } from "lucide-react";
+import { ArrowRight, Download, Plus, ScanSearch, Search, ShieldCheck, Store, Upload } from "lucide-react";
 import { db } from "@/lib/db";
 import { CATEGORIES } from "@/lib/catalog";
 import { getDictionary } from "@/lib/i18n/server";
@@ -216,7 +216,32 @@ export default async function HomePage() {
           ))}
         </div>
       </section>
+
+      {/* 9. Devenir vendeur */}
+      <SellerBlock t={t} />
     </div>
+  );
+}
+
+// Encart pour recruter des vendeurs, en bas de l'accueil
+function SellerBlock({ t }: { t: Awaited<ReturnType<typeof getDictionary>>["t"] }) {
+  return (
+    <section className="reveal container-q mt-16">
+      <div className="flex flex-col gap-6 rounded-3xl bg-text p-8 text-bg sm:flex-row sm:items-center sm:justify-between sm:p-10">
+        <div className="flex gap-4">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-text">
+            <Store className="h-6 w-6" aria-hidden="true" />
+          </span>
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">{t.home.sellerBlockTitle}</h2>
+            <p className="mt-1 text-bg/70">{t.home.sellerBlockText}</p>
+          </div>
+        </div>
+        <Link href="/become-seller" className="group inline-flex h-12 shrink-0 items-center gap-2 self-start rounded-xl bg-accent px-6 text-[15px] font-semibold text-text transition hover:-translate-y-px hover:bg-accent-hover sm:self-center">
+          {t.home.sellerBlockCta} <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden="true" />
+        </Link>
+      </div>
+    </section>
   );
 }
 

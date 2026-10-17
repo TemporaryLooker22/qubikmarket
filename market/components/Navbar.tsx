@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Menu, Search, UserPlus, X, Zap } from "lucide-react";
+import { ChevronDown, Home, LayoutDashboard, LayoutGrid, LogIn, LogOut, Menu, Search, ShieldCheck, ShoppingBag, Store, Upload, UserPlus, X, Zap, type LucideIcon } from "lucide-react";
 import { logout, setLocale } from "@/app/actions";
 import { CATEGORIES } from "@/lib/catalog";
 import { LOCALES } from "@/lib/i18n/dictionaries";
@@ -12,7 +12,7 @@ import { CategoryIcon } from "./CategoryIcon";
 import { Logo } from "./Logo";
 
 type Props = {
-  user: { username: string; role: string } | null;
+  user: { username: string; email: string; role: string; isSeller: boolean } | null;
   pendingCount: number; // ressources en attente de modération (affiché aux admins)
 };
 
@@ -25,11 +25,11 @@ export function Navbar({ user, pendingCount }: Props) {
   // Ferme le menu mobile quand on change de page
   useEffect(() => setMobileOpen(false), [pathname]);
 
-  const links = [
-    { href: "/", label: t.nav.home },
-    { href: "/resources", label: t.nav.catalog },
-    ...(user ? [{ href: "/dashboard", label: t.nav.dashboard }] : [{ href: "/sell", label: t.nav.sell }]),
-    ...(user?.role === "ADMIN" ? [{ href: "/admin", label: t.nav.moderation, badge: pendingCount }] : []),
+  const links: { href: string; label: string; icon: LucideIcon; badge?: number }[] = [
+    { href: "/", label: t.nav.home, icon: Home },
+    { href: "/resources", label: t.nav.catalog, icon: LayoutGrid },
+    ...(user ? [{ href: "/dashboard", label: t.nav.dashboard, icon: LayoutDashboard }] : [{ href: "/sell", label: t.nav.sell, icon: Upload }]),
+    ...(user?.role === "ADMIN" ? [{ href: "/admin", label: t.nav.moderation, icon: ShieldCheck, badge: pendingCount }] : []),
   ];
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
   // Après la connexion ou l'inscription, on revient sur la page actuelle
@@ -46,7 +46,7 @@ export function Navbar({ user, pendingCount }: Props) {
         {/* Liens (ordinateur) */}
         <div className="hidden items-center gap-1 md:flex">
           {links.map((l) => (
-            <NavLink key={l.href} {...l} active={isActive(l.href)} />
+            <NavLink key={l.href} href={l.href} label={l.label} badge={l.badge} active={isActive(l.href)} />
           ))}
         </div>
 
@@ -62,7 +62,7 @@ export function Navbar({ user, pendingCount }: Props) {
 
           {user ? (
             <>
-              <AccountMenu username={user.username} />
+              <AccountMenu user={user} pendingCount={pendingCount} />
               <Link href="/sell" className="hidden h-10 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-text transition hover:-translate-y-px hover:bg-accent-hover sm:inline-flex">
                 <Zap className="h-4 w-4" strokeWidth={2} aria-hidden="true" /> {t.nav.sell}
               </Link>
@@ -95,28 +95,44 @@ export function Navbar({ user, pendingCount }: Props) {
 
       {/* Menu mobile */}
       {mobileOpen && (
-        <div className="animate-pop mx-auto mt-2 max-w-6xl origin-top rounded-2xl border border-border bg-card p-2 shadow-[0_8px_24px_rgba(0,0,0,0.08)] md:hidden">
-          {[...links, ...(user ? [{ href: "/sell", label: t.nav.sell }] : [{ href: "/login", label: t.nav.login }])].map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={`flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-bg ${isActive(l.href) ? "text-text" : "text-muted"}`}
-            >
-              {l.label}
-              {"badge" in l && l.badge ? <Badge count={l.badge} /> : null}
-            </Link>
-          ))}
-          <p className="px-3 pb-1 pt-3 text-xs font-medium text-muted">{t.nav.categories}</p>
-          <div className="grid grid-cols-2">
-            {CATEGORIES.map((c) => (
-              <Link key={c.id} href={`/resources?category=${c.id}`} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-bg">
-                <CategoryIcon category={c.id} className="h-4 w-4 text-muted" /> {c.label}
+        <div className="animate-pop mx-auto mt-2 max-w-6xl origin-top overflow-hidden rounded-2xl border border-border bg-card shadow-[0_16px_40px_-12px_rgba(0,0,0,0.2)] md:hidden">
+          {user && <AccountHeader user={user} />}
+          <div className="p-2">
+            {[
+              ...links,
+              ...(user ? [{ href: "/sell", label: t.nav.sellResource, icon: Upload }] : [{ href: `/login${next}`, label: t.nav.login, icon: LogIn }]),
+              ...(!user?.isSeller ? [{ href: "/become-seller", label: t.nav.becomeSeller, icon: Store }] : []),
+            ].map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition hover:bg-bg ${isActive(l.href) ? "bg-bg text-text" : "text-muted"}`}
+              >
+                <l.icon className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden="true" />
+                <span className="flex-1">{l.label}</span>
+                {"badge" in l && l.badge ? <Badge count={l.badge} /> : null}
               </Link>
             ))}
           </div>
-          <div className="flex items-center justify-between border-t border-border px-3 pb-1 pt-3">
-            <span className="text-xs font-medium text-muted">{t.nav.language}</span>
+          <div className="border-t border-border p-2">
+            <p className="px-3 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">{t.nav.categories}</p>
+            <div className="grid grid-cols-2">
+              {CATEGORIES.map((c) => (
+                <Link key={c.id} href={`/resources?category=${c.id}`} className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm transition hover:bg-bg">
+                  <CategoryIcon category={c.id} className="h-4 w-4 text-muted" /> {c.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center justify-between gap-3 border-t border-border bg-bg/60 px-4 py-3">
             <LanguageSwitch />
+            {user && (
+              <form action={logout}>
+                <button className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted transition hover:bg-bad-bg hover:text-bad">
+                  <LogOut className="h-4 w-4" aria-hidden="true" /> {t.nav.logout}
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}
@@ -193,31 +209,104 @@ function useDropdown() {
   return { open, setOpen, ref };
 }
 
-function AccountMenu({ username }: { username: string }) {
+// En-tête du menu du compte : avatar, pseudo, email et badge admin
+function AccountHeader({ user }: { user: NonNullable<Props["user"]> }) {
+  const { t } = useI18n();
+  return (
+    <div className="flex items-center gap-3 border-b border-border bg-bg/60 px-4 py-3.5">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-text text-sm font-semibold uppercase text-bg">
+        {user.username.slice(0, 1)}
+      </span>
+      <div className="min-w-0">
+        <p className="flex items-center gap-2 truncate font-semibold">
+          {user.username}
+          {user.role === "ADMIN" && (
+            <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">{t.nav.adminBadge}</span>
+          )}
+        </p>
+        <p className="truncate text-xs text-muted">{user.email}</p>
+      </div>
+    </div>
+  );
+}
+
+// Menu du compte (ordinateur) : clic sur l'avatar, navigation au clavier avec les flèches
+function AccountMenu({ user, pendingCount }: { user: NonNullable<Props["user"]>; pendingCount: number }) {
   const { t } = useI18n();
   const { open, setOpen, ref } = useDropdown();
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // À l'ouverture, on place le focus sur la première entrée (pratique au clavier)
+  useEffect(() => {
+    if (open) menuRef.current?.querySelector<HTMLElement>("[role=menuitem]")?.focus();
+  }, [open]);
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    e.preventDefault();
+    const items = [...(menuRef.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? [])];
+    const index = items.indexOf(document.activeElement as HTMLElement);
+    const nextIndex = (index + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
+    items[nextIndex]?.focus();
+  };
+
+  const items: { href: string; label: string; icon: LucideIcon; badge?: number }[] = [
+    { href: "/dashboard", label: t.nav.dashboard, icon: LayoutDashboard },
+    { href: "/sell", label: t.nav.sellResource, icon: Upload },
+    { href: "/dashboard#purchases", label: t.nav.myPurchases, icon: ShoppingBag },
+    ...(!user.isSeller ? [{ href: "/become-seller", label: t.nav.becomeSeller, icon: Store }] : []),
+    ...(user.role === "ADMIN" ? [{ href: "/admin", label: t.nav.moderation, icon: ShieldCheck, badge: pendingCount }] : []),
+  ];
+
   return (
     <div ref={ref} className="relative">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
+        aria-haspopup="menu"
         aria-label={t.nav.account}
-        className={`flex h-10 w-10 items-center justify-center rounded-full bg-text text-sm font-semibold uppercase text-bg ring-offset-2 transition hover:ring-2 hover:ring-border-strong ${open ? "ring-2 ring-border-strong" : ""}`}
+        className={`flex h-10 items-center gap-1 rounded-full p-0.5 pr-1.5 transition hover:bg-bg ${open ? "bg-bg" : ""}`}
       >
-        {username.slice(0, 1)}
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-text text-sm font-semibold uppercase text-bg">
+          {user.username.slice(0, 1)}
+        </span>
+        <ChevronDown className={`h-4 w-4 text-muted transition duration-200 ${open ? "rotate-180" : ""}`} aria-hidden="true" />
       </button>
       {open && (
-        <div className="animate-pop absolute right-0 top-full mt-2 w-52 origin-top-right rounded-xl border border-border bg-card p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
-          <p className="truncate px-3 py-2 text-xs text-muted">{t.nav.signedInAs(username)}</p>
-          <Link href="/dashboard" className="block rounded-lg px-3 py-2 text-[15px] transition hover:bg-bg">
-            {t.nav.dashboard}
-          </Link>
-          <Link href="/sell" className="block rounded-lg px-3 py-2 text-[15px] transition hover:bg-bg">
-            {t.nav.sellResource}
-          </Link>
-          <form action={logout}>
-            <button className="w-full rounded-lg px-3 py-2 text-left text-[15px] transition hover:bg-bg">{t.nav.logout}</button>
+        <div
+          ref={menuRef}
+          role="menu"
+          onKeyDown={onKeyDown}
+          className="animate-pop absolute right-0 top-full mt-2 w-72 origin-top-right overflow-hidden rounded-2xl border border-border bg-card shadow-[0_16px_40px_-12px_rgba(0,0,0,0.25)]"
+        >
+          <AccountHeader user={user} />
+          <div className="p-1.5">
+            {items.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                role="menuitem"
+                className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-text/80 outline-none transition hover:bg-bg hover:text-text focus-visible:bg-bg focus-visible:text-text"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-bg text-muted transition group-hover:bg-accent group-hover:text-text group-focus-visible:bg-accent group-focus-visible:text-text">
+                  <item.icon className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+                </span>
+                <span className="flex-1">{item.label}</span>
+                {item.badge ? <Badge count={item.badge} /> : null}
+              </Link>
+            ))}
+          </div>
+          <form action={logout} className="border-t border-border p-1.5">
+            <button
+              role="menuitem"
+              className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-text/80 outline-none transition hover:bg-bad-bg hover:text-bad focus-visible:bg-bad-bg focus-visible:text-bad"
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-bg text-muted transition group-hover:bg-card group-hover:text-bad">
+                <LogOut className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+              </span>
+              {t.nav.logout}
+            </button>
           </form>
         </div>
       )}

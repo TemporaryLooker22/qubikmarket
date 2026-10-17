@@ -65,7 +65,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </ul>
       )}
 
-      <h2>{t.dashboard.myPurchases}</h2>
+      <h2 id="purchases">{t.dashboard.myPurchases}</h2>
       {purchases.length === 0 ? (
         <p>
           {t.dashboard.noPurchases} <Link href="/resources">{t.dashboard.explore}</Link>

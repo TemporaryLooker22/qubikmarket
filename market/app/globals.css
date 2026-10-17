@@ -284,3 +284,54 @@ body {
 .markdown hr {
   border-color: var(--color-border);
 }
+
+/* ---------- Page vendeur ---------- */
+
+/* Barres du graphique qui poussent depuis le bas */
+@keyframes grow-y {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+.animate-grow-y {
+  transform-origin: bottom;
+  animation: grow-y 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* Curseur (calculateur de gains) : piste grise, partie remplie noire, bouton jaune */
+.range-q {
+  width: 100%;
+  height: 6px;
+  appearance: none;
+  border-radius: 999px;
+  background: var(--color-surface-2);
+  accent-color: var(--color-text);
+  cursor: pointer;
+}
+.range-q::-webkit-slider-thumb {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--color-accent);
+  border: 3px solid var(--color-text);
+  transition: transform 0.15s;
+}
+.range-q::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+.range-q::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--color-accent);
+  border: 3px solid var(--color-text);
+}
+.range-q::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-text);
+}

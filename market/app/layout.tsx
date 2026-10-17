@@ -26,12 +26,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const [user, { locale, t }] = await Promise.all([getCurrentUser(), getDictionary()]);
   // Pastille « Modération » : seulement calculée pour les admins
   const pendingCount = user?.role === "ADMIN" ? await db.resource.count({ where: { status: "PENDING" } }) : 0;
+  // Le menu du compte propose « Devenir vendeur » à ceux qui n'ont encore rien publié
+  const isSeller = user ? (await db.resource.count({ where: { sellerId: user.id } })) > 0 : false;
 
   return (
     <html lang={locale} className={jakarta.variable}>
       <body className="flex min-h-screen flex-col font-sans antialiased">
         <LocaleProvider locale={locale}>
-          <Navbar user={user ? { username: user.username, role: user.role } : null} pendingCount={pendingCount} />
+          <Navbar user={user ? { username: user.username, email: user.email, role: user.role, isSeller } : null} pendingCount={pendingCount} />
 
           <main className="flex-1 pb-16">{children}</main>
 
@@ -40,6 +42,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <span>© {new Date().getFullYear()} Qubik · {t.footer.rights}</span>
               <span className="flex flex-wrap gap-x-4 gap-y-1">
                 <span>{t.footer.scanned}</span>
+                <Link href="/become-seller" className="hover:text-text">
+                  {t.footer.becomeSeller}
+                </Link>
                 <Link href="/terms" className="hover:text-text">
                   {t.footer.terms}
                 </Link>
