@@ -203,6 +203,22 @@ export async function publishResource(_: FormState, formData: FormData): Promise
   redirect(`/dashboard?published=${status.toLowerCase()}`);
 }
 
+// Retirer une ressource de la vente (ou la remettre) : seulement son vendeur, et seulement si elle est en ligne ou retirée.
+// Une ressource retirée disparaît du catalogue, mais ceux qui l'ont achetée gardent leur téléchargement.
+export async function setListed(formData: FormData) {
+  const user = await requireUser();
+  const resourceId = String(formData.get("resourceId"));
+  const listed = formData.get("listed") === "1";
+  const resource = await db.resource.findUnique({ where: { id: resourceId }, select: { sellerId: true, status: true, slug: true } });
+  if (!resource || resource.sellerId !== user.id) return;
+  if (resource.status !== (listed ? "UNLISTED" : "APPROVED")) return;
+
+  await db.resource.update({ where: { id: resourceId }, data: { status: listed ? "APPROVED" : "UNLISTED" } });
+  revalidatePath("/dashboard", "layout");
+  revalidatePath(`/resources/${resource.slug}`);
+  revalidatePath("/");
+}
+
 // ---------- Achat ----------
 
 export async function buyResource(formData: FormData) {

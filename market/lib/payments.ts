@@ -9,6 +9,11 @@ export const isDemoMode = !stripe;
 // Commission de la plateforme (10 %)
 export const PLATFORM_FEE_PERCENT = 10;
 
+// Ce que le vendeur touche sur une vente (prix moins la commission)
+export function sellerNetCents(amountCents: number) {
+  return amountCents - Math.round((amountCents * PLATFORM_FEE_PERCENT) / 100);
+}
+
 export async function createCheckoutSession(opts: {
   purchaseId: string;
   title: string;

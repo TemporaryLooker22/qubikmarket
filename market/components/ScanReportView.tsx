@@ -1,5 +1,8 @@
 import type { ScanReport } from "@/lib/scan";
 import { getDictionary } from "@/lib/i18n/server";
+import { ScanBadge } from "./ScanBadge";
+
+const SEVERITY_STYLES = { critical: "bg-bad text-white", high: "bg-bad-bg text-bad", medium: "bg-warn-bg text-warn", low: "bg-surface text-muted" };
 
 // Affiche le détail du scan (pour le vendeur et les modérateurs)
 // Les titres et explications des détections viennent du scanner (en français pour l'instant)
@@ -16,23 +19,26 @@ export async function ScanReportView({ report }: { report: ScanReport }) {
   }
 
   return (
-    <div>
-      <p>{t.report.summary(report.scriptCount, report.instanceCount, report.score)}</p>
-      {groups.size === 0 && <p>{t.report.noIssue}</p>}
-      <ul>
+    <div className="text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <ScanBadge verdict={report.verdict} />
+        <span className="text-muted">{t.report.summary(report.scriptCount, report.instanceCount, report.score)}</span>
+      </div>
+      {groups.size === 0 && <p className="mt-2 text-muted">{t.report.noIssue}</p>}
+      <ul className="mt-3 space-y-2">
         {[...groups.values()].map((f, i) => (
-          <li key={i}>
-            <strong>
-              [{t.severity[f.severity]}] {f.title}
-            </strong>
-            <br />
-            <code>
+          <li key={i} className="rounded-xl border border-border bg-card p-3">
+            <p className="flex flex-wrap items-center gap-2 font-semibold">
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${SEVERITY_STYLES[f.severity]}`}>{t.severity[f.severity]}</span>
+              {f.title}
+            </p>
+            <p className="mt-1 truncate font-mono text-xs text-muted">
               {f.script}
               {f.line ? ` · ${t.report.line(f.line)}` : ""}
               {f.extra ? ` · ${t.report.more(f.extra)}` : ""}
-            </code>
-            <p>{f.explain}</p>
-            <pre>{f.snippet}</pre>
+            </p>
+            <p className="mt-1.5 text-[13px] text-muted">{f.explain}</p>
+            {f.snippet && <pre className="mt-2 overflow-x-auto rounded-lg bg-surface px-3 py-2 font-mono text-xs">{f.snippet}</pre>}
           </li>
         ))}
       </ul>

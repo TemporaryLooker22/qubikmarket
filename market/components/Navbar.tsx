@@ -253,7 +253,7 @@ function AccountMenu({ user, pendingCount }: { user: NonNullable<Props["user"]>;
   const items: { href: string; label: string; icon: LucideIcon; badge?: number }[] = [
     { href: "/dashboard", label: t.nav.dashboard, icon: LayoutDashboard },
     { href: "/sell", label: t.nav.sellResource, icon: Upload },
-    { href: "/dashboard#purchases", label: t.nav.myPurchases, icon: ShoppingBag },
+    { href: "/dashboard/purchases", label: t.nav.myPurchases, icon: ShoppingBag },
     ...(!user.isSeller ? [{ href: "/become-seller", label: t.nav.becomeSeller, icon: Store }] : []),
     ...(user.role === "ADMIN" ? [{ href: "/admin", label: t.nav.moderation, icon: ShieldCheck, badge: pendingCount }] : []),
   ];

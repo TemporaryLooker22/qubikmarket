@@ -79,11 +79,13 @@ export default async function ResourcePage({ params, searchParams }: { params: P
 
     const isOwner = user?.id === resource.sellerId;
     const isAdmin = user?.role === "ADMIN";
-    // Une ressource pas encore validée n'est visible que par son vendeur et les modérateurs
-    if (resource.status !== "APPROVED" && !isOwner && !isAdmin) notFound();
+    const purchase = user ? await db.purchase.findUnique({ where: { userId_resourceId: { userId: user.id, resourceId: resource.id } } }) : null;
+    // Une ressource pas encore validée n'est visible que par son vendeur et les modérateurs ;
+    // une ressource retirée de la vente reste visible pour ceux qui l'ont achetée
+    const visible = resource.status === "APPROVED" || isOwner || isAdmin || (resource.status === "UNLISTED" && purchase?.status === "PAID");
+    if (!visible) notFound();
 
-    const [purchase, sellerResources, sellerSales, similarResources] = await Promise.all([
-      user ? db.purchase.findUnique({ where: { userId_resourceId: { userId: user.id, resourceId: resource.id } } }) : null,
+    const [sellerResources, sellerSales, similarResources] = await Promise.all([
       db.resource.count({ where: { sellerId: resource.sellerId, status: "APPROVED" } }),
       db.purchase.count({ where: { status: "PAID", resource: { sellerId: resource.sellerId } } }),
       db.resource.findMany({
@@ -146,9 +148,9 @@ export default async function ResourcePage({ params, searchParams }: { params: P
 
       {/* Pour le vendeur et les modérateurs : statut et note de modération */}
       {product.status !== "APPROVED" && (
-        <p className="mt-3 rounded-lg bg-warn-bg px-3 py-2 text-sm text-warn">
+        <div className="mt-3">
           <StatusBadge status={product.status} />
-        </p>
+        </div>
       )}
       {product.reviewNote && report && (
         <div className="mt-3 rounded-lg border border-border bg-card px-3 py-2 text-sm">

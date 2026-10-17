@@ -17,7 +17,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const isAdmin = user.role === "ADMIN";
   const purchase = await db.purchase.findUnique({ where: { userId_resourceId: { userId: user.id, resourceId: id } } });
 
-  if (!isOwner && !isAdmin && (purchase?.status !== "PAID" || resource.status !== "APPROVED")) {
+  // Une ressource retirée de la vente reste téléchargeable par ceux qui l'ont achetée
+  const available = resource.status === "APPROVED" || resource.status === "UNLISTED";
+  if (!isOwner && !isAdmin && (purchase?.status !== "PAID" || !available)) {
     return NextResponse.json({ error: t.errors.notBought }, { status: 403 });
   }
 
