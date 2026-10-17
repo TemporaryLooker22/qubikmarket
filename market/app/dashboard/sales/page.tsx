@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CheckCircle2, Crown, Hourglass, Info, Receipt, Wallet } from "lucide-react";
+import { BadgeCheck, CheckCircle2, Crown, ExternalLink, Hourglass, Landmark, Receipt, Wallet } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatAmount, formatDate } from "@/lib/i18n/format";
 import { HOLD_DAYS } from "@/lib/earnings";
+import { PAYOUT_COUNTRIES, refreshTransfersStatus } from "@/lib/connect";
+import { MIN_PAYOUT_CENTS } from "@/lib/payouts";
+import { isDemoMode } from "@/lib/payments";
+import { PayoutSetupForm } from "@/components/dashboard/PayoutSetupForm";
 import { FOUNDER_FEE_PERCENT } from "@/lib/sellers";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 
@@ -23,7 +27,7 @@ export default async function DashboardSalesPage() {
 
   const [resourceCount, seller, earnings, totals] = await Promise.all([
     db.resource.count({ where: { sellerId: user.id } }),
-    db.user.findUnique({ where: { id: user.id }, select: { founderUntil: true } }),
+    db.user.findUnique({ where: { id: user.id }, select: { founderUntil: true, stripeAccountId: true, stripeTransfersActive: true } }),
     db.sellerEarning.findMany({
       where: { sellerId: user.id },
       orderBy: { createdAt: "desc" },
@@ -53,6 +57,18 @@ export default async function DashboardSalesPage() {
   if (resourceCount === 0) redirect("/dashboard/purchases");
 
   const now = new Date();
+
+  // Compte de versement : inscription Stripe pas terminée → on redemande l'état à Stripe (retour du formulaire, etc.)
+  let transfersActive = seller?.stripeTransfersActive ?? false;
+  if (seller?.stripeAccountId && !transfersActive && !isDemoMode) {
+    transfersActive = await refreshTransfersStatus(user.id, seller.stripeAccountId)
+      .then((r) => r.active)
+      .catch(() => false);
+  }
+  const payouts = await db.sellerPayout.findMany({ where: { sellerId: user.id }, orderBy: { createdAt: "desc" }, take: 10 });
+  // Pays proposés, avec leur nom dans la langue du visiteur
+  const regionName = new Intl.DisplayNames([locale === "fr" ? "fr-FR" : "en-GB"], { type: "region" });
+  const countries = PAYOUT_COUNTRIES.map((code) => ({ code, name: regionName.of(code) ?? code })).sort((a, b) => a.name.localeCompare(b.name, locale));
   const pendingRows = await db.sellerEarning.findMany({ where: { sellerId: user.id, status: "PENDING" }, select: { amountCents: true, availableAt: true } });
   const held = pendingRows.filter((e) => e.availableAt > now).reduce((n, e) => n + e.amountCents, 0);
   const available = pendingRows.filter((e) => e.availableAt <= now).reduce((n, e) => n + e.amountCents, 0);
@@ -70,15 +86,53 @@ export default async function DashboardSalesPage() {
     <>
       <DashboardHeader title={t.dashboard.menu.sales} intro={t.dashboard.salesIntro} />
 
-      {/* Pas encore de versements automatiques : on le dit honnêtement */}
-      <p className="mb-4 flex gap-2.5 rounded-xl bg-accent-soft px-4 py-3 text-sm">
-        <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-        <span>
-          {t.dashboard.payoutStart}
-          <strong>{t.dashboard.payoutBold}</strong>
-          {t.dashboard.payoutEnd}
-        </span>
-      </p>
+      {/* Recevoir mes gains : configuration du compte Stripe du vendeur */}
+      {!isDemoMode && (
+        <section className="mb-4 rounded-2xl border border-border bg-card p-5">
+          {transfersActive ? (
+            <div className="flex flex-wrap items-center gap-4">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ok-bg text-ok">
+                <BadgeCheck className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <div className="min-w-56 flex-1">
+                <h2 className="font-semibold">{t.dashboard.payouts.activeTitle}</h2>
+                <p className="mt-0.5 text-sm text-muted">{t.dashboard.payouts.activeText(formatAmount(MIN_PAYOUT_CENTS, locale))}</p>
+              </div>
+              <a href="/api/stripe/dashboard" target="_blank" rel="noopener" className="btn-ghost">
+                <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                {t.dashboard.payouts.dashboardButton}
+              </a>
+            </div>
+          ) : seller?.stripeAccountId ? (
+            <div className="flex flex-wrap items-center gap-4">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-warn-bg text-warn">
+                <Landmark className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <div className="min-w-56 flex-1">
+                <h2 className="font-semibold">{t.dashboard.payouts.pendingTitle}</h2>
+                <p className="mt-0.5 text-sm text-muted">{t.dashboard.payouts.pendingText}</p>
+              </div>
+              <a href="/api/stripe/onboarding" className="btn-accent rounded-xl px-4 py-2.5">
+                {t.dashboard.payouts.continueButton}
+              </a>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft">
+                  <Landmark className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div>
+                  <h2 className="font-semibold">{t.dashboard.payouts.setupTitle}</h2>
+                  <p className="mt-0.5 text-sm text-muted">{t.dashboard.payouts.setupText}</p>
+                  <p className="mt-1 text-xs text-muted">{t.dashboard.payouts.minorNote}</p>
+                </div>
+              </div>
+              <PayoutSetupForm countries={countries} />
+            </>
+          )}
+        </section>
+      )}
 
       <div className="mb-4 grid gap-3 sm:grid-cols-3">
         <Balance icon={Hourglass} label={t.dashboard.balancePending} value={formatAmount(held, locale)} help={t.dashboard.balancePendingHelp(HOLD_DAYS)} />
@@ -91,6 +145,25 @@ export default async function DashboardSalesPage() {
           <Crown className="h-4 w-4 shrink-0 text-accent-hover" aria-hidden="true" />
           {t.dashboard.founderNote(FOUNDER_FEE_PERCENT, formatDate(seller.founderUntil!, locale))}
         </p>
+      )}
+
+      {payouts.length > 0 && (
+        <section className="mb-4 rounded-2xl border border-border bg-card p-5">
+          <h2 className="mb-2 font-semibold">{t.dashboard.payouts.history}</h2>
+          <ul className="divide-y divide-border">
+            {payouts.map((p) => (
+              <li key={p.id} className="flex flex-wrap items-center gap-3 py-2.5 text-sm">
+                <span className="text-muted">{formatDate(p.createdAt, locale)}</span>
+                <span className="flex-1 font-bold">{formatAmount(p.amountCents, locale)}</span>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${p.status === "PAID" ? "bg-ok-bg text-ok" : p.status === "FAILED" ? "bg-bad-bg text-bad" : "bg-surface text-muted"}`}
+                >
+                  {t.dashboard.payouts.status[p.status] ?? p.status}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       <div className="rounded-2xl border border-border bg-card px-3 py-2 sm:px-4">

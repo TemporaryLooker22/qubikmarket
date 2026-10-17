@@ -12,17 +12,21 @@ datasource db {
 }
 
 model User {
-  id           String          @id @default(cuid())
-  username     String          @unique
-  email        String          @unique
-  passwordHash String
-  role         String          @default("USER") // USER ou ADMIN
-  createdAt    DateTime        @default(now())
+  id                    String          @id @default(cuid())
+  username              String          @unique
+  email                 String          @unique
+  passwordHash          String
+  role                  String          @default("USER") // USER ou ADMIN
+  createdAt             DateTime        @default(now())
   // Vendeur fondateur : commission réduite jusqu'à cette date (voir lib/sellers.ts)
-  founderUntil DateTime?
-  resources    Resource[]
-  purchases    Purchase[]
-  earnings     SellerEarning[]
+  founderUntil          DateTime?
+  // Compte Stripe du vendeur pour recevoir ses gains (Stripe Connect), et s'il peut déjà recevoir des virements
+  stripeAccountId       String?         @unique
+  stripeTransfersActive Boolean         @default(false)
+  payouts               SellerPayout[]
+  resources             Resource[]
+  purchases             Purchase[]
+  earnings              SellerEarning[]
 }
 
 model Resource {
@@ -95,12 +99,31 @@ model SellerEarning {
   status      String   @default("PENDING")
   availableAt DateTime // fin du délai de sécurité (7 jours après le paiement) : versable à partir de cette date
   transferId  String? // virement Stripe qui l'a versé
+  payoutId    String? // versement hebdomadaire qui l'inclut (ou qui est en train de l'inclure)
   createdAt   DateTime @default(now())
 
   seller   User           @relation(fields: [sellerId], references: [id])
   purchase Purchase?      @relation(fields: [purchaseId], references: [id])
   reverses SellerEarning? @relation("Reversal", fields: [reversesId], references: [id])
   reversal SellerEarning? @relation("Reversal")
+  payout   SellerPayout?  @relation(fields: [payoutId], references: [id])
 
   @@index([sellerId, status])
+}
+
+// Versements hebdomadaires : un virement Stripe par vendeur, qui regroupe ses gains disponibles
+model SellerPayout {
+  id            String   @id @default(cuid())
+  sellerId      String
+  amountCents   Int
+  // PROCESSING (virement en cours, repris au prochain passage si interrompu), PAID (versé) ou FAILED (échec, gains remis en attente)
+  status        String   @default("PROCESSING")
+  transferId    String?  @unique
+  failureReason String?
+  createdAt     DateTime @default(now())
+
+  seller   User            @relation(fields: [sellerId], references: [id])
+  earnings SellerEarning[]
+
+  @@index([sellerId, createdAt])
 }

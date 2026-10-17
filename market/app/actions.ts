@@ -15,6 +15,7 @@ import { detectImage, saveImage, saveUpload } from "@/lib/storage";
 import { ALLOWED_EXTENSIONS, CATEGORIES, MAX_FILE_SIZE, MAX_IMAGE_SIZE, MAX_IMAGES, slugify } from "@/lib/catalog";
 import { createCheckoutSession, isDemoMode } from "@/lib/payments";
 import { grantFounderIfEligible } from "@/lib/sellers";
+import { createOnboardingLink, createSellerAccount, needsMerchantProfile, PAYOUT_COUNTRIES } from "@/lib/connect";
 import { cookies } from "next/headers";
 import { isLocale, type Dictionary } from "@/lib/i18n/dictionaries";
 import { getDictionary, LOCALE_COOKIE } from "@/lib/i18n/server";
@@ -221,6 +222,28 @@ export async function setListed(formData: FormData) {
   revalidatePath("/dashboard", "layout");
   revalidatePath(`/resources/${resource.slug}`);
   revalidatePath("/");
+}
+
+// ---------- Versements aux vendeurs ----------
+
+// « Configurer mes versements » : crée le compte Stripe du vendeur puis l'envoie sur le formulaire d'inscription Stripe
+export async function startPayoutSetup(_: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser("/dashboard/sales");
+  const { t } = await getDictionary();
+  const country = String(formData.get("country") ?? "").toUpperCase();
+  if (!PAYOUT_COUNTRIES.includes(country)) return { error: t.dashboard.payouts.setupError };
+
+  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+  let url: string;
+  try {
+    const seller = await db.user.findUnique({ where: { id: user.id }, select: { stripeAccountId: true } });
+    const accountId = seller?.stripeAccountId ?? (await createSellerAccount(user, country));
+    url = await createOnboardingLink(accountId, appUrl, !needsMerchantProfile(country));
+  } catch (err) {
+    console.error("Configuration des versements :", err);
+    return { error: t.dashboard.payouts.setupError };
+  }
+  redirect(url);
 }
 
 // ---------- Achat ----------
