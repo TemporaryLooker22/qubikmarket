@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
-import Link from "next/link";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import { getCurrentUser } from "@/lib/auth";
-import { logout } from "./actions";
-import { Logo } from "@/components/Logo";
+import { db } from "@/lib/db";
+import { Navbar } from "@/components/Navbar";
 import "./globals.css";
 
-// Police du site (moderne et sobre), chargée et hébergée par Next.js
-const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
+// Police du site : Plus Jakarta Sans, chargée et hébergée par Next.js
+const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakarta" });
 
 export const metadata: Metadata = {
   title: { default: "Qubik — La marketplace Roblox", template: "%s · Qubik" },
@@ -16,49 +15,13 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
+  // Pastille « Modération » : seulement calculée pour les admins
+  const pendingCount = user?.role === "ADMIN" ? await db.resource.count({ where: { status: "PENDING" } }) : 0;
 
   return (
-    <html lang="fr" className={geist.variable}>
+    <html lang="fr" className={jakarta.variable}>
       <body className="flex min-h-screen flex-col font-sans antialiased">
-        <header className="sticky top-0 z-10 border-b border-border bg-bg/90 backdrop-blur">
-          <nav className="container-q flex min-h-14 flex-wrap items-center gap-x-4 gap-y-2 py-2 text-sm sm:gap-x-6">
-            <Link href="/" className="flex items-center gap-2 text-base font-semibold">
-              <Logo /> Qubik
-            </Link>
-            <Link href="/resources" className="text-muted hover:text-text">
-              Catalogue
-            </Link>
-            <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-x-5">
-              {user ? (
-                <>
-                  {user.role === "ADMIN" && (
-                    <Link href="/admin" className="text-muted hover:text-text">
-                      Modération
-                    </Link>
-                  )}
-                  <Link href="/sell" className="text-muted hover:text-text">
-                    Vendre
-                  </Link>
-                  <Link href="/dashboard" className="text-muted hover:text-text">
-                    {user.username}
-                  </Link>
-                  <form action={logout}>
-                    <button className="text-muted hover:text-text">Déconnexion</button>
-                  </form>
-                </>
-              ) : (
-                <>
-                  <Link href="/sell" className="text-muted hover:text-text">
-                    Vendre
-                  </Link>
-                  <Link href="/login" className="btn py-1.5">
-                    Connexion
-                  </Link>
-                </>
-              )}
-            </div>
-          </nav>
-        </header>
+        <Navbar user={user ? { username: user.username, role: user.role } : null} pendingCount={pendingCount} />
 
         <main className="flex-1 pb-16">{children}</main>
 

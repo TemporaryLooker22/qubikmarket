@@ -16,7 +16,7 @@
   --color-warn-bg: #fdf1d8;
   --color-bad: #b42318;
   --color-bad-bg: #fdecea;
-  --font-sans: var(--font-geist), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-sans: var(--font-jakarta), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, Menlo, Consolas, monospace;
 }
 
