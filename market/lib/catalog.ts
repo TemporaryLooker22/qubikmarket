@@ -1,19 +1,21 @@
 // Données partagées par les pages : catégories, formats acceptés, mise en forme
 
+// Catégories de vente. L'id est enregistré en base : ne pas le changer une fois des ressources publiées.
 export const CATEGORIES = [
-  { id: "scripts", label: "Scripts & systèmes" },
-  { id: "models", label: "Modèles 3D" },
-  { id: "ui", label: "Interfaces (UI)" },
-  { id: "maps", label: "Maps & places" },
-  { id: "plugins", label: "Plugins Studio" },
+  { id: "game-setups", label: "Game Setups" }, // jeux complets prêts à publier
+  { id: "systems", label: "Systems" }, // systèmes complets à brancher dans un jeu
+  { id: "ui", label: "UI & Graphics" },
+  { id: "models", label: "Models" },
+  { id: "maps", label: "Maps" },
+  { id: "vfx", label: "VFX" }, // effets visuels
+  { id: "sfx", label: "SFX" }, // effets sonores
   { id: "animations", label: "Animations" },
-  { id: "other", label: "Autre" },
 ] as const;
 
 export type CategoryId = (typeof CATEGORIES)[number]["id"];
 
 export function categoryLabel(id: string) {
-  return CATEGORIES.find((c) => c.id === id)?.label ?? "Autre";
+  return CATEGORIES.find((c) => c.id === id)?.label ?? id;
 }
 
 export const ALLOWED_EXTENSIONS = [".rbxm", ".rbxmx", ".rbxl", ".rbxlx", ".lua", ".luau"];
