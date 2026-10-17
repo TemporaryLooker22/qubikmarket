@@ -23,45 +23,49 @@ model User {
 }
 
 model Resource {
-  id          String   @id @default(cuid())
-  slug        String   @unique
+  id          String  @id @default(cuid())
+  slug        String  @unique
   title       String
   summary     String
   description String
   category    String
-  priceCents  Int      // 0 = gratuit
-  status      String   @default("PENDING") // PENDING, APPROVED ou REJECTED
-  reviewNote  String?  // message du modérateur au vendeur
+  priceCents  Int // 0 = gratuit
+  status      String  @default("PENDING") // PENDING, APPROVED ou REJECTED
+  reviewNote  String? // message du modérateur au vendeur
 
   // Résultat du scanner anti-backdoor
-  scanVerdict String   // clean, suspicious ou dangerous
+  scanVerdict String // clean, suspicious ou dangerous
   scanScore   Int
-  scanReport  String   // rapport complet en JSON
+  scanReport  String // rapport complet en JSON
 
-  fileName    String
-  filePath    String
-  fileSize    Int
+  fileName String
+  filePath String
+  fileSize Int
 
   // Captures d'écran (adresses publiques, jusqu'à 6). La première sert de miniature.
-  images      String[] @default([])
+  images String[] @default([])
 
-  sellerId    String
-  seller      User       @relation(fields: [sellerId], references: [id])
-  purchases   Purchase[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  sellerId  String
+  seller    User       @relation(fields: [sellerId], references: [id])
+  purchases Purchase[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
   @@index([status, createdAt])
 }
 
 model Purchase {
-  id              String   @id @default(cuid())
-  userId          String
-  resourceId      String
-  amountCents     Int
-  status          String   @default("PENDING") // PENDING ou PAID
-  stripeSessionId String?  @unique
-  createdAt       DateTime @default(now())
+  id                    String    @id @default(cuid())
+  userId                String
+  resourceId            String
+  amountCents           Int
+  // PENDING (paiement pas terminé), PAID, REFUNDED (remboursé) ou DISPUTED (contestation bancaire en cours).
+  // Seul PAID donne accès au téléchargement.
+  status                String    @default("PENDING")
+  stripeSessionId       String?   @unique
+  stripePaymentIntentId String?   @unique // pour retrouver l'achat lors d'un remboursement ou d'une contestation
+  paidAt                DateTime? // moment du paiement (createdAt = début du paiement)
+  createdAt             DateTime  @default(now())
 
   user     User     @relation(fields: [userId], references: [id])
   resource Resource @relation(fields: [resourceId], references: [id])

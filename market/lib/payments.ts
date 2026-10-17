@@ -1,5 +1,6 @@
 import "server-only";
 import Stripe from "stripe";
+import { db } from "./db";
 
 // Sans clé Stripe dans .env, Qubik fonctionne en "mode démo" : les achats sont simulés.
 export const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
@@ -36,7 +37,26 @@ export async function createCheckoutSession(opts: {
       },
     ],
     metadata: { purchaseId: opts.purchaseId },
+    payment_intent_data: { metadata: { purchaseId: opts.purchaseId } },
     success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${appUrl}/resources/${opts.slug}`,
   });
+}
+
+// Paiement Stripe terminé : l'achat passe en « payé » (appelé par le webhook et par la page de retour).
+// Sans effet si la session n'est pas payée ou si l'achat est déjà enregistré : on peut l'appeler plusieurs fois.
+export async function fulfillCheckoutSession(session: Stripe.Checkout.Session) {
+  const purchaseId = session.metadata?.purchaseId;
+  if (!purchaseId || session.payment_status !== "paid") return;
+  const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : (session.payment_intent?.id ?? null);
+
+  await db.purchase.updateMany({
+    where: { id: purchaseId, status: { not: "PAID" } },
+    data: { status: "PAID", paidAt: new Date(), stripeSessionId: session.id, stripePaymentIntentId: paymentIntentId },
+  });
+}
+
+// Remboursement ou contestation bancaire : l'acheteur perd l'accès au téléchargement
+export async function setPurchaseStatusByPaymentIntent(paymentIntentId: string, status: "PAID" | "REFUNDED" | "DISPUTED") {
+  await db.purchase.updateMany({ where: { stripePaymentIntentId: paymentIntentId }, data: { status } });
 }

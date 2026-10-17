@@ -238,8 +238,8 @@ export async function buyResource(formData: FormData) {
   if (resource.priceCents === 0 || isDemoMode) {
     await db.purchase.upsert({
       where: { userId_resourceId: { userId: user.id, resourceId } },
-      create: { userId: user.id, resourceId, amountCents: resource.priceCents, status: "PAID" },
-      update: { status: "PAID" },
+      create: { userId: user.id, resourceId, amountCents: resource.priceCents, status: "PAID", paidAt: new Date() },
+      update: { status: "PAID", paidAt: new Date() },
     });
     revalidatePath(`/resources/${resource.slug}`);
     redirect(`/resources/${resource.slug}?bought=1`);

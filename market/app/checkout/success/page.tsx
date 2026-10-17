@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { stripe } from "@/lib/payments";
+import { fulfillCheckoutSession, stripe } from "@/lib/payments";
 import { getDictionary } from "@/lib/i18n/server";
 
 // Page de retour après un paiement Stripe : on vérifie auprès de Stripe que le paiement est bien passé
@@ -16,9 +16,8 @@ export default async function CheckoutSuccessPage({ searchParams }: { searchPara
   });
   if (!purchase) redirect("/dashboard");
 
-  if (session.payment_status === "paid" && purchase.status !== "PAID") {
-    await db.purchase.update({ where: { id: purchase.id }, data: { status: "PAID" } });
-  }
+  // Le webhook enregistre normalement le paiement ; on le fait aussi ici au cas où il arrive après l'acheteur
+  await fulfillCheckoutSession(session);
 
   const paid = session.payment_status === "paid";
   const { t } = await getDictionary();
