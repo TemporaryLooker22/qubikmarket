@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { ArrowRight, Crown, ImageIcon, Percent, Plus, ShieldCheck, Zap } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { DEMO_BEST_SELLERS, DEMO_ENABLED } from "@/lib/demo";
 import { getDictionary } from "@/lib/i18n/server";
 import { PLATFORM_FEE_PERCENT } from "@/lib/payments";
 import { FOUNDER_FEE_PERCENT, FOUNDER_MONTHS, FOUNDER_SPOTS, founderSpotsLeft } from "@/lib/sellers";
-import { EarningsCard } from "@/components/seller/EarningsCard";
+import { HeroCards, type HeroCard } from "@/components/seller/HeroCards";
 import { EarningsCalculator } from "@/components/seller/EarningsCalculator";
 
 export async function generateMetadata() {
@@ -14,9 +16,25 @@ export async function generateMetadata() {
 
 const WHY_ICONS = [Zap, ShieldCheck, Percent, ImageIcon];
 
+// Cartes du haut de page : exemples de démo, sinon de vraies ressources avec images, sinon des cartes génériques
+async function getHeroCards(placeholders: HeroCard[]): Promise<HeroCard[]> {
+  if (DEMO_ENABLED) {
+    return DEMO_BEST_SELLERS.slice(0, 3).map(({ resource, sales }) => ({ ...resource, sales }));
+  }
+  const resources = await db.resource.findMany({
+    where: { status: "APPROVED", NOT: { images: { isEmpty: true } } },
+    orderBy: { purchases: { _count: "desc" } },
+    take: 3,
+    select: { title: true, category: true, priceCents: true, images: true, _count: { select: { purchases: { where: { status: "PAID" } } } } },
+  });
+  if (resources.length < 3) return placeholders;
+  return resources.map((r) => ({ title: r.title, category: r.category, priceCents: r.priceCents, image: r.images[0], sales: r._count.purchases }));
+}
+
 // Page « Devenir vendeur » : convaincre les créateurs Roblox de vendre sur Qubik
 export default async function BecomeSellerPage() {
-  const [{ t }, user, spotsLeft] = await Promise.all([getDictionary(), getCurrentUser(), founderSpotsLeft()]);
+  const [{ locale, t }, user, spotsLeft] = await Promise.all([getDictionary(), getCurrentUser(), founderSpotsLeft()]);
+  const heroCards = await getHeroCards(t.seller.placeholders);
   // Bouton principal : formulaire de vente si connecté, sinon inscription puis retour sur le formulaire
   const ctaHref = user ? "/sell" : `/register?next=${encodeURIComponent("/sell")}`;
 
@@ -42,7 +60,7 @@ export default async function BecomeSellerPage() {
           </div>
         </div>
         <div className="animate-fade-up" style={{ animationDelay: "120ms" }}>
-          <EarningsCard />
+          <HeroCards cards={heroCards} locale={locale} />
         </div>
       </section>
 

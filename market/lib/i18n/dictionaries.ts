@@ -276,8 +276,12 @@ export const en = {
     cta: "Start selling",
     ctaSecondary: "Calculate my earnings",
     example: "Example",
-    monthRevenue: "Revenue this month",
-    salesChart: "Sales over the last 7 days",
+    cleanScan: "Clean scan",
+    placeholders: [
+      { title: "Your inventory system", category: "systems", priceCents: 499 },
+      { title: "Your horror map", category: "maps", priceCents: 1299 },
+      { title: "Your shop UI", category: "ui", priceCents: 299 },
+    ],
     founderTitle: "Founding sellers program",
     founderText: (spots: number, fee: number, months: number) =>
       `The first ${spots} sellers pay a ${fee}% fee instead of 10% for ${months} months.`,
@@ -648,8 +652,12 @@ export const fr: Dictionary = {
     cta: "Commencer à vendre",
     ctaSecondary: "Calculer mes gains",
     example: "Exemple",
-    monthRevenue: "Revenus du mois",
-    salesChart: "Ventes des 7 derniers jours",
+    cleanScan: "Scan propre",
+    placeholders: [
+      { title: "Ton système d'inventaire", category: "systems", priceCents: 499 },
+      { title: "Ta map d'horreur", category: "maps", priceCents: 1299 },
+      { title: "Ton UI de boutique", category: "ui", priceCents: 299 },
+    ],
     founderTitle: "Programme vendeurs fondateurs",
     founderText: (spots, fee, months) =>
       `Les ${spots} premiers vendeurs payent ${fee} % de commission au lieu de 10 % pendant ${months} mois.`,

@@ -287,18 +287,18 @@ body {
 
 /* ---------- Page vendeur ---------- */
 
-/* Barres du graphique qui poussent depuis le bas */
-@keyframes grow-y {
-  from {
-    transform: scaleY(0);
+/* Cartes du haut de page qui flottent doucement */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
   }
-  to {
-    transform: scaleY(1);
+  50% {
+    transform: translateY(-10px);
   }
 }
-.animate-grow-y {
-  transform-origin: bottom;
-  animation: grow-y 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+.animate-float {
+  animation: float 6s ease-in-out infinite;
 }
 
 /* Curseur (calculateur de gains) : piste grise, partie remplie noire, bouton jaune */
