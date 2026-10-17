@@ -41,6 +41,10 @@ type Product = {
   scriptCount: number;
   status: string;
   reviewNote: string | null;
+  // Versions publiées (en ligne et anciennes), la plus récente d'abord
+  version?: string;
+  versionUpdatedAt?: Date | null;
+  versions?: { version: string; notes: string | null; createdAt: Date }[];
   // rating = null : pas encore d'avis (le système d'avis n'existe pas encore, seule la démo a des notes)
   seller: { username: string; resources: number; sales: number; rating: number | null; reviews: number };
 };
@@ -73,7 +77,11 @@ export default async function ResourcePage({ params, searchParams }: { params: P
   } else {
     const resource = await db.resource.findUnique({
       where: { slug },
-      include: { seller: { select: { id: true, username: true } }, _count: { select: { purchases: { where: { status: "PAID" } } } } },
+      include: {
+        seller: { select: { id: true, username: true } },
+        _count: { select: { purchases: { where: { status: "PAID" } } } },
+        versions: { where: { status: { in: ["LIVE", "OLD"] } }, orderBy: { createdAt: "desc" }, select: { version: true, notes: true, createdAt: true } },
+      },
     });
     if (!resource) notFound();
 
@@ -208,9 +216,31 @@ export default async function ResourcePage({ params, searchParams }: { params: P
             )}
           </section>
 
+          {/* Historique des versions (dès la première mise à jour) */}
+          {product.versions && product.versions.length > 1 && (
+            <Card title={t.resource.versionsTitle}>
+              <ul className="divide-y divide-border">
+                {product.versions.map((v, i) => (
+                  <li key={v.version} className="flex gap-4 py-3 first:pt-0 last:pb-0">
+                    <span className="w-14 shrink-0 font-extrabold">v{v.version}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-muted">
+                        {formatDate(v.createdAt, locale)}
+                        {i === 0 && <span className="ml-2 rounded-full bg-ok-bg px-2 py-px text-[11px] font-semibold text-ok">{t.resource.versionCurrent}</span>}
+                      </p>
+                      {v.notes && <p className="mt-1 whitespace-pre-line text-sm">{v.notes}</p>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
           <div className="grid gap-6 sm:grid-cols-2">
             <Card title={t.resource.details}>
               <dl className="space-y-2 text-sm">
+                {product.version && <Detail label={t.resource.versionsTitle} value={`v${product.version}`} />}
+                {product.versionUpdatedAt && <Detail label={t.resource.updated} value={formatDate(product.versionUpdatedAt, locale)} />}
                 <Detail label={t.resource.format} value={product.fileName.split(".").pop()?.toUpperCase() ?? "—"} />
                 <Detail label={t.resource.size} value={formatSize(product.fileSize, locale)} />
                 <Detail label={t.resource.published} value={formatDate(product.createdAt, locale)} />

@@ -4,15 +4,15 @@ import Link from "next/link";
 import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import { Loader2, Rocket } from "lucide-react";
 import { publishResource } from "@/app/actions";
-import { ALLOWED_EXTENSIONS, CATEGORIES, MAX_FILE_SIZE, MAX_FORM_SIZE, MAX_IMAGES } from "@/lib/catalog";
+import { ALLOWED_EXTENSIONS, MAX_FILE_SIZE, MAX_FORM_SIZE, MAX_IMAGES } from "@/lib/catalog";
 import { useI18n } from "@/lib/i18n/client";
-import { formatAmount } from "@/lib/i18n/format";
 import { scanInBrowser } from "@/lib/scan-client";
-import { CategoryIcon } from "./CategoryIcon";
 import { FileDrop, type ScanState } from "./sell/FileDrop";
 import { ImagePicker, type PickedImage } from "./sell/ImagePicker";
 import { DescriptionEditor, DESCRIPTION_MIN } from "./sell/DescriptionEditor";
 import { SellAside } from "./sell/SellAside";
+import { CategoryPicker } from "./sell/CategoryPicker";
+import { parsePrice, PRICE, PriceField } from "./sell/PriceField";
 
 const inputClass =
   "h-11 w-full rounded-lg border border-border bg-card px-3.5 text-[15px] outline-none transition placeholder:text-muted focus:border-text focus:ring-4 focus:ring-accent/30";
@@ -20,7 +20,6 @@ const inputClass =
 // Mêmes limites que le serveur (app/actions.ts)
 const TITLE = { min: 4, max: 80 };
 const SUMMARY = { min: 10, max: 160 };
-const PRICE = { min: 1, max: 500 };
 
 // Formulaire de mise en vente : fichier (scanné dans le navigateur dès le dépôt), informations, images,
 // description et prix, avec un aperçu en direct de la carte du catalogue
@@ -64,11 +63,7 @@ export function SellForm({ feePercent, username }: { feePercent: number; usernam
     }
   };
 
-  const priceCents = paid ? Math.round((Number(price) || 0) * 100) : 0;
-  // Estimation avec la TVA belge (21 %) : le vrai calcul se fait à chaque vente (lib/earnings.ts)
-  const taxCents = priceCents - Math.round(priceCents / 1.21);
-  const feeCents = Math.round(((priceCents - taxCents) * feePercent) / 100);
-  const priceOk = !paid || (priceCents >= PRICE.min * 100 && priceCents <= PRICE.max * 100);
+  const { priceCents, priceOk } = parsePrice(paid, price);
 
   // Ce qui est prêt (colonne de droite et pastilles des sections)
   const rejected = scan.status === "done" && scan.report.verdict === "dangerous";
@@ -89,13 +84,13 @@ export function SellForm({ feePercent, username }: { feePercent: number; usernam
     if (!file) return setLocalError(t.errors.fileMissing);
     if (!category) return setLocalError(t.errors.category);
     if (!priceOk) return setLocalError(priceCents > PRICE.max * 100 ? t.errors.priceMax : t.errors.priceMin);
-    const total = file.size + images.reduce((n, i) => n + i.file.size, 0);
+    const total = file.size + images.reduce((n, i) => n + (i.file?.size ?? 0), 0);
     if (total > MAX_FORM_SIZE) return setLocalError(t.errors.formTooBig);
 
     const formData = new FormData(e.currentTarget);
     formData.set("price", paid ? price : "0");
     formData.set("file", file);
-    images.forEach((i) => formData.append("images", i.file));
+    images.forEach((i) => i.file && formData.append("images", i.file));
     startTransition(() => formAction(formData));
   };
 
@@ -138,23 +133,7 @@ export function SellForm({ feePercent, username }: { feePercent: number; usernam
                 className={inputClass}
               />
             </Field>
-            <fieldset>
-              <legend className="mb-1.5 text-sm font-semibold">{t.sell.fCategory}</legend>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {CATEGORIES.map((c) => (
-                  <label
-                    key={c.id}
-                    className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-[13px] font-semibold transition has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-accent/30 ${
-                      category === c.id ? "border-text bg-accent-soft ring-1 ring-text ring-inset" : "border-border bg-card hover:border-border-strong"
-                    }`}
-                  >
-                    <input type="radio" name="category" value={c.id} checked={category === c.id} onChange={() => setCategory(c.id)} className="sr-only" />
-                    <CategoryIcon category={c.id} className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{c.label}</span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
+            <CategoryPicker value={category} onChange={setCategory} />
           </div>
         </Section>
 
@@ -170,50 +149,7 @@ export function SellForm({ feePercent, username }: { feePercent: number; usernam
 
         {/* 5. Prix */}
         <Section n={5} done={priceOk && (!paid || price !== "")} title={t.sell.priceTitle} text={t.sell.priceText}>
-          <div role="radiogroup" aria-label={t.sell.priceTitle} className="inline-flex gap-1 rounded-xl bg-surface p-1">
-            {[false, true].map((isPaid) => (
-              <button
-                key={String(isPaid)}
-                type="button"
-                role="radio"
-                aria-checked={paid === isPaid}
-                onClick={() => setPaid(isPaid)}
-                className={`rounded-lg px-5 py-2 text-sm font-semibold transition ${paid === isPaid ? "bg-card text-text shadow-sm" : "text-muted hover:text-text"}`}
-              >
-                {isPaid ? t.sell.paid : t.sell.free}
-              </button>
-            ))}
-          </div>
-          {paid ? (
-            <>
-              <div className="mt-4 flex flex-wrap items-stretch gap-4">
-                <div className="relative w-40">
-                  <input
-                    name="price"
-                    type="number"
-                    inputMode="decimal"
-                    required
-                    min={PRICE.min}
-                    max={PRICE.max}
-                    step="0.01"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    placeholder="4.99"
-                    aria-label={t.sell.priceTitle}
-                    className={`${inputClass} h-12 pr-9 text-lg font-bold`}
-                  />
-                  <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 font-semibold text-muted">€</span>
-                </div>
-                <div className="flex min-w-56 flex-1 flex-col justify-center rounded-xl bg-accent-soft px-4 py-2">
-                  <p className="text-lg font-bold">{t.sell.earn(formatAmount(priceCents - taxCents - feeCents, locale))}</p>
-                  <p className="text-xs text-text/70">{t.sell.earnDetail(feePercent, formatAmount(taxCents, locale))}</p>
-                </div>
-              </div>
-              <p className="mt-2.5 text-xs text-muted">{t.sell.priceHelp}</p>
-            </>
-          ) : (
-            <p className="mt-3 text-sm text-muted">{t.sell.freeHelp}</p>
-          )}
+          <PriceField paid={paid} onPaidChange={setPaid} price={price} onPriceChange={setPrice} feePercent={feePercent} inputClass={inputClass} />
         </Section>
 
         {/* Publication */}

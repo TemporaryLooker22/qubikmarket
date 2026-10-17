@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Download, ExternalLink, ShoppingBag, Zap } from "lucide-react";
+import { ArrowRight, Download, ExternalLink, ShoppingBag, Sparkles, Zap } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/i18n/server";
@@ -26,7 +26,11 @@ export default async function DashboardPurchasesPage() {
         id: true,
         amountCents: true,
         createdAt: true,
-        resource: { select: { id: true, slug: true, title: true, category: true, images: true, status: true, seller: { select: { username: true } } } },
+        paidAt: true,
+        lastDownloadedAt: true,
+        resource: {
+          select: { id: true, slug: true, title: true, category: true, images: true, status: true, version: true, versionUpdatedAt: true, seller: { select: { username: true } } },
+        },
       },
     }),
     db.resource.count({ where: { sellerId: user.id } }).then((n) => n > 0),
@@ -52,7 +56,11 @@ export default async function DashboardPurchasesPage() {
         </div>
       ) : (
         <ul className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
-          {purchases.map(({ id, amountCents, createdAt, resource: r }) => (
+          {purchases.map(({ id, amountCents, createdAt, paidAt, lastDownloadedAt, resource: r }) => {
+            // Nouvelle version : le fichier a changé depuis le dernier téléchargement (ou depuis l'achat)
+            const seen = lastDownloadedAt ?? paidAt ?? createdAt;
+            const updated = r.versionUpdatedAt !== null && r.versionUpdatedAt > seen;
+            return (
             <li key={id} className="flex flex-col rounded-2xl border border-border bg-card p-2">
               <Thumb image={r.images[0]} category={r.category} className="w-full rounded-xl" />
               <div className="flex flex-1 flex-col px-1.5 pb-1.5 pt-3">
@@ -63,10 +71,16 @@ export default async function DashboardPurchasesPage() {
                 {r.status === "UNLISTED" && (
                   <span className="mt-2 self-start rounded-full bg-surface px-2 py-0.5 text-[11px] font-semibold text-muted">{t.dashboard.unlisted}</span>
                 )}
+                {updated && (
+                  <span className="mt-2 inline-flex items-center gap-1 self-start rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-bold">
+                    <Sparkles className="h-3 w-3" aria-hidden="true" />
+                    {t.dashboard.newVersionBadge(r.version)}
+                  </span>
+                )}
                 <div className="mt-auto flex gap-1.5 pt-3">
                   <a href={`/api/download/${r.id}`} className="btn flex-1">
                     <Download className="h-4 w-4" aria-hidden="true" />
-                    {t.dashboard.download}
+                    {updated ? t.dashboard.downloadVersion(r.version) : t.dashboard.download}
                   </a>
                   <Link href={`/resources/${r.slug}`} className="btn-ghost px-3" aria-label={t.dashboard.viewPage} title={t.dashboard.viewPage}>
                     <ExternalLink className="h-4 w-4" aria-hidden="true" />
@@ -74,7 +88,8 @@ export default async function DashboardPurchasesPage() {
                 </div>
               </div>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
 

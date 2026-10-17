@@ -140,17 +140,14 @@ export default async function DashboardResourcesPage({ searchParams }: { searchP
                       {showReport ? t.dashboard.hideReport : t.dashboard.scanReport}
                     </Link>
                     <hr className="mx-1.5 my-1 border-border" />
-                    {/* Arrivent à l'étape 2 */}
-                    {[
-                      { label: t.dashboard.edit, Icon: Pencil },
-                      { label: t.dashboard.newVersion, Icon: Upload },
-                    ].map(({ label, Icon }) => (
-                      <span key={label} role="menuitem" aria-disabled="true" className={`${menuItem} cursor-default text-muted hover:bg-transparent`}>
-                        <Icon className="h-4 w-4" aria-hidden="true" />
-                        {label}
-                        <span className="ml-auto rounded-full bg-surface px-1.5 py-px text-[10.5px] font-semibold">{t.dashboard.soon}</span>
-                      </span>
-                    ))}
+                    <Link role="menuitem" href={`/dashboard/resources/${r.id}/edit`} className={menuItem}>
+                      <Pencil className="h-4 w-4 text-muted" aria-hidden="true" />
+                      {t.dashboard.edit}
+                    </Link>
+                    <Link role="menuitem" href={`/dashboard/resources/${r.id}/edit?tab=versions`} className={menuItem}>
+                      <Upload className="h-4 w-4 text-muted" aria-hidden="true" />
+                      {t.dashboard.newVersion}
+                    </Link>
                     {(r.status === "APPROVED" || r.status === "UNLISTED") && (
                       <>
                         <hr className="mx-1.5 my-1 border-border" />

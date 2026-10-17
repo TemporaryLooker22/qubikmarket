@@ -23,6 +23,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: t.errors.notBought }, { status: 403 });
   }
 
+  // On note le téléchargement de l'acheteur (le badge « Nouvelle version » de Mes achats disparaît)
+  if (purchase?.status === "PAID") {
+    await db.purchase.update({ where: { id: purchase.id }, data: { lastDownloadedAt: new Date() } });
+  }
+
   const file = await readUpload(resource.filePath);
   return new NextResponse(new Uint8Array(file), {
     headers: {

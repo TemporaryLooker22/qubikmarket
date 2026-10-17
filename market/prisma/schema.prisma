@@ -37,7 +37,7 @@ model Resource {
   description String
   category    String
   priceCents  Int // 0 = gratuit
-  status      String  @default("PENDING") // PENDING, APPROVED ou REJECTED
+  status      String  @default("PENDING") // PENDING, APPROVED, REJECTED ou UNLISTED (retirée de la vente)
   reviewNote  String? // message du modérateur au vendeur
 
   // Résultat du scanner anti-backdoor
@@ -51,6 +51,11 @@ model Resource {
 
   // Captures d'écran (adresses publiques, jusqu'à 6). La première sert de miniature.
   images String[] @default([])
+
+  // Version en ligne : les champs fichier et scan ci-dessus sont toujours ceux de cette version
+  version          String            @default("1.0")
+  versionUpdatedAt DateTime? // dernière mise à jour du fichier (vide tant que c'est la version d'origine)
+  versions         ResourceVersion[]
 
   sellerId  String
   seller    User       @relation(fields: [sellerId], references: [id])
@@ -73,6 +78,7 @@ model Purchase {
   stripePaymentIntentId String?   @unique // pour retrouver l'achat lors d'un remboursement ou d'une contestation
   paidAt                DateTime? // moment du paiement (createdAt = début du paiement)
   taxCents              Int       @default(0) // TVA comprise dans amountCents (calculée par Stripe Tax)
+  lastDownloadedAt      DateTime? // dernier téléchargement (pour le badge « Nouvelle version » de Mes achats)
   createdAt             DateTime  @default(now())
 
   user     User           @relation(fields: [userId], references: [id])
@@ -126,4 +132,27 @@ model SellerPayout {
   earnings SellerEarning[]
 
   @@index([sellerId, createdAt])
+}
+
+// Historique des fichiers d'une ressource : chaque nouvelle version passe au scanner
+model ResourceVersion {
+  id          String   @id @default(cuid())
+  resourceId  String
+  version     String // numéro choisi par le vendeur (1.0, 1.2, 2.0.1…)
+  notes       String? // « Quoi de neuf ? », affiché sur la page produit
+  fileName    String
+  filePath    String
+  fileSize    Int
+  scanVerdict String
+  scanScore   Int
+  scanReport  String
+  // LIVE (celle que les acheteurs téléchargent), OLD (ancienne), PENDING (en modération) ou REJECTED (refusée)
+  status      String
+  reviewNote  String?
+  createdAt   DateTime @default(now())
+
+  resource Resource @relation(fields: [resourceId], references: [id])
+
+  @@unique([resourceId, version])
+  @@index([resourceId, createdAt])
 }

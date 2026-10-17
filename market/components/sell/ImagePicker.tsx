@@ -5,7 +5,8 @@ import { ArrowLeft, GripVertical, ImagePlus, Loader2, X } from "lucide-react";
 import { MAX_IMAGES } from "@/lib/catalog";
 import { useI18n } from "@/lib/i18n/client";
 
-export type PickedImage = { file: File; url: string };
+// Une image : soit déjà enregistrée (adresse seulement), soit nouvelle (fichier compressé + aperçu local)
+export type PickedImage = { url: string; file?: File };
 
 // Réduit une image (1600 px de large maximum) et la convertit en WebP, pour tenir dans la limite d'envoi de Vercel
 async function compressImage(file: File): Promise<File> {
@@ -39,7 +40,7 @@ export function ImagePicker({ images, onChange }: { images: PickedImage[]; onCha
   };
 
   const remove = (index: number) => {
-    URL.revokeObjectURL(images[index].url);
+    if (images[index].file) URL.revokeObjectURL(images[index].url);
     onChange(images.filter((_, i) => i !== index));
   };
 

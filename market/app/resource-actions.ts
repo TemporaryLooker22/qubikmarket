@@ -1,0 +1,224 @@
+"use server";
+
+// Actions de la page « Modifier une ressource » (Mon espace → Mes ressources → Modifier)
+// et modération des nouvelles versions. Elles s'exécutent sur le serveur.
+
+import path from "node:path";
+import { z } from "zod";
+import { revalidatePath } from "next/cache";
+import { db } from "@/lib/db";
+import { requireAdmin, requireUser } from "@/lib/auth";
+import { scanFile } from "@/lib/scan";
+import { detectImage, saveImage, saveUpload } from "@/lib/storage";
+import { ALLOWED_EXTENSIONS, CATEGORIES, MAX_FILE_SIZE, MAX_IMAGE_SIZE, MAX_IMAGES } from "@/lib/catalog";
+import { getDictionary } from "@/lib/i18n/server";
+import { grantFounderIfEligible } from "@/lib/sellers";
+import { isValidVersion, promoteVersion } from "@/lib/versions";
+
+// Résultat d'un enregistrement : une erreur à afficher, ou un message de réussite
+export type EditState = { error?: string; ok?: string } | undefined;
+
+// La ressource doit appartenir au vendeur connecté
+async function ownResource(resourceId: string) {
+  const user = await requireUser();
+  const resource = await db.resource.findUnique({ where: { id: resourceId } });
+  if (!resource || resource.sellerId !== user.id) return null;
+  return resource;
+}
+
+function refresh(resource: { id: string; slug: string }) {
+  revalidatePath(`/dashboard/resources/${resource.id}/edit`);
+  revalidatePath(`/resources/${resource.slug}`);
+  revalidatePath("/dashboard", "layout");
+  revalidatePath("/");
+}
+
+// ---------- Infos, description, prix, images (visibles tout de suite, sans nouveau scan) ----------
+
+export async function updateResourceInfo(_: EditState, formData: FormData): Promise<EditState> {
+  const { t } = await getDictionary();
+  const resource = await ownResource(String(formData.get("resourceId")));
+  if (!resource) return { error: t.errors.notFound };
+  const parsed = z
+    .object({
+      title: z.string().trim().min(4, t.errors.titleMin).max(80, t.errors.titleMax),
+      summary: z.string().trim().min(10, t.errors.summaryMin).max(160, t.errors.summaryMax),
+      category: z.enum(CATEGORIES.map((c) => c.id) as [string, ...string[]], { message: t.errors.category }),
+    })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  // Le lien de la page (slug) ne change pas : les liens partagés continuent de marcher
+  await db.resource.update({ where: { id: resource.id }, data: parsed.data });
+  refresh(resource);
+  return { ok: t.edit.saved };
+}
+
+export async function updateResourceDescription(_: EditState, formData: FormData): Promise<EditState> {
+  const { t } = await getDictionary();
+  const resource = await ownResource(String(formData.get("resourceId")));
+  if (!resource) return { error: t.errors.notFound };
+  const description = String(formData.get("description") ?? "").trim();
+  if (description.length < 30) return { error: t.errors.descriptionMin };
+  if (description.length > 10000) return { error: t.errors.descriptionMin };
+  await db.resource.update({ where: { id: resource.id }, data: { description } });
+  refresh(resource);
+  return { ok: t.edit.saved };
+}
+
+export async function updateResourcePrice(_: EditState, formData: FormData): Promise<EditState> {
+  const { t } = await getDictionary();
+  const resource = await ownResource(String(formData.get("resourceId")));
+  if (!resource) return { error: t.errors.notFound };
+  const price = Number(formData.get("price"));
+  if (!Number.isFinite(price) || price < 0) return { error: t.errors.price };
+  if (price > 500) return { error: t.errors.priceMax };
+  const priceCents = Math.round(price * 100);
+  if (priceCents > 0 && priceCents < 100) return { error: t.errors.priceMin };
+  // Le nouveau prix ne s'applique qu'aux prochains achats : les acheteurs gardent leur accès
+  await db.resource.update({ where: { id: resource.id }, data: { priceCents } });
+  refresh(resource);
+  return { ok: t.edit.saved };
+}
+
+// Images : « order » liste les images dans l'ordre voulu, soit une adresse déjà enregistrée, soit « new:N »
+// pour la N-ième nouvelle image envoyée dans « images »
+export async function updateResourceImages(_: EditState, formData: FormData): Promise<EditState> {
+  const { t } = await getDictionary();
+  const resource = await ownResource(String(formData.get("resourceId")));
+  if (!resource) return { error: t.errors.notFound };
+
+  let order: string[];
+  try {
+    order = z.array(z.string()).max(MAX_IMAGES).parse(JSON.parse(String(formData.get("order") ?? "[]")));
+  } catch {
+    return { error: t.errors.tooManyImages(MAX_IMAGES) };
+  }
+  const files = formData.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
+  const urls: string[] = [];
+  for (const entry of order) {
+    if (entry.startsWith("new:")) {
+      const file = files[Number(entry.slice(4))];
+      if (!file) continue;
+      if (file.size > MAX_IMAGE_SIZE) return { error: t.errors.imageTooBig };
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const ext = detectImage(bytes);
+      if (!ext) return { error: t.errors.imageFormat };
+      urls.push(await saveImage(bytes, ext));
+    } else if (resource.images.includes(entry)) {
+      // Seulement des images qui appartiennent déjà à cette ressource
+      urls.push(entry);
+    }
+  }
+  await db.resource.update({ where: { id: resource.id }, data: { images: urls } });
+  refresh(resource);
+  return { ok: t.edit.saved };
+}
+
+// ---------- Nouvelle version (nouveau fichier, scanné comme une publication) ----------
+
+export async function publishVersion(_: EditState, formData: FormData): Promise<EditState> {
+  const { t } = await getDictionary();
+  const resource = await ownResource(String(formData.get("resourceId")));
+  if (!resource) return { error: t.errors.notFound };
+
+  const version = String(formData.get("version") ?? "").trim();
+  if (!isValidVersion(version)) return { error: t.edit.versionInvalid };
+  if (await db.resourceVersion.findUnique({ where: { resourceId_version: { resourceId: resource.id, version } } })) {
+    return { error: t.edit.versionTaken(version) };
+  }
+  const notes = String(formData.get("notes") ?? "").trim().slice(0, 1000) || null;
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { error: t.errors.fileMissing };
+  if (file.size > MAX_FILE_SIZE) return { error: t.errors.fileTooBig };
+  if (!ALLOWED_EXTENSIONS.includes(path.extname(file.name).toLowerCase())) {
+    return { error: t.errors.fileFormat(ALLOWED_EXTENSIONS.join(", ")) };
+  }
+
+  // Scan anti-backdoor, comme à la publication
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let report;
+  try {
+    report = scanFile(bytes, file.name);
+  } catch (err) {
+    return { error: t.errors.fileUnreadable((err as Error).message) };
+  }
+  const storedName = await saveUpload(bytes, file.name);
+  const fileData = {
+    resourceId: resource.id,
+    version,
+    notes,
+    fileName: file.name,
+    filePath: storedName,
+    fileSize: file.size,
+    scanVerdict: report.verdict,
+    scanScore: report.score,
+    scanReport: JSON.stringify(report),
+  };
+
+  // Dangereuse : refusée, rien ne change pour les acheteurs
+  if (report.verdict === "dangerous") {
+    await db.resourceVersion.create({ data: { ...fileData, status: "REJECTED", reviewNote: t.errors.autoReject } });
+    refresh(resource);
+    return { error: t.edit.versionRejected(version) };
+  }
+
+  const live = resource.status === "APPROVED" || resource.status === "UNLISTED";
+  const clean = report.verdict === "clean";
+
+  await db.$transaction(async (tx) => {
+    const created = await tx.resourceVersion.create({ data: { ...fileData, status: "PENDING" } });
+    if (clean) {
+      // Propre : remplace tout de suite la version en ligne
+      await promoteVersion(tx, created.id, live);
+      if (!live) await tx.resource.update({ where: { id: resource.id }, data: { status: "APPROVED", reviewNote: null } });
+    } else if (!live) {
+      // Ressource pas encore en ligne (en vérification ou refusée) : la nouvelle version la remplace
+      // et repart en vérification
+      await tx.resourceVersion.updateMany({
+        where: { resourceId: resource.id, id: { not: created.id }, status: "PENDING" },
+        data: { status: "OLD" },
+      });
+      await tx.resource.update({
+        where: { id: resource.id },
+        data: {
+          status: "PENDING",
+          reviewNote: null,
+          version,
+          fileName: fileData.fileName,
+          filePath: fileData.filePath,
+          fileSize: fileData.fileSize,
+          scanVerdict: fileData.scanVerdict,
+          scanScore: fileData.scanScore,
+          scanReport: fileData.scanReport,
+        },
+      });
+    }
+    // Ressource en ligne + scan à vérifier : la version attend un modérateur, l'ancienne reste téléchargeable
+  });
+
+  if (clean && !live) await grantFounderIfEligible(resource.sellerId);
+  refresh(resource);
+  revalidatePath("/admin");
+  return { ok: clean ? t.edit.versionLive(version) : t.edit.versionPending(version) };
+}
+
+// ---------- Modération d'une nouvelle version (admins) ----------
+
+export async function moderateVersion(formData: FormData) {
+  await requireAdmin();
+  const versionId = String(formData.get("versionId"));
+  const approve = formData.get("decision") === "approve";
+  const note = String(formData.get("note") ?? "").trim() || null;
+
+  const version = await db.resourceVersion.findUnique({ where: { id: versionId }, include: { resource: true } });
+  if (!version || version.status !== "PENDING") return;
+
+  if (approve) {
+    await db.$transaction((tx) => promoteVersion(tx, version.id, true));
+  } else {
+    await db.resourceVersion.update({ where: { id: version.id }, data: { status: "REJECTED", reviewNote: note } });
+  }
+  refresh(version.resource);
+  revalidatePath("/admin");
+}

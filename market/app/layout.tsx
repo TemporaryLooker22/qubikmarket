@@ -25,7 +25,12 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const [user, { locale, t }] = await Promise.all([getCurrentUser(), getDictionary()]);
   // Pastille « Modération » : seulement calculée pour les admins
-  const pendingCount = user?.role === "ADMIN" ? await db.resource.count({ where: { status: "PENDING" } }) : 0;
+  // (ressources en attente + nouvelles versions de ressources en ligne)
+  const pendingCount =
+    user?.role === "ADMIN"
+      ? (await db.resource.count({ where: { status: "PENDING" } })) +
+        (await db.resourceVersion.count({ where: { status: "PENDING", resource: { status: { in: ["APPROVED", "UNLISTED"] } } } }))
+      : 0;
   // Le menu du compte propose « Devenir vendeur » à ceux qui n'ont encore rien publié
   const isSeller = user ? (await db.resource.count({ where: { sellerId: user.id } })) > 0 : false;
 

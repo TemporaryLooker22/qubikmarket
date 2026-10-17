@@ -198,6 +198,20 @@ export async function publishResource(_: FormState, formData: FormData): Promise
       fileSize: file.size,
       images: imageUrls,
       sellerId: user.id,
+      // Première version de l'historique (les mises à jour s'ajoutent depuis « Modifier → Versions »)
+      versions: {
+        create: {
+          version: "1.0",
+          fileName: file.name,
+          filePath: storedName,
+          fileSize: file.size,
+          scanVerdict: report.verdict,
+          scanScore: report.score,
+          scanReport: JSON.stringify(report),
+          status: status === "APPROVED" ? "LIVE" : status,
+          reviewNote,
+        },
+      },
     },
   });
 
@@ -301,6 +315,11 @@ export async function moderateResource(formData: FormData) {
   const resource = await db.resource.update({
     where: { id: resourceId },
     data: { status: decision, reviewNote: note },
+  });
+  // La version en attente de la ressource suit la décision
+  await db.resourceVersion.updateMany({
+    where: { resourceId, version: resource.version, status: "PENDING" },
+    data: { status: decision === "APPROVED" ? "LIVE" : "REJECTED", reviewNote: note },
   });
   if (decision === "APPROVED") await grantFounderIfEligible(resource.sellerId);
   revalidatePath("/admin");
