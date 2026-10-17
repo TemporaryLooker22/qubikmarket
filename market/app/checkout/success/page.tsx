@@ -21,12 +21,12 @@ export default async function CheckoutSuccessPage({ searchParams }: { searchPara
 
   const paid = session.payment_status === "paid";
   return (
-    <div className="card mx-auto max-w-md p-8 text-center">
-      <h1 className="text-2xl font-bold">{paid ? "Paiement confirmé ✓" : "Paiement en cours…"}</h1>
-      <p className="mt-2 text-muted">
+    <>
+      <h1>{paid ? "Paiement confirmé ✓" : "Paiement en cours…"}</h1>
+      <p>
         {paid ? `« ${purchase.resource.title} » est maintenant dans tes achats.` : "Rafraîchis la page dans quelques instants."}
       </p>
-      <Link href={`/resources/${purchase.resource.slug}`} className="btn mt-6">Voir la ressource</Link>
-    </div>
+      <Link href={`/resources/${purchase.resource.slug}`}>Voir la ressource</Link>
+    </>
   );
 }
