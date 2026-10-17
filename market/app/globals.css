@@ -131,6 +131,14 @@ body {
     transform: scaleX(1);
   }
 }
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
 @keyframes marker {
   from {
     background-size: 0% 34%;
@@ -148,6 +156,10 @@ body {
   /* Ouverture des menus déroulants */
   .animate-pop {
     animation: pop 0.18s ease-out both;
+  }
+  /* Rangée qui défile en boucle (fond de l'accueil) : le contenu est doublé, on décale de 50 % */
+  .marquee {
+    animation: marquee 60s linear infinite;
   }
   /* Trait jaune sous la page active */
   .animate-grow-x {
@@ -173,6 +185,7 @@ body {
   *::after {
     animation-duration: 0.01ms !important;
     animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }

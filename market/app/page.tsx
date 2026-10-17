@@ -4,8 +4,10 @@ import { db } from "@/lib/db";
 import { CATEGORIES } from "@/lib/catalog";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatNumber } from "@/lib/i18n/format";
+import { DEMO_BEST_SELLERS, DEMO_ENABLED, DEMO_IMAGES, DEMO_LATEST } from "@/lib/demo";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Gallery } from "@/components/Gallery";
+import { HeroBackdrop } from "@/components/HeroBackdrop";
 import { ResourceCard } from "@/components/ResourceCard";
 
 export const dynamic = "force-dynamic";
@@ -61,75 +63,90 @@ export default async function HomePage() {
     ]),
   ]);
   // Pas de vente ces 30 derniers jours : on se rabat sur le classement de tous les temps
-  const bestSellers = recentBestSellers.length ? recentBestSellers : await getBestSellers();
+  const realBestSellers = recentBestSellers.length ? recentBestSellers : await getBestSellers();
+
+  // Mode démo (maquette, voir lib/demo.ts) : des exemples tant qu'il n'y a pas de vraies données
+  const bestSellers = realBestSellers.length || !DEMO_ENABLED ? realBestSellers : DEMO_BEST_SELLERS;
+  const latestResources = latest.length || !DEMO_ENABLED ? latest : DEMO_LATEST;
+  const isDemo = (slug: string) => slug.startsWith("demo-");
 
   const [scannedCount, blockedCount, sellerCount] = stats;
   const [mainSetup, ...otherSetups] = featured;
 
   return (
     <div className="full-bleed">
-      {/* 1. Recherche */}
-      <section className="container-q pb-10 pt-14 text-center sm:pb-12 sm:pt-20">
-        <h1 className="animate-fade-up text-3xl font-semibold tracking-tight sm:text-5xl">
-          {t.home.titleStart} <span className="highlight">{t.home.titleHighlight}</span>
-          {t.home.titleEnd && ` ${t.home.titleEnd}`}
-        </h1>
-        {/* Recherche minimaliste : un seul champ, on valide avec Entrée */}
-        <form action="/resources" role="search" className="animate-fade-up mx-auto mt-8 max-w-lg" style={{ animationDelay: "120ms" }}>
-          <label className="flex items-center gap-3 rounded-full border border-border bg-card px-5 transition focus-within:border-text focus-within:shadow-[0_8px_30px_-10px_rgba(0,0,0,0.2)]">
-            <Search className="h-[18px] w-[18px] shrink-0 text-muted" aria-hidden="true" />
-            <span className="sr-only">{t.home.searchLabel}</span>
-            <input
-              name="q"
-              type="search"
-              placeholder={t.home.searchPlaceholder}
-              className="min-w-0 flex-1 bg-transparent py-3.5 text-[15px] outline-none placeholder:text-muted"
-            />
-          </label>
-        </form>
-        <p className="animate-fade-up mt-4 inline-flex items-center gap-1.5 text-sm text-muted" style={{ animationDelay: "200ms" }}>
-          <ShieldCheck className="h-4 w-4" aria-hidden="true" /> {t.home.scannedNote}
-        </p>
-      </section>
+      {/* 1. Recherche et catégories, devant les miniatures qui défilent */}
+      <div className="relative isolate">
+        {/* Miniatures : celles des exemples en mode démo (pas encore d'images pour les vraies ressources) */}
+        <HeroBackdrop images={DEMO_ENABLED ? DEMO_IMAGES : []} />
+        <section className="container-q pb-6 pt-14 text-center sm:pt-16">
+          <h1 className="animate-fade-up text-3xl font-semibold tracking-tight sm:text-5xl">
+            {t.home.titleStart} <span className="highlight">{t.home.titleHighlight}</span>
+            {t.home.titleEnd && ` ${t.home.titleEnd}`}
+          </h1>
+          {/* Recherche minimaliste : un seul champ, on valide avec Entrée */}
+          <form action="/resources" role="search" className="animate-fade-up mx-auto mt-8 max-w-lg" style={{ animationDelay: "120ms" }}>
+            <label className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 transition focus-within:border-text focus-within:shadow-[0_8px_30px_-10px_rgba(0,0,0,0.2)]">
+              <Search className="h-[18px] w-[18px] shrink-0 text-muted" aria-hidden="true" />
+              <span className="sr-only">{t.home.searchLabel}</span>
+              <input
+                name="q"
+                type="search"
+                placeholder={t.home.searchPlaceholder}
+                className="min-w-0 flex-1 bg-transparent py-3.5 text-[15px] outline-none placeholder:text-muted"
+              />
+            </label>
+          </form>
+          <p className="animate-fade-up mt-4 inline-flex items-center gap-1.5 text-sm text-muted" style={{ animationDelay: "200ms" }}>
+            <ShieldCheck className="h-4 w-4" aria-hidden="true" /> {t.home.scannedNote}
+          </p>
+        </section>
 
-      {/* 2. Catégories : juste sous la recherche, visibles sans défiler */}
-      <section className="container-q">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
-          {CATEGORIES.map((c, i) => (
-            <Link
-              key={c.id}
-              href={`/resources?category=${c.id}`}
-              style={{ animationDelay: `${250 + i * 50}ms` }}
-              className="animate-fade-up group flex flex-col items-center gap-3 rounded-2xl border border-border bg-card px-2 py-5 text-center transition duration-300 hover:-translate-y-1 hover:border-accent hover:bg-accent-soft hover:shadow-[0_12px_28px_-14px_rgba(0,0,0,0.25)]"
-            >
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-bg transition duration-300 group-hover:rotate-[-8deg] group-hover:scale-110 group-hover:bg-accent">
-                <CategoryIcon category={c.id} className="h-[22px] w-[22px]" />
-              </span>
-              <span className="text-sm font-semibold">{c.label}</span>
-            </Link>
-          ))}
-        </div>
-      </section>
+        {/* 2. Catégories : juste sous la recherche, visibles sans défiler */}
+        <section className="container-q pb-6">
+          {/* Petits rectangles discrets : icône + nom sur une ligne */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8">
+            {CATEGORIES.map((c, i) => (
+              <Link
+                key={c.id}
+                href={`/resources?category=${c.id}`}
+                style={{ animationDelay: `${250 + i * 50}ms` }}
+                className="animate-fade-up group flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2 py-2.5 text-[13px] font-semibold text-muted transition duration-200 hover:border-accent hover:bg-accent-soft hover:text-text"
+              >
+                <CategoryIcon category={c.id} className="h-[18px] w-[18px] shrink-0 transition duration-300 group-hover:-rotate-12 group-hover:scale-110" />
+                <span className="truncate">{c.label}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      </div>
 
       {/* 3. Les plus vendues en ce moment (cachée tant qu'il n'y a aucune vente) */}
       {bestSellers.length > 0 && (
-        <section className="reveal container-q mt-16">
+        <section className="reveal container-q mt-8">
           <SectionTitle title={t.home.bestSellers} subtitle={t.home.bestSellersSub} href="/resources" seeAll={t.home.seeAll} />
           <Gallery>
             {bestSellers.map(({ resource, sales }, i) => (
-              <ResourceCard key={resource.id} resource={resource} locale={locale} rank={i + 1} sales={sales} />
+              <ResourceCard
+                key={resource.id}
+                resource={resource}
+                locale={locale}
+                rank={i + 1}
+                sales={sales}
+                href={isDemo(resource.slug) ? "/resources" : undefined}
+              />
             ))}
           </Gallery>
         </section>
       )}
 
       {/* 4. Les plus récentes (cachée tant qu'il n'y a aucune ressource) */}
-      {latest.length > 0 && (
-        <section className="reveal container-q mt-12">
+      {latestResources.length > 0 && (
+        <section className="reveal container-q mt-8">
           <SectionTitle title={t.home.latest} subtitle={t.home.latestSub} href="/resources" seeAll={t.home.seeAll} />
           <Gallery>
-            {latest.map((r) => (
-              <ResourceCard key={r.id} resource={r} locale={locale} />
+            {latestResources.map((r) => (
+              <ResourceCard key={r.id} resource={r} locale={locale} href={isDemo(r.slug) ? "/resources" : undefined} />
             ))}
           </Gallery>
         </section>
@@ -137,7 +154,7 @@ export default async function HomePage() {
 
       {/* 5. Game Setups à la une (caché s'il n'y en a aucun) */}
       {mainSetup && (
-        <section className="reveal mt-16 bg-surface py-12">
+        <section className="reveal mt-12 bg-surface py-12">
           <div className="container-q">
             <SectionTitle title={t.home.setupsTitle} subtitle={t.home.setupsSub} href="/resources?category=game-setups" seeAll={t.home.seeAll} />
             <div className={`grid gap-4 ${otherSetups.length ? "md:grid-cols-[2fr_1fr]" : ""}`}>
@@ -155,7 +172,7 @@ export default async function HomePage() {
       )}
 
       {/* 6. Comment ça marche */}
-      <section className="mt-16 bg-surface py-12">
+      <section className="mt-12 bg-surface py-12">
         <div className="reveal container-q">
           <SectionTitle title={t.home.howTitle} />
           <ol className="grid gap-8 sm:grid-cols-3">
