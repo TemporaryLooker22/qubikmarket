@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Menu, Search, UserPlus, X, Zap } from "lucide-react";
+import { Menu, Search, UserPlus, X, Zap } from "lucide-react";
 import { logout, setLocale } from "@/app/actions";
 import { CATEGORIES } from "@/lib/catalog";
 import { LOCALES } from "@/lib/i18n/dictionaries";
@@ -43,11 +43,7 @@ export function Navbar({ user, pendingCount }: Props) {
 
         {/* Liens (ordinateur) */}
         <div className="hidden items-center gap-1 md:flex">
-          {links.slice(0, 2).map((l) => (
-            <NavLink key={l.href} {...l} active={isActive(l.href)} />
-          ))}
-          <CategoriesMenu />
-          {links.slice(2).map((l) => (
+          {links.map((l) => (
             <NavLink key={l.href} {...l} active={isActive(l.href)} />
           ))}
         </div>
@@ -193,36 +189,6 @@ function useDropdown() {
   }, [open]);
 
   return { open, setOpen, ref };
-}
-
-function CategoriesMenu() {
-  const { t } = useI18n();
-  const { open, setOpen, ref } = useDropdown();
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className={`flex h-10 items-center gap-1.5 rounded-lg px-3 text-[15px] font-medium transition hover:bg-bg hover:text-text ${open ? "bg-bg text-text" : "text-muted"}`}
-      >
-        {t.nav.categories} <ChevronDown className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`} aria-hidden="true" />
-      </button>
-      {open && (
-        <div className="animate-pop absolute left-0 top-full mt-2 w-56 origin-top-left rounded-xl border border-border bg-card p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
-          {CATEGORIES.map((c) => (
-            <Link
-              key={c.id}
-              href={`/resources?category=${c.id}`}
-              className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[15px] transition hover:bg-bg"
-            >
-              <CategoryIcon category={c.id} className="h-4 w-4 text-muted" /> {c.label}
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 function AccountMenu({ username }: { username: string }) {
