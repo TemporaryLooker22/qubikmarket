@@ -19,7 +19,7 @@ export type DemoResource = {
   scriptCount: number;
   createdAt: Date;
   sales: number;
-  seller: { username: string; resources: number; sales: number };
+  seller: { username: string; resources: number; sales: number; rating: number; reviews: number };
 };
 
 const IMAGES = ["chicken", "pets", "trex", "chainsaw"].map((n) => `/demo/${n}.webp`);
@@ -60,7 +60,7 @@ Questions? Join the support server linked on my profile.`,
   scriptCount: 42,
   createdAt: daysAgo(3),
   sales: 248,
-  seller: { username: "BlockForge", resources: 12, sales: 1830 },
+  seller: { username: "BlockForge", resources: 12, sales: 1830, rating: 4.8, reviews: 312 },
 });
 
 const PETS = demo({
@@ -86,7 +86,7 @@ Works with R6 and R15. Fully commented code.`,
   scriptCount: 12,
   createdAt: daysAgo(6),
   sales: 191,
-  seller: { username: "PixelPaws", resources: 8, sales: 1240 },
+  seller: { username: "PixelPaws", resources: 8, sales: 1240, rating: 4.6, reviews: 187 },
 });
 
 const TREX = demo({
@@ -110,7 +110,7 @@ Plug it into your existing pet system or use it on its own.`,
   scriptCount: 9,
   createdAt: daysAgo(9),
   sales: 156,
-  seller: { username: "DinoDev", resources: 5, sales: 610 },
+  seller: { username: "DinoDev", resources: 5, sales: 610, rating: 4.3, reviews: 64 },
 });
 
 const CHAINSAW = demo({
@@ -136,7 +136,7 @@ Includes the full map and all the UI.`,
   scriptCount: 31,
   createdAt: daysAgo(1),
   sales: 97,
-  seller: { username: "TimberStudio", resources: 3, sales: 240 },
+  seller: { username: "TimberStudio", resources: 3, sales: 240, rating: 4.9, reviews: 41 },
 });
 
 export const DEMO_RESOURCES = [CHICKEN, PETS, TREX, CHAINSAW];

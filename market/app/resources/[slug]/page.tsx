@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronRight, Download, Lock, ShieldCheck, Sparkles, Zap } from "lucide-react";
+import { ChevronRight, Download, Languages, Lock, ShieldCheck, Zap } from "lucide-react";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { categoryLabel } from "@/lib/catalog";
@@ -9,17 +9,19 @@ import { getDictionary } from "@/lib/i18n/server";
 import { formatDate, formatPrice, formatSize } from "@/lib/i18n/format";
 import type { Dictionary, Locale } from "@/lib/i18n/dictionaries";
 import { isDemoMode } from "@/lib/payments";
+import { translate } from "@/lib/translate";
 import type { ScanReport } from "@/lib/scan";
 import { buyResource } from "@/app/actions";
 import { ResourceCard } from "@/components/ResourceCard";
 import { Markdown } from "@/components/Markdown";
 import { ScanReportView } from "@/components/ScanReportView";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Stars } from "@/components/Stars";
 import { ProductGallery } from "@/components/product/ProductGallery";
 import { ShareButton } from "@/components/product/ShareButton";
 
 type Params = Promise<{ slug: string }>;
-type SearchParams = Promise<{ bought?: string }>;
+type SearchParams = Promise<{ bought?: string; original?: string }>;
 
 // Tout ce que la page affiche, que la ressource soit réelle ou un exemple de démo
 type Product = {
@@ -39,7 +41,8 @@ type Product = {
   scriptCount: number;
   status: string;
   reviewNote: string | null;
-  seller: { username: string; resources: number; sales: number };
+  // rating = null : pas encore d'avis (le système d'avis n'existe pas encore, seule la démo a des notes)
+  seller: { username: string; resources: number; sales: number; rating: number | null; reviews: number };
 };
 
 // Ce que le visiteur peut faire sur cette ressource
@@ -54,7 +57,7 @@ export async function generateMetadata({ params }: { params: Params }) {
 }
 
 export default async function ResourcePage({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
-  const [{ slug }, { bought }, user, { locale, t }] = await Promise.all([params, searchParams, getCurrentUser(), getDictionary()]);
+  const [{ slug }, { bought, original }, user, { locale, t }] = await Promise.all([params, searchParams, getCurrentUser(), getDictionary()]);
 
   let product: Product;
   let access: Access;
@@ -97,7 +100,7 @@ export default async function ResourcePage({ params, searchParams }: { params: P
       ...resource,
       sales: resource._count.purchases,
       scriptCount: scan.scriptCount,
-      seller: { username: resource.seller.username, resources: sellerResources, sales: sellerSales },
+      seller: { username: resource.seller.username, resources: sellerResources, sales: sellerSales, rating: null, reviews: 0 },
     };
     access = {
       demo: false,
@@ -110,6 +113,20 @@ export default async function ResourcePage({ params, searchParams }: { params: P
   }
 
   const label = categoryLabel(product.category);
+
+  // En français : résumé et description traduits automatiquement (sauf si on demande l'original)
+  let translation: "none" | "translated" | "original" = "none";
+  if (locale === "fr") {
+    if (original) {
+      translation = "original";
+    } else {
+      const [summary, description] = await Promise.all([translate(product.summary, locale), translate(product.description, locale)]);
+      if (summary.translated || description.translated) {
+        product = { ...product, summary: summary.text, description: description.text };
+        translation = "translated";
+      }
+    }
+  }
 
   return (
     <div className="full-bleed container-q pb-28 pt-6 lg:pb-0">
@@ -127,11 +144,6 @@ export default async function ResourcePage({ params, searchParams }: { params: P
         </Link>
       </nav>
 
-      {access.demo && (
-        <p className="mt-3 flex items-center gap-2 rounded-lg bg-accent-soft px-3 py-2 text-sm">
-          <Sparkles className="h-4 w-4 shrink-0" aria-hidden="true" /> {t.resource.demoNotice}
-        </p>
-      )}
       {/* Pour le vendeur et les modérateurs : statut et note de modération */}
       {product.status !== "APPROVED" && (
         <p className="mt-3 rounded-lg bg-warn-bg px-3 py-2 text-sm text-warn">
@@ -157,6 +169,19 @@ export default async function ResourcePage({ params, searchParams }: { params: P
           </div>
 
           <Card title={t.resource.description}>
+            {translation !== "none" && (
+              <p className="-mt-1 mb-3 flex flex-wrap items-center gap-x-2 text-xs text-muted">
+                <Languages className="h-3.5 w-3.5" aria-hidden="true" />
+                {translation === "translated" && <span>{t.resource.translated} ·</span>}
+                <Link
+                  href={translation === "translated" ? `/resources/${product.slug}?original=1` : `/resources/${product.slug}`}
+                  scroll={false}
+                  className="font-medium text-text underline decoration-accent decoration-2 underline-offset-2"
+                >
+                  {translation === "translated" ? t.resource.showOriginal : t.resource.showTranslation}
+                </Link>
+              </p>
+            )}
             <Markdown>{product.description}</Markdown>
           </Card>
 
@@ -199,6 +224,23 @@ export default async function ResourcePage({ params, searchParams }: { params: P
                   <p className="truncate font-semibold">{product.seller.username}</p>
                   <p className="text-sm text-muted">{t.resource.sellerStats(product.seller.resources, product.seller.sales)}</p>
                 </div>
+              </div>
+              {/* Note moyenne des avis sur le vendeur */}
+              <div className="mt-4 flex items-center gap-3 border-t border-border pt-4">
+                {product.seller.rating !== null ? (
+                  <>
+                    <span className="text-2xl font-bold tracking-tight">{formatRating(product.seller.rating, locale)}</span>
+                    <div>
+                      <Stars rating={product.seller.rating} label={t.resource.rating(formatRating(product.seller.rating, locale))} />
+                      <p className="text-xs text-muted">{t.resource.reviews(product.seller.reviews)}</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Stars rating={0} label={t.resource.noReviews} />
+                    <span className="text-sm text-muted">{t.resource.noReviews}</span>
+                  </>
+                )}
               </div>
             </Card>
           </div>
@@ -309,6 +351,11 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
       {children}
     </section>
   );
+}
+
+// 4,8 en français, 4.8 en anglais
+function formatRating(rating: number, locale: Locale) {
+  return rating.toLocaleString(locale === "fr" ? "fr-FR" : "en-GB", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 
 function Detail({ label, value }: { label: string; value: string }) {
