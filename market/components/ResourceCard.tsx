@@ -11,7 +11,8 @@ type Props = {
     title: string;
     category: string;
     priceCents: number;
-    image?: string; // miniature 16:9 (pour l'instant, seulement les exemples de démo)
+    image?: string; // miniature 16:9 (exemples de démo)
+    images?: string[]; // captures d'écran des vraies ressources : la première sert de miniature
     seller: { username: string };
   };
   href?: string; // lien de la carte (par défaut : la page de la ressource)
@@ -28,6 +29,7 @@ export function ResourceCard({ resource, locale, href, size = "normal", rank, sa
   const t = dictionaries[locale];
   const large = size === "large";
   const free = resource.priceCents === 0;
+  const thumbnail = resource.image ?? resource.images?.[0];
   return (
     <Link
       href={href ?? `/resources/${resource.slug}`}
@@ -35,9 +37,9 @@ export function ResourceCard({ resource, locale, href, size = "normal", rank, sa
     >
       {/* Vignette : la miniature si elle existe, sinon l'icône de la catégorie */}
       <div className={`relative flex items-center justify-center overflow-hidden rounded-xl bg-surface text-muted ${THUMB_SIZES[size]}`}>
-        {resource.image ? (
+        {thumbnail ? (
           <Image
-            src={resource.image}
+            src={thumbnail}
             alt=""
             fill
             sizes={large ? "(min-width: 768px) 66vw, 100vw" : "260px"}

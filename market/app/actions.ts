@@ -11,8 +11,8 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { createSession, destroySession, getCurrentUser, requireAdmin, requireUser } from "@/lib/auth";
 import { scanFile } from "@/lib/scan";
-import { saveUpload } from "@/lib/storage";
-import { ALLOWED_EXTENSIONS, CATEGORIES, MAX_FILE_SIZE, slugify } from "@/lib/catalog";
+import { detectImage, saveImage, saveUpload } from "@/lib/storage";
+import { ALLOWED_EXTENSIONS, CATEGORIES, MAX_FILE_SIZE, MAX_IMAGE_SIZE, MAX_IMAGES, slugify } from "@/lib/catalog";
 import { createCheckoutSession, isDemoMode } from "@/lib/payments";
 import { cookies } from "next/headers";
 import { isLocale, type Dictionary } from "@/lib/i18n/dictionaries";
@@ -121,6 +121,18 @@ export async function publishResource(_: FormState, formData: FormData): Promise
     return { error: t.errors.fileFormat(ALLOWED_EXTENSIONS.join(", ")) };
   }
 
+  // Captures d'écran (facultatives) : on vérifie que ce sont de vraies images avant de les garder
+  const imageFiles = formData.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
+  if (imageFiles.length > MAX_IMAGES) return { error: t.errors.tooManyImages(MAX_IMAGES) };
+  const images: { bytes: Uint8Array; ext: NonNullable<ReturnType<typeof detectImage>> }[] = [];
+  for (const img of imageFiles) {
+    if (img.size > MAX_IMAGE_SIZE) return { error: t.errors.imageTooBig };
+    const bytes = new Uint8Array(await img.arrayBuffer());
+    const ext = detectImage(bytes);
+    if (!ext) return { error: t.errors.imageFormat };
+    images.push({ bytes, ext });
+  }
+
   // 1) Scan anti-backdoor automatique
   const bytes = new Uint8Array(await file.arrayBuffer());
   let report;
@@ -140,6 +152,7 @@ export async function publishResource(_: FormState, formData: FormData): Promise
 
   // 3) Enregistrement
   const storedName = await saveUpload(bytes, file.name);
+  const imageUrls = await Promise.all(images.map((img) => saveImage(img.bytes, img.ext)));
   const baseSlug = slugify(data.title) || "ressource";
   const slug = (await db.resource.findUnique({ where: { slug: baseSlug } }))
     ? `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`
@@ -161,6 +174,7 @@ export async function publishResource(_: FormState, formData: FormData): Promise
       fileName: file.name,
       filePath: storedName,
       fileSize: file.size,
+      images: imageUrls,
       sellerId: user.id,
     },
   });

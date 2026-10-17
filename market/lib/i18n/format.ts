@@ -16,8 +16,10 @@ export function formatAmount(cents: number, locale: Locale) {
 export function formatSize(bytes: number, locale: Locale) {
   const u = dictionaries[locale].size;
   if (bytes < 1024) return `${bytes} ${u.b}`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} ${u.kb}`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} ${u.mb}`;
+  // 1,1 Mo en français, 1.1 MB en anglais
+  const decimal = (n: number) => n.toLocaleString(INTL_LOCALES[locale], { maximumFractionDigits: 1 });
+  if (bytes < 1024 * 1024) return `${decimal(bytes / 1024)} ${u.kb}`;
+  return `${decimal(bytes / 1024 / 1024)} ${u.mb}`;
 }
 
 export function formatDate(date: Date, locale: Locale) {

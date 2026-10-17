@@ -42,6 +42,9 @@ model Resource {
   filePath    String
   fileSize    Int
 
+  // Captures d'écran (adresses publiques, jusqu'à 6). La première sert de miniature.
+  images      String[] @default([])
+
   sellerId    String
   seller      User       @relation(fields: [sellerId], references: [id])
   purchases   Purchase[]

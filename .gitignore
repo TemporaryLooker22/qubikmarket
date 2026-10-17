@@ -3,3 +3,6 @@ node_modules/
 .env
 .vercel
 .env*
+# Fichiers envoyés en local (sans Vercel Blob)
+market/storage/
+market/public/uploads/

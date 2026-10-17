@@ -68,7 +68,6 @@ export default async function HomePage() {
   // Mode démo (maquette, voir lib/demo.ts) : des exemples tant qu'il n'y a pas de vraies données
   const bestSellers = realBestSellers.length || !DEMO_ENABLED ? realBestSellers : DEMO_BEST_SELLERS;
   const latestResources = latest.length || !DEMO_ENABLED ? latest : DEMO_LATEST;
-  const isDemo = (slug: string) => slug.startsWith("demo-");
 
   const [scannedCount, blockedCount, sellerCount] = stats;
   const [mainSetup, ...otherSetups] = featured;
@@ -133,7 +132,6 @@ export default async function HomePage() {
                 locale={locale}
                 rank={i + 1}
                 sales={sales}
-                href={isDemo(resource.slug) ? "/resources" : undefined}
               />
             ))}
           </Gallery>
@@ -146,7 +144,7 @@ export default async function HomePage() {
           <SectionTitle title={t.home.latest} subtitle={t.home.latestSub} href="/resources" seeAll={t.home.seeAll} />
           <Gallery>
             {latestResources.map((r) => (
-              <ResourceCard key={r.id} resource={r} locale={locale} href={isDemo(r.slug) ? "/resources" : undefined} />
+              <ResourceCard key={r.id} resource={r} locale={locale} />
             ))}
           </Gallery>
         </section>

@@ -22,6 +22,12 @@ export const ALLOWED_EXTENSIONS = [".rbxm", ".rbxmx", ".rbxl", ".rbxlx", ".lua",
 // Vercel limite la taille d'une requête à 4,5 Mo
 export const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4 Mo
 
+// Captures d'écran : compressées dans le navigateur avant l'envoi (voir SellForm)
+export const MAX_IMAGES = 6;
+export const MAX_IMAGE_SIZE = 1024 * 1024; // 1 Mo par image après compression
+// Limite de Vercel pour tout le formulaire (fichier + images + textes), avec une marge
+export const MAX_FORM_SIZE = 4.3 * 1024 * 1024;
+
 // "Système de porte automatique !" -> "systeme-de-porte-automatique"
 export function slugify(text: string) {
   return text

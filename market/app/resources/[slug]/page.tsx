@@ -1,98 +1,321 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ChevronRight, Download, Lock, ShieldCheck, Sparkles, Zap } from "lucide-react";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { categoryLabel } from "@/lib/catalog";
+import { DEMO_RESOURCES, findDemo } from "@/lib/demo";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatDate, formatPrice, formatSize } from "@/lib/i18n/format";
+import type { Dictionary, Locale } from "@/lib/i18n/dictionaries";
 import { isDemoMode } from "@/lib/payments";
 import type { ScanReport } from "@/lib/scan";
 import { buyResource } from "@/app/actions";
-import { ScanBadge } from "@/components/ScanBadge";
-import { StatusBadge } from "@/components/StatusBadge";
+import { ResourceCard } from "@/components/ResourceCard";
+import { Markdown } from "@/components/Markdown";
 import { ScanReportView } from "@/components/ScanReportView";
+import { StatusBadge } from "@/components/StatusBadge";
+import { ProductGallery } from "@/components/product/ProductGallery";
+import { ShareButton } from "@/components/product/ShareButton";
 
 type Params = Promise<{ slug: string }>;
 type SearchParams = Promise<{ bought?: string }>;
 
-export default async function ResourcePage({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
+// Tout ce que la page affiche, que la ressource soit réelle ou un exemple de démo
+type Product = {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string;
+  description: string;
+  category: string;
+  priceCents: number;
+  images: string[];
+  fileName: string;
+  fileSize: number;
+  createdAt: Date;
+  sales: number;
+  scanVerdict: string;
+  scriptCount: number;
+  status: string;
+  reviewNote: string | null;
+  seller: { username: string; resources: number; sales: number };
+};
+
+// Ce que le visiteur peut faire sur cette ressource
+type Access = { demo: boolean; canDownload: boolean; canBuy: boolean; loggedIn: boolean; bought: boolean };
+
+export async function generateMetadata({ params }: { params: Params }) {
   const { slug } = await params;
-  const { bought } = await searchParams;
-  const [user, { locale, t }] = await Promise.all([getCurrentUser(), getDictionary()]);
+  const demo = findDemo(slug);
+  if (demo) return { title: demo.title, description: demo.summary };
+  const resource = await db.resource.findUnique({ where: { slug }, select: { title: true, summary: true, status: true } });
+  return resource?.status === "APPROVED" ? { title: resource.title, description: resource.summary } : {};
+}
 
-  const resource = await db.resource.findUnique({
-    where: { slug },
-    include: { seller: { select: { id: true, username: true } }, _count: { select: { purchases: { where: { status: "PAID" } } } } },
-  });
-  if (!resource) notFound();
+export default async function ResourcePage({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
+  const [{ slug }, { bought }, user, { locale, t }] = await Promise.all([params, searchParams, getCurrentUser(), getDictionary()]);
 
-  const isOwner = user?.id === resource.sellerId;
-  const isAdmin = user?.role === "ADMIN";
-  // Une ressource pas encore validée n'est visible que par son vendeur et les modérateurs
-  if (resource.status !== "APPROVED" && !isOwner && !isAdmin) notFound();
+  let product: Product;
+  let access: Access;
+  let report: ScanReport | null = null; // détail du scan : seulement pour le vendeur et les modérateurs
+  let similar: React.ComponentProps<typeof ResourceCard>["resource"][];
 
-  const purchase = user
-    ? await db.purchase.findUnique({ where: { userId_resourceId: { userId: user.id, resourceId: resource.id } } })
-    : null;
-  const canDownload = isOwner || isAdmin || purchase?.status === "PAID";
-  const report = JSON.parse(resource.scanReport) as ScanReport;
+  const demo = findDemo(slug);
+  if (demo) {
+    // Exemple de démo (aperçu seulement)
+    product = { ...demo, scanVerdict: "clean", status: "APPROVED", reviewNote: null };
+    access = { demo: true, canDownload: false, canBuy: false, loggedIn: Boolean(user), bought: false };
+    similar = DEMO_RESOURCES.filter((r) => r.id !== demo.id && r.category === demo.category).concat(DEMO_RESOURCES.filter((r) => r.category !== demo.category)).slice(0, 4);
+  } else {
+    const resource = await db.resource.findUnique({
+      where: { slug },
+      include: { seller: { select: { id: true, username: true } }, _count: { select: { purchases: { where: { status: "PAID" } } } } },
+    });
+    if (!resource) notFound();
+
+    const isOwner = user?.id === resource.sellerId;
+    const isAdmin = user?.role === "ADMIN";
+    // Une ressource pas encore validée n'est visible que par son vendeur et les modérateurs
+    if (resource.status !== "APPROVED" && !isOwner && !isAdmin) notFound();
+
+    const [purchase, sellerResources, sellerSales, similarResources] = await Promise.all([
+      user ? db.purchase.findUnique({ where: { userId_resourceId: { userId: user.id, resourceId: resource.id } } }) : null,
+      db.resource.count({ where: { sellerId: resource.sellerId, status: "APPROVED" } }),
+      db.purchase.count({ where: { status: "PAID", resource: { sellerId: resource.sellerId } } }),
+      db.resource.findMany({
+        where: { status: "APPROVED", category: resource.category, id: { not: resource.id } },
+        orderBy: { createdAt: "desc" },
+        take: 4,
+        include: { seller: { select: { username: true } } },
+      }),
+    ]);
+
+    const scan = JSON.parse(resource.scanReport) as ScanReport;
+    if (isOwner || isAdmin) report = scan;
+    product = {
+      ...resource,
+      sales: resource._count.purchases,
+      scriptCount: scan.scriptCount,
+      seller: { username: resource.seller.username, resources: sellerResources, sales: sellerSales },
+    };
+    access = {
+      demo: false,
+      canDownload: isOwner || isAdmin || purchase?.status === "PAID",
+      canBuy: resource.status === "APPROVED" && !isOwner,
+      loggedIn: Boolean(user),
+      bought: Boolean(bought),
+    };
+    similar = similarResources;
+  }
+
+  const label = categoryLabel(product.category);
 
   return (
-    <>
-      <p>
-        <Link href={`/resources?category=${resource.category}`}>{categoryLabel(resource.category)}</Link>
-      </p>
-      <h1>{resource.title}</h1>
-      <p>{resource.summary}</p>
-      <p>
-        {t.resource.by} <strong>{resource.seller.username}</strong> <ScanBadge verdict={resource.scanVerdict} />{" "}
-        {resource.status !== "APPROVED" && <StatusBadge status={resource.status} />}
-      </p>
+    <div className="full-bleed container-q pb-28 pt-6 lg:pb-0">
+      {/* Le vrai titre de la page (lu par Google et les lecteurs d'écran) ; le titre visible est dans l'encart */}
+      <h1 className="sr-only">{product.title}</h1>
 
-      <h2>{formatPrice(resource.priceCents, locale)}</h2>
+      {/* Fil d'Ariane */}
+      <nav className="flex items-center gap-1.5 text-sm text-muted" aria-label="Breadcrumb">
+        <Link href="/resources" className="hover:text-text">
+          {t.catalog.title}
+        </Link>
+        <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+        <Link href={`/resources?category=${product.category}`} className="hover:text-text">
+          {label}
+        </Link>
+      </nav>
 
-      {bought && <p>{t.resource.bought}</p>}
-
-      {canDownload ? (
-        <p>
-          <a href={`/api/download/${resource.id}`}>{t.resource.download}</a>
+      {access.demo && (
+        <p className="mt-3 flex items-center gap-2 rounded-lg bg-accent-soft px-3 py-2 text-sm">
+          <Sparkles className="h-4 w-4 shrink-0" aria-hidden="true" /> {t.resource.demoNotice}
         </p>
-      ) : resource.status === "APPROVED" ? (
-        <form action={buyResource}>
-          <input type="hidden" name="resourceId" value={resource.id} />
-          <button>{resource.priceCents === 0 ? t.resource.getFree : t.resource.buy}</button>
-        </form>
-      ) : null}
+      )}
+      {/* Pour le vendeur et les modérateurs : statut et note de modération */}
+      {product.status !== "APPROVED" && (
+        <p className="mt-3 rounded-lg bg-warn-bg px-3 py-2 text-sm text-warn">
+          <StatusBadge status={product.status} />
+        </p>
+      )}
+      {product.reviewNote && report && (
+        <div className="mt-3 rounded-lg border border-border bg-card px-3 py-2 text-sm">
+          <strong>{t.resource.reviewNote} : </strong>
+          {product.reviewNote}
+        </div>
+      )}
 
-      {!user && resource.priceCents > 0 && <p>{t.resource.loginToBuy}</p>}
-      {isDemoMode && resource.priceCents > 0 && !canDownload && <p>{t.resource.demo}</p>}
+      <div className="mt-4 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0 space-y-6">
+          <div className="animate-fade-up">
+            <ProductGallery images={product.images} category={product.category} title={product.title} />
+          </div>
 
-      <ul>
-        <li>{t.resource.file}: {resource.fileName}</li>
-        <li>{t.resource.size}: {formatSize(resource.fileSize, locale)}</li>
-        <li>{t.resource.downloads}: {resource._count.purchases}</li>
-        <li>{t.resource.published}: {formatDate(resource.createdAt, locale)}</li>
+          {/* Titre, prix… sur mobile et tablette (sur ordinateur : dans l'encart à droite) */}
+          <div className="lg:hidden">
+            <BuyBox product={product} access={access} locale={locale} t={t} showAction={false} />
+          </div>
+
+          <Card title={t.resource.description}>
+            <Markdown>{product.description}</Markdown>
+          </Card>
+
+          {/* Sécurité : un résumé pour tous, le détail seulement pour le vendeur et les modérateurs */}
+          <section className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+            <div className="flex gap-4">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent">
+                <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <div>
+                <h2 className="font-semibold">{product.scanVerdict === "clean" ? t.resource.securityClean : t.resource.securityReviewed}</h2>
+                <p className="mt-1 text-sm text-muted">{t.resource.securityText(product.scriptCount)}</p>
+              </div>
+            </div>
+            {report && (
+              <details className="mt-4 border-t border-border pt-4 text-sm">
+                <summary className="cursor-pointer font-medium">{t.resource.securityDetails}</summary>
+                <div className="mt-2">
+                  <ScanReportView report={report} />
+                </div>
+              </details>
+            )}
+          </section>
+
+          <div className="grid gap-6 sm:grid-cols-2">
+            <Card title={t.resource.details}>
+              <dl className="space-y-2 text-sm">
+                <Detail label={t.resource.format} value={product.fileName.split(".").pop()?.toUpperCase() ?? "—"} />
+                <Detail label={t.resource.size} value={formatSize(product.fileSize, locale)} />
+                <Detail label={t.resource.published} value={formatDate(product.createdAt, locale)} />
+                <Detail label={t.resource.downloads} value={String(product.sales)} />
+              </dl>
+            </Card>
+            <Card title={t.resource.seller}>
+              <div className="flex items-center gap-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-text text-base font-semibold uppercase text-bg">
+                  {product.seller.username.slice(0, 1)}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{product.seller.username}</p>
+                  <p className="text-sm text-muted">{t.resource.sellerStats(product.seller.resources, product.seller.sales)}</p>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+
+        {/* Encart d'achat (ordinateur) : reste visible en défilant */}
+        <aside className="hidden lg:block">
+          <div className="sticky top-24">
+            <BuyBox product={product} access={access} locale={locale} t={t} />
+          </div>
+        </aside>
+      </div>
+
+      {similar.length > 0 && (
+        <section className="reveal mt-14">
+          <h2 className="mb-4 text-xl font-semibold tracking-tight sm:text-2xl">{t.resource.similar}</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {similar.map((r) => (
+              <ResourceCard key={r.slug} resource={r} locale={locale} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Barre d'achat collée en bas de l'écran (mobile et tablette) */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 px-4 py-3 backdrop-blur lg:hidden">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
+          <span className="text-xl font-bold">{formatPrice(product.priceCents, locale)}</span>
+          <div className="w-48">
+            <BuyAction product={product} access={access} t={t} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Encart : catégorie, titre, vendeur, prix, bouton d'achat, partage, garanties
+function BuyBox({ product, access, locale, t, showAction = true }: { product: Product; access: Access; locale: Locale; t: Dictionary; showAction?: boolean }) {
+  return (
+    <div className="animate-fade-up rounded-2xl border border-border bg-card p-5 sm:p-6" style={{ animationDelay: "80ms" }}>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">{categoryLabel(product.category)}</p>
+      <p className="mt-1 text-2xl font-semibold tracking-tight" aria-hidden="true">
+        {product.title}
+      </p>
+      <p className="mt-1.5 text-sm text-muted">
+        {t.resource.by(product.seller.username)} · {t.card.sales(product.sales)}
+      </p>
+      <p className="mt-3 text-[15px] leading-relaxed text-text/80">{product.summary}</p>
+
+      <p className="mt-5 text-3xl font-bold tracking-tight">{formatPrice(product.priceCents, locale)}</p>
+
+      {access.bought && <p className="mt-3 rounded-lg bg-ok-bg px-3 py-2 text-sm text-ok">{t.resource.bought}</p>}
+
+      {showAction && (
+        <div className="mt-4">
+          <BuyAction product={product} access={access} t={t} />
+        </div>
+      )}
+      {!access.loggedIn && access.canBuy && product.priceCents > 0 && <p className="mt-2 text-xs text-muted">{t.resource.loginToBuy}</p>}
+      {isDemoMode && access.canBuy && !access.canDownload && product.priceCents > 0 && <p className="mt-2 text-xs text-warn">{t.resource.demo}</p>}
+
+      <ShareButton className="mt-2 w-full" />
+
+      <ul className="mt-5 space-y-2 border-t border-border pt-4 text-sm text-muted">
+        <li className="flex items-center gap-2.5">
+          <Zap className="h-4 w-4 text-text" aria-hidden="true" /> {t.resource.guarantees.instant}
+        </li>
+        <li className="flex items-center gap-2.5">
+          <Lock className="h-4 w-4 text-text" aria-hidden="true" /> {t.resource.guarantees.secure}
+        </li>
+        <li className="flex items-center gap-2.5">
+          <ShieldCheck className="h-4 w-4 text-text" aria-hidden="true" /> {t.resource.guarantees.verified}
+        </li>
       </ul>
+    </div>
+  );
+}
 
-      {resource.reviewNote && (isOwner || isAdmin) && (
-        <>
-          <h2>{t.resource.reviewNote}</h2>
-          <p>{resource.reviewNote}</p>
-        </>
-      )}
+// Le bouton principal : Télécharger (déjà acheté), Acheter / Obtenir, ou rien (démo, ressource à soi en attente…)
+function BuyAction({ product, access, t }: { product: Product; access: Access; t: Dictionary }) {
+  const base = "flex h-12 w-full items-center justify-center gap-2 rounded-xl text-[15px] font-semibold transition";
+  if (access.demo) {
+    return <span className={`${base} cursor-not-allowed bg-surface text-muted`}>{t.resource.demoBuy}</span>;
+  }
+  if (access.canDownload) {
+    return (
+      <a href={`/api/download/${product.id}`} className={`${base} bg-text text-bg hover:bg-text/85`}>
+        <Download className="h-4 w-4" aria-hidden="true" /> {t.resource.download}
+      </a>
+    );
+  }
+  if (!access.canBuy) return null;
+  return (
+    <form action={buyResource}>
+      <input type="hidden" name="resourceId" value={product.id} />
+      <button className={`${base} bg-accent text-text hover:-translate-y-px hover:bg-accent-hover`}>
+        {product.priceCents === 0 ? t.resource.getFree : t.resource.buy}
+      </button>
+    </form>
+  );
+}
 
-      <h2>{t.resource.description}</h2>
-      <p style={{ whiteSpace: "pre-line" }}>{resource.description}</p>
+function Card({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+      <h2 className="mb-3 font-semibold">{title}</h2>
+      {children}
+    </section>
+  );
+}
 
-      <h2>{t.resource.security}</h2>
-      {isOwner || isAdmin ? (
-        <ScanReportView report={report} />
-      ) : (
-        <p>
-          {t.resource.securityPublic(report.scriptCount)}
-          {resource.scanVerdict === "clean" ? t.resource.securityClean : t.resource.securityReviewed}
-        </p>
-      )}
-    </>
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-4">
+      <dt className="text-muted">{label}</dt>
+      <dd className="truncate font-medium">{value}</dd>
+    </div>
   );
 }
