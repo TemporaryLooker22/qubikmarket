@@ -8,11 +8,12 @@
   --color-accent: #ffcb00; /* jaune exact du logo */
   --color-accent-hover: #f0bf00;
   --color-accent-soft: #fff5cc; /* fond jaune très léger */
-  --color-bg: #ffffff;
-  --color-surface: #f6f6f5;
-  --color-surface-2: #ededec;
-  --color-border: #e4e4e2;
-  --color-border-strong: #c9c9c6;
+  --color-bg: #f4f3f2; /* fond des pages (blanc cassé) */
+  --color-card: #ffffff; /* cartes, barre de navigation, menus : en blanc pour ressortir du fond */
+  --color-surface: #ebeae8; /* bandeaux et vignettes, un ton plus foncé que le fond */
+  --color-surface-2: #e2e1de;
+  --color-border: #e0dfdc;
+  --color-border-strong: #c7c6c2;
   --color-text: #0b0b0b;
   --color-muted: #6b6b68;
   --color-ok: #1f7a3d;
@@ -84,7 +85,7 @@ body {
     @apply underline underline-offset-2;
   }
   main :is(input, select, textarea):not([class]):not([type="hidden"]) {
-    @apply mt-1 w-full max-w-md rounded-lg border border-border px-3 py-2;
+    @apply mt-1 w-full max-w-md rounded-lg border border-border bg-card px-3 py-2;
   }
   main button:not([class]) {
     @apply my-2 rounded-lg bg-text px-4 py-2 text-sm font-medium text-bg disabled:opacity-50;

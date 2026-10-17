@@ -21,7 +21,7 @@ export function ResourceCard({ resource, size = "normal" }: Props) {
   return (
     <Link
       href={`/resources/${resource.slug}`}
-      className="group flex h-full flex-col rounded-xl border border-border bg-bg p-2 transition hover:border-border-strong"
+      className="group flex h-full flex-col rounded-xl border border-border bg-card p-2 transition hover:border-border-strong"
     >
       {/* Vignette : icône de la catégorie, en attendant les images des ressources */}
       <div

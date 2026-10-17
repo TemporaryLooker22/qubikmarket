@@ -59,47 +59,39 @@ export default async function HomePage() {
   return (
     <div className="full-bleed">
       {/* 1. Recherche */}
-      <section className="container-q py-20 text-center sm:py-28">
+      <section className="container-q pb-10 pt-14 text-center sm:pb-12 sm:pt-20">
         <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">Trouve ta prochaine ressource <span className="highlight">Roblox</span></h1>
-        <form action="/resources" className="mx-auto mt-8 flex max-w-xl items-center gap-2 rounded-xl border border-border-strong bg-bg p-1.5 pl-4 transition focus-within:border-text focus-within:ring-4 focus-within:ring-accent/40">
-          <Search className="h-5 w-5 shrink-0 text-muted" aria-hidden="true" />
-          <label htmlFor="home-search" className="sr-only">Rechercher une ressource</label>
-          <input
-            id="home-search"
-            name="q"
-            placeholder="Système de pets, map horreur, UI de boutique…"
-            className="min-w-0 flex-1 bg-transparent py-2 outline-none placeholder:text-muted"
-          />
-          <button className="btn-accent">Rechercher</button>
+        {/* Recherche minimaliste : un seul champ, on valide avec Entrée */}
+        <form action="/resources" role="search" className="mx-auto mt-8 max-w-lg">
+          <label className="flex items-center gap-3 rounded-full border border-border bg-card px-5 transition focus-within:border-text">
+            <Search className="h-[18px] w-[18px] shrink-0 text-muted" aria-hidden="true" />
+            <span className="sr-only">Rechercher une ressource</span>
+            <input
+              name="q"
+              type="search"
+              placeholder="Rechercher un système, une map, une UI…"
+              className="min-w-0 flex-1 bg-transparent py-3.5 text-[15px] outline-none placeholder:text-muted"
+            />
+          </label>
         </form>
-        <div className="mx-auto mt-5 flex max-w-2xl flex-wrap justify-center gap-2">
-          {CATEGORIES.map((c) => (
-            <Link
-              key={c.id}
-              href={`/resources?category=${c.id}`}
-              className="rounded-full border border-border px-3 py-1 text-sm text-muted transition hover:border-border-strong hover:text-text"
-            >
-              {c.label}
-            </Link>
-          ))}
-        </div>
-        <p className="mt-6 inline-flex items-center gap-1.5 text-sm text-muted">
+        <p className="mt-4 inline-flex items-center gap-1.5 text-sm text-muted">
           <ShieldCheck className="h-4 w-4" aria-hidden="true" /> Chaque fichier est scanné contre les backdoors
         </p>
       </section>
 
-      {/* 2. Catégories */}
+      {/* 2. Catégories : juste sous la recherche, visibles sans défiler */}
       <section className="container-q">
-        <SectionTitle title="Catégories" />
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
           {CATEGORIES.map((c) => (
             <Link
               key={c.id}
               href={`/resources?category=${c.id}`}
-              className="flex flex-col gap-3 rounded-xl border border-border p-4 transition hover:border-accent hover:bg-accent-soft"
+              className="group flex flex-col items-center gap-3 rounded-2xl border border-border bg-card px-2 py-5 text-center transition hover:-translate-y-0.5 hover:border-accent hover:bg-accent-soft"
             >
-              <CategoryIcon category={c.id} className="h-6 w-6" />
-              <span className="font-medium">{c.label}</span>
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-bg transition group-hover:bg-accent">
+                <CategoryIcon category={c.id} className="h-[22px] w-[22px]" />
+              </span>
+              <span className="text-sm font-semibold">{c.label}</span>
             </Link>
           ))}
         </div>

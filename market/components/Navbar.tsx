@@ -32,7 +32,7 @@ export function Navbar({ user, pendingCount }: Props) {
 
   return (
     <header className="sticky top-0 z-20 px-3 pt-3">
-      <nav className="mx-auto flex h-16 max-w-6xl items-center gap-2 rounded-2xl border border-border bg-bg/95 px-3 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.04)] backdrop-blur sm:px-4">
+      <nav className="mx-auto flex h-16 max-w-6xl items-center gap-2 rounded-2xl border border-border bg-card/95 px-3 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.04)] backdrop-blur sm:px-4">
         <Link href="/" className="mr-2 flex items-center gap-2 rounded-lg p-1 font-bold sm:mr-4" aria-label="Qubik, accueil">
           <Logo className="h-7 w-7" />
           <span className="hidden text-base sm:inline">Qubik</span>
@@ -53,7 +53,7 @@ export function Navbar({ user, pendingCount }: Props) {
           <Link
             href="/resources"
             aria-label="Rechercher"
-            className="flex h-10 w-10 items-center justify-center rounded-lg text-text transition hover:bg-surface"
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-text transition hover:bg-bg"
           >
             <Search className="h-[18px] w-[18px]" strokeWidth={2} />
           </Link>
@@ -67,7 +67,7 @@ export function Navbar({ user, pendingCount }: Props) {
             </>
           ) : (
             <>
-              <Link href="/login" className="hidden h-10 items-center rounded-lg px-3 text-sm font-medium text-muted transition hover:bg-surface hover:text-text sm:flex">
+              <Link href="/login" className="hidden h-10 items-center rounded-lg px-3 text-sm font-medium text-muted transition hover:bg-bg hover:text-text sm:flex">
                 Connexion
               </Link>
               <Link href="/register" className="inline-flex h-10 items-center gap-2 rounded-lg bg-accent px-3 text-sm font-semibold text-text transition hover:bg-accent-hover sm:px-4">
@@ -84,7 +84,7 @@ export function Navbar({ user, pendingCount }: Props) {
             onClick={() => setMobileOpen((o) => !o)}
             aria-label={mobileOpen ? "Fermer le menu" : "Ouvrir le menu"}
             aria-expanded={mobileOpen}
-            className="flex h-10 w-10 items-center justify-center rounded-lg transition hover:bg-surface md:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-lg transition hover:bg-bg md:hidden"
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
@@ -93,12 +93,12 @@ export function Navbar({ user, pendingCount }: Props) {
 
       {/* Menu mobile */}
       {mobileOpen && (
-        <div className="mx-auto mt-2 max-w-6xl rounded-2xl border border-border bg-bg p-2 shadow-[0_8px_24px_rgba(0,0,0,0.08)] md:hidden">
+        <div className="mx-auto mt-2 max-w-6xl rounded-2xl border border-border bg-card p-2 shadow-[0_8px_24px_rgba(0,0,0,0.08)] md:hidden">
           {[...links, ...(user ? [{ href: "/sell", label: "Vendre" }] : [{ href: "/login", label: "Connexion" }])].map((l) => (
             <Link
               key={l.href}
               href={l.href}
-              className={`flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-surface ${isActive(l.href) ? "text-text" : "text-muted"}`}
+              className={`flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-bg ${isActive(l.href) ? "text-text" : "text-muted"}`}
             >
               {l.label}
               {"badge" in l && l.badge ? <Badge count={l.badge} /> : null}
@@ -107,7 +107,7 @@ export function Navbar({ user, pendingCount }: Props) {
           <p className="px-3 pb-1 pt-3 text-xs font-medium text-muted">Catégories</p>
           <div className="grid grid-cols-2">
             {CATEGORIES.map((c) => (
-              <Link key={c.id} href={`/resources?category=${c.id}`} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-surface">
+              <Link key={c.id} href={`/resources?category=${c.id}`} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-bg">
                 <CategoryIcon category={c.id} className="h-4 w-4 text-muted" /> {c.label}
               </Link>
             ))}
@@ -123,7 +123,7 @@ function NavLink({ href, label, active, badge }: { href: string; label: string; 
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`relative flex h-10 items-center gap-2 rounded-lg px-3 text-[15px] font-medium transition hover:bg-surface ${active ? "text-text" : "text-muted hover:text-text"}`}
+      className={`relative flex h-10 items-center gap-2 rounded-lg px-3 text-[15px] font-medium transition hover:bg-bg ${active ? "text-text" : "text-muted hover:text-text"}`}
     >
       {label}
       {badge ? <Badge count={badge} /> : null}
@@ -173,17 +173,17 @@ function CategoriesMenu() {
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className={`flex h-10 items-center gap-1.5 rounded-lg px-3 text-[15px] font-medium transition hover:bg-surface hover:text-text ${open ? "bg-surface text-text" : "text-muted"}`}
+        className={`flex h-10 items-center gap-1.5 rounded-lg px-3 text-[15px] font-medium transition hover:bg-bg hover:text-text ${open ? "bg-bg text-text" : "text-muted"}`}
       >
         Catégories <ChevronDown className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`} aria-hidden="true" />
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-2 w-56 rounded-xl border border-border bg-bg p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
+        <div className="absolute left-0 top-full mt-2 w-56 rounded-xl border border-border bg-card p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
           {CATEGORIES.map((c) => (
             <Link
               key={c.id}
               href={`/resources?category=${c.id}`}
-              className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[15px] transition hover:bg-surface"
+              className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[15px] transition hover:bg-bg"
             >
               <CategoryIcon category={c.id} className="h-4 w-4 text-muted" /> {c.label}
             </Link>
@@ -208,16 +208,16 @@ function AccountMenu({ username }: { username: string }) {
         {username.slice(0, 1)}
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-52 rounded-xl border border-border bg-bg p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
+        <div className="absolute right-0 top-full mt-2 w-52 rounded-xl border border-border bg-card p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
           <p className="truncate px-3 py-2 text-xs text-muted">Connecté en tant que {username}</p>
-          <Link href="/dashboard" className="block rounded-lg px-3 py-2 text-[15px] transition hover:bg-surface">
+          <Link href="/dashboard" className="block rounded-lg px-3 py-2 text-[15px] transition hover:bg-bg">
             Mon espace
           </Link>
-          <Link href="/sell" className="block rounded-lg px-3 py-2 text-[15px] transition hover:bg-surface">
+          <Link href="/sell" className="block rounded-lg px-3 py-2 text-[15px] transition hover:bg-bg">
             Vendre une ressource
           </Link>
           <form action={logout}>
-            <button className="w-full rounded-lg px-3 py-2 text-left text-[15px] transition hover:bg-surface">Déconnexion</button>
+            <button className="w-full rounded-lg px-3 py-2 text-left text-[15px] transition hover:bg-bg">Déconnexion</button>
           </form>
         </div>
       )}
