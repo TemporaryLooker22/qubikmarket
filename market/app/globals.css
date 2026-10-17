@@ -139,6 +139,14 @@ body {
     transform: translateX(-50%);
   }
 }
+@keyframes marquee-y {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
 @keyframes marker {
   from {
     background-size: 0% 34%;
@@ -160,6 +168,10 @@ body {
   /* Rangée qui défile en boucle (fond de l'accueil) : le contenu est doublé, on décale de 50 % */
   .marquee {
     animation: marquee 60s linear infinite;
+  }
+  /* Colonne qui défile verticalement en boucle (inscription, connexion) */
+  .marquee-y {
+    animation: marquee-y 50s linear infinite;
   }
   /* Trait jaune sous la page active */
   .animate-grow-x {

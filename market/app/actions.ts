@@ -32,18 +32,30 @@ export async function setLocale(formData: FormData) {
 
 // ---------- Comptes ----------
 
+// Page où revenir après l'inscription ou la connexion : seulement une adresse du site (jamais un autre site)
+function safeNext(value: FormDataEntryValue | null) {
+  const next = String(value ?? "");
+  const ok = next.startsWith("/") && !next.startsWith("//") && !/^\/(login|register)\b/.test(next);
+  return ok ? next : "/";
+}
+
 // Les messages d'erreur sont dans la langue du visiteur
 const registerSchema = (e: Dictionary["errors"]) =>
-  z.object({
-    username: z
-      .string()
-      .trim()
-      .min(3, e.usernameMin)
-      .max(20, e.usernameMax)
-      .regex(/^[a-zA-Z0-9_]+$/, e.usernameChars),
-    email: z.string().trim().toLowerCase().email(e.email),
-    password: z.string().min(8, e.passwordMin),
-  });
+  z
+    .object({
+      username: z
+        .string()
+        .trim()
+        .min(3, e.usernameMin)
+        .max(20, e.usernameMax)
+        .regex(/^[a-zA-Z0-9_]+$/, e.usernameChars),
+      email: z.string().trim().toLowerCase().email(e.email),
+      password: z.string().min(8, e.passwordMin),
+      confirm: z.string(),
+      age: z.literal("on", { errorMap: () => ({ message: e.ageRequired }) }),
+      terms: z.literal("on", { errorMap: () => ({ message: e.termsRequired }) }),
+    })
+    .refine((d) => d.password === d.confirm, { message: e.passwordMismatch, path: ["confirm"] });
 
 export async function register(_: FormState, formData: FormData): Promise<FormState> {
   const { t } = await getDictionary();
@@ -51,7 +63,7 @@ export async function register(_: FormState, formData: FormData): Promise<FormSt
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const { username, email, password } = parsed.data;
 
-  const existing = await db.user.findFirst({ where: { OR: [{ email }, { username }] } });
+  const existing = await db.user.findFirst({ where: { OR: [{ email }, { username: { equals: username, mode: "insensitive" } }] } });
   if (existing) return { error: t.errors.taken };
 
   // Le tout premier compte créé devient administrateur (pratique pour démarrer)
@@ -67,7 +79,16 @@ export async function register(_: FormState, formData: FormData): Promise<FormSt
   });
 
   await createSession(user.id);
-  redirect("/dashboard");
+  // Retour à la page d'origine (ex. la ressource qu'on voulait acheter), sinon l'accueil
+  redirect(safeNext(formData.get("next")));
+}
+
+// Vérification du pseudo pendant la frappe (inscription) : true = libre
+export async function checkUsername(username: string): Promise<boolean> {
+  const name = username.trim();
+  if (!/^[a-zA-Z0-9_]{3,20}$/.test(name)) return false;
+  const existing = await db.user.findFirst({ where: { username: { equals: name, mode: "insensitive" } }, select: { id: true } });
+  return !existing;
 }
 
 export async function login(_: FormState, formData: FormData): Promise<FormState> {
@@ -81,9 +102,8 @@ export async function login(_: FormState, formData: FormData): Promise<FormState
   }
 
   await createSession(user.id);
-  // Retour à la page d'origine (ex. la ressource qu'on voulait acheter)
-  const next = String(formData.get("next") ?? "");
-  redirect(next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard");
+  // Retour à la page d'origine (ex. la ressource qu'on voulait acheter), sinon l'accueil
+  redirect(safeNext(formData.get("next")));
 }
 
 export async function logout() {

@@ -50,15 +50,16 @@ export async function getCurrentUser() {
   }
 }
 
-// À utiliser dans les pages réservées aux membres connectés
-export async function requireUser() {
+// À utiliser dans les pages réservées aux membres connectés.
+// `next` : la page où revenir après la connexion (ex. "/sell")
+export async function requireUser(next?: string) {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(next ? `/login?next=${encodeURIComponent(next)}` : "/login");
   return user;
 }
 
 export async function requireAdmin() {
-  const user = await requireUser();
+  const user = await requireUser("/admin");
   if (user.role !== "ADMIN") redirect("/");
   return user;
 }

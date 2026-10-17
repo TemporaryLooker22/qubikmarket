@@ -8,7 +8,7 @@ export async function generateMetadata() {
 }
 
 export default async function SellPage() {
-  await requireUser();
+  await requireUser("/sell");
   const { t } = await getDictionary();
   return (
     <>

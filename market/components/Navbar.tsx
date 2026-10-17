@@ -32,6 +32,8 @@ export function Navbar({ user, pendingCount }: Props) {
     ...(user?.role === "ADMIN" ? [{ href: "/admin", label: t.nav.moderation, badge: pendingCount }] : []),
   ];
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  // Après la connexion ou l'inscription, on revient sur la page actuelle
+  const next = pathname === "/" || /^\/(login|register)/.test(pathname) ? "" : `?next=${encodeURIComponent(pathname)}`;
 
   return (
     <header className="sticky top-0 z-20 px-3 pt-3">
@@ -67,10 +69,10 @@ export function Navbar({ user, pendingCount }: Props) {
             </>
           ) : (
             <>
-              <Link href="/login" className="hidden h-10 items-center rounded-lg px-3 text-sm font-medium text-muted transition hover:bg-bg hover:text-text sm:flex">
+              <Link href={`/login${next}`} className="hidden h-10 items-center rounded-lg px-3 text-sm font-medium text-muted transition hover:bg-bg hover:text-text sm:flex">
                 {t.nav.login}
               </Link>
-              <Link href="/register" className="inline-flex h-10 items-center gap-2 rounded-lg bg-accent px-3 text-sm font-semibold text-text transition hover:-translate-y-px hover:bg-accent-hover sm:px-4">
+              <Link href={`/register${next}`} className="inline-flex h-10 items-center gap-2 rounded-lg bg-accent px-3 text-sm font-semibold text-text transition hover:-translate-y-px hover:bg-accent-hover sm:px-4">
                 <UserPlus className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
                 <span className="hidden sm:inline">{t.nav.signup}</span>
                 <span className="sm:hidden">{t.nav.signupShort}</span>

@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getDictionary } from "@/lib/i18n/server";
 import { LocaleProvider } from "@/lib/i18n/client";
+import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import { DEMO_ENABLED } from "@/lib/demo";
 import "./globals.css";
@@ -37,7 +38,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <footer className="border-t border-border">
             <div className="container-q flex flex-wrap justify-between gap-3 py-6 text-xs text-muted">
               <span>© {new Date().getFullYear()} Qubik · {t.footer.rights}</span>
-              <span>{t.footer.scanned}</span>
+              <span className="flex flex-wrap gap-x-4 gap-y-1">
+                <span>{t.footer.scanned}</span>
+                <Link href="/terms" className="hover:text-text">
+                  {t.footer.terms}
+                </Link>
+                <Link href="/privacy" className="hover:text-text">
+                  {t.footer.privacy}
+                </Link>
+              </span>
             </div>
           </footer>
         </LocaleProvider>

@@ -13,7 +13,7 @@ export async function generateMetadata() {
 }
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ published?: string }> }) {
-  const user = await requireUser();
+  const user = await requireUser("/dashboard");
   const [{ published }, { locale, t }] = await Promise.all([searchParams, getDictionary()]);
 
   const [resources, purchases] = await Promise.all([
