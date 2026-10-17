@@ -13,7 +13,7 @@ export async function GET() {
   const seller = await db.user.findUnique({ where: { id: user.id }, select: { stripeAccountId: true } });
   if (!seller?.stripeAccountId) return NextResponse.redirect(`${appUrl}/dashboard/sales`);
 
-  const { merchant } = await refreshTransfersStatus(user.id, seller.stripeAccountId);
-  const url = await createOnboardingLink(seller.stripeAccountId, appUrl, !merchant);
+  await refreshTransfersStatus(user.id, seller.stripeAccountId);
+  const url = await createOnboardingLink(seller.stripeAccountId, appUrl);
   return NextResponse.redirect(url);
 }

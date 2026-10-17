@@ -15,7 +15,7 @@ import { detectImage, saveImage, saveUpload } from "@/lib/storage";
 import { ALLOWED_EXTENSIONS, CATEGORIES, MAX_FILE_SIZE, MAX_IMAGE_SIZE, MAX_IMAGES, slugify } from "@/lib/catalog";
 import { createCheckoutSession, isDemoMode } from "@/lib/payments";
 import { grantFounderIfEligible } from "@/lib/sellers";
-import { createOnboardingLink, createSellerAccount, needsMerchantProfile, PAYOUT_COUNTRIES } from "@/lib/connect";
+import { createOnboardingLink, createSellerAccount, PAYOUT_COUNTRIES } from "@/lib/connect";
 import { cookies } from "next/headers";
 import { isLocale, type Dictionary } from "@/lib/i18n/dictionaries";
 import { getDictionary, LOCALE_COOKIE } from "@/lib/i18n/server";
@@ -238,7 +238,7 @@ export async function startPayoutSetup(_: FormState, formData: FormData): Promis
   try {
     const seller = await db.user.findUnique({ where: { id: user.id }, select: { stripeAccountId: true } });
     const accountId = seller?.stripeAccountId ?? (await createSellerAccount(user, country));
-    url = await createOnboardingLink(accountId, appUrl, !needsMerchantProfile(country));
+    url = await createOnboardingLink(accountId, appUrl);
   } catch (err) {
     console.error("Configuration des versements :", err);
     return { error: t.dashboard.payouts.setupError };
