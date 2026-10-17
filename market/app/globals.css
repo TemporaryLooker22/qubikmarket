@@ -1,2 +1,75 @@
-/* Page blanche : aucun style pour l'instant, le navigateur affiche le HTML brut.
-   Pour la nouvelle mise en page, remettre ici : @import "tailwindcss"; */
+@import "tailwindcss";
+
+/* Palette de Qubik : clair, noir et blanc. Seuls les badges de scan sont en couleur.
+   Utilisable dans les classes Tailwind (bg-surface, text-muted, border-border…) */
+@theme {
+  --color-bg: #ffffff;
+  --color-surface: #f6f6f5;
+  --color-surface-2: #ededec;
+  --color-border: #e4e4e2;
+  --color-border-strong: #c9c9c6;
+  --color-text: #0b0b0b;
+  --color-muted: #6b6b68;
+  --color-ok: #1f7a3d;
+  --color-ok-bg: #e6f4ea;
+  --color-warn: #8a5a00;
+  --color-warn-bg: #fdf1d8;
+  --color-bad: #b42318;
+  --color-bad-bg: #fdecea;
+  --font-sans: var(--font-geist), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, Menlo, Consolas, monospace;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+@layer components {
+  .container-q {
+    @apply mx-auto w-full max-w-6xl px-4;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-text px-4 py-2 text-sm font-medium text-bg transition hover:bg-text/85;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium transition hover:bg-surface;
+  }
+}
+
+/* PROVISOIRE : styles minimum pour les pages pas encore redessinées (catalogue, vente, compte…).
+   Ils ne touchent que les éléments sans classe, donc pas l'accueil. À retirer page par page. */
+@layer base {
+  main > :not(.full-bleed) {
+    max-width: 72rem;
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+  main > :first-child:not(.full-bleed) {
+    margin-top: 2rem;
+  }
+  main h1:not([class]) {
+    @apply mb-4 text-3xl font-semibold;
+  }
+  main h2:not([class]) {
+    @apply mt-8 mb-3 text-xl font-semibold;
+  }
+  main p:not([class]) {
+    @apply my-3;
+  }
+  main ul:not([class]) {
+    @apply my-3 list-disc pl-6;
+  }
+  main a:not([class]) {
+    @apply underline underline-offset-2;
+  }
+  main :is(input, select, textarea):not([class]):not([type="hidden"]) {
+    @apply mt-1 w-full max-w-md rounded-lg border border-border px-3 py-2;
+  }
+  main button:not([class]) {
+    @apply my-2 rounded-lg bg-text px-4 py-2 text-sm font-medium text-bg disabled:opacity-50;
+  }
+  main pre:not([class]) {
+    @apply overflow-x-auto rounded-lg bg-surface p-3 text-xs;
+  }
+}

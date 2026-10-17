@@ -55,11 +55,11 @@ export default async function CatalogPage({ searchParams }: { searchParams: Sear
           Aucune ressource ne correspond. <Link href="/resources">Réinitialiser les filtres</Link>
         </p>
       ) : (
-        <ul>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {resources.map((r) => (
             <ResourceCard key={r.id} resource={r} />
           ))}
-        </ul>
+        </div>
       )}
     </>
   );
