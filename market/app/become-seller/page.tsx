@@ -4,10 +4,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { DEMO_BEST_SELLERS, DEMO_ENABLED } from "@/lib/demo";
 import { getDictionary } from "@/lib/i18n/server";
-import { PLATFORM_FEE_PERCENT } from "@/lib/payments";
 import { FOUNDER_FEE_PERCENT, FOUNDER_MONTHS, FOUNDER_SPOTS, founderSpotsLeft } from "@/lib/sellers";
 import { HeroCards, type HeroCard } from "@/components/seller/HeroCards";
-import { EarningsCalculator } from "@/components/seller/EarningsCalculator";
 
 export async function generateMetadata() {
   const { t } = await getDictionary();
@@ -40,6 +38,16 @@ export default async function BecomeSellerPage() {
 
   return (
     <div className="full-bleed">
+      {/* Programme vendeurs fondateurs : bandeau discret en haut de page */}
+      {spotsLeft > 0 && (
+        <div className="container-q pt-6">
+          <p className="animate-fade-up flex items-center justify-center gap-2 text-center text-xs text-muted">
+            <Crown className="h-3.5 w-3.5 shrink-0 text-accent-hover" aria-hidden="true" />
+            {t.seller.founderBanner(FOUNDER_SPOTS, FOUNDER_FEE_PERCENT, FOUNDER_MONTHS)}
+          </p>
+        </div>
+      )}
+
       {/* Hero */}
       <section className="container-q grid items-center gap-10 pb-12 pt-12 lg:grid-cols-[1.1fr_1fr] lg:pt-16">
         <div className="animate-fade-up">
@@ -54,9 +62,6 @@ export default async function BecomeSellerPage() {
             <Link href={ctaHref} className="group inline-flex h-12 items-center gap-2 rounded-xl bg-accent px-6 text-[15px] font-semibold transition hover:-translate-y-px hover:bg-accent-hover">
               {t.seller.cta} <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden="true" />
             </Link>
-            <a href="#calculator" className="inline-flex h-12 items-center rounded-xl border border-border bg-card px-6 text-[15px] font-semibold transition hover:border-border-strong">
-              {t.seller.ctaSecondary}
-            </a>
           </div>
         </div>
         <div className="animate-fade-up" style={{ animationDelay: "120ms" }}>
@@ -64,26 +69,8 @@ export default async function BecomeSellerPage() {
         </div>
       </section>
 
-      {/* Programme vendeurs fondateurs */}
-      <section className="container-q">
-        <div className="reveal flex flex-col gap-4 rounded-3xl bg-text p-6 text-bg sm:flex-row sm:items-center sm:justify-between sm:p-8">
-          <div className="flex gap-4">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-text">
-              <Crown className="h-6 w-6" aria-hidden="true" />
-            </span>
-            <div>
-              <h2 className="text-lg font-semibold">{t.seller.founderTitle}</h2>
-              <p className="mt-1 text-sm text-bg/70">{t.seller.founderText(FOUNDER_SPOTS, FOUNDER_FEE_PERCENT, FOUNDER_MONTHS)}</p>
-            </div>
-          </div>
-          <span className="self-start whitespace-nowrap rounded-full bg-accent px-4 py-1.5 text-sm font-bold text-text sm:self-center">
-            {spotsLeft > 0 ? t.seller.spotsLeft(spotsLeft) : t.seller.spotsFull}
-          </span>
-        </div>
-      </section>
-
       {/* Pourquoi Qubik */}
-      <section className="reveal container-q mt-16">
+      <section className="reveal container-q mt-4">
         <h2 className="mb-6 text-2xl font-semibold tracking-tight sm:text-3xl">{t.seller.whyTitle}</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {t.seller.why.map((item, i) => {
@@ -115,12 +102,6 @@ export default async function BecomeSellerPage() {
             ))}
           </ol>
         </div>
-      </section>
-
-      {/* Calculateur de gains */}
-      <section id="calculator" className="reveal container-q mt-16 scroll-mt-24">
-        <h2 className="mb-6 text-2xl font-semibold tracking-tight sm:text-3xl">{t.seller.calcTitle}</h2>
-        <EarningsCalculator feePercent={PLATFORM_FEE_PERCENT} founderFeePercent={FOUNDER_FEE_PERCENT} />
       </section>
 
       {/* FAQ vendeurs */}

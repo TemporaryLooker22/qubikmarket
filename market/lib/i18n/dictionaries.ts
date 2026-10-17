@@ -274,19 +274,14 @@ export const en = {
     titleB: "Keep 90%.",
     intro: "Your file is scanned automatically: no review queue, no week-long wait. Buyers trust what they download, so they buy more.",
     cta: "Start selling",
-    ctaSecondary: "Calculate my earnings",
-    example: "Example",
     cleanScan: "Clean scan",
+    founderBanner: (spots: number, fee: number, months: number) =>
+      `The first ${spots} sellers become founding sellers: ${fee}% fee for ${months} months.`,
     placeholders: [
       { title: "Your inventory system", category: "systems", priceCents: 499 },
       { title: "Your horror map", category: "maps", priceCents: 1299 },
       { title: "Your shop UI", category: "ui", priceCents: 299 },
     ],
-    founderTitle: "Founding sellers program",
-    founderText: (spots: number, fee: number, months: number) =>
-      `The first ${spots} sellers pay a ${fee}% fee instead of 10% for ${months} months.`,
-    spotsLeft: (n: number) => (n === 1 ? "1 spot left" : `${n} spots left`),
-    spotsFull: "All spots taken",
     whyTitle: "Why sell on Qubik",
     why: [
       { title: "Live in 10 seconds", text: "Clean scan = published right away. Only suspicious files go to a moderator." },
@@ -301,13 +296,6 @@ export const en = {
       { title: "Scanned in 10 seconds", text: "Backdoors, hidden code and viruses are checked automatically." },
       { title: "Live and earning", text: "Your resource is on sale. Follow every sale from your dashboard." },
     ],
-    calcTitle: "Calculate your earnings",
-    calcPrice: "Price",
-    calcSales: "Sales per month",
-    calcYouEarn: "You earn",
-    calcPerMonth: "/ month",
-    calcFounder: (fee: number) => `As a founding seller (${fee}% fee)`,
-    calcNote: "After Qubik's fee. Payment provider fees may apply.",
     faqTitle: "Seller FAQ",
     faq: [
       {
@@ -650,19 +638,14 @@ export const fr: Dictionary = {
     titleB: "Garde 90 %.",
     intro: "Ton fichier est scanné automatiquement : pas de file d'attente, pas de semaine d'attente. Les acheteurs ont confiance dans ce qu'ils téléchargent, donc ils achètent plus.",
     cta: "Commencer à vendre",
-    ctaSecondary: "Calculer mes gains",
-    example: "Exemple",
     cleanScan: "Scan propre",
+    founderBanner: (spots, fee, months) =>
+      `Les ${spots} premiers vendeurs deviennent vendeurs fondateurs : ${fee} % de commission pendant ${months} mois.`,
     placeholders: [
       { title: "Ton système d'inventaire", category: "systems", priceCents: 499 },
       { title: "Ta map d'horreur", category: "maps", priceCents: 1299 },
       { title: "Ton UI de boutique", category: "ui", priceCents: 299 },
     ],
-    founderTitle: "Programme vendeurs fondateurs",
-    founderText: (spots, fee, months) =>
-      `Les ${spots} premiers vendeurs payent ${fee} % de commission au lieu de 10 % pendant ${months} mois.`,
-    spotsLeft: (n) => (n === 1 ? "1 place restante" : `${n} places restantes`),
-    spotsFull: "Toutes les places sont prises",
     whyTitle: "Pourquoi vendre sur Qubik",
     why: [
       { title: "En ligne en 10 secondes", text: "Scan propre = publié tout de suite. Seuls les fichiers suspects passent par un modérateur." },
@@ -677,13 +660,6 @@ export const fr: Dictionary = {
       { title: "Scanné en 10 secondes", text: "Backdoors, code caché et virus sont vérifiés automatiquement." },
       { title: "En ligne et rémunéré", text: "Ta ressource est en vente. Suis chaque vente depuis ton espace." },
     ],
-    calcTitle: "Calcule tes gains",
-    calcPrice: "Prix",
-    calcSales: "Ventes par mois",
-    calcYouEarn: "Tu gagnes",
-    calcPerMonth: "/ mois",
-    calcFounder: (fee) => `En vendeur fondateur (${fee} % de commission)`,
-    calcNote: "Après la commission de Qubik. Des frais du prestataire de paiement peuvent s'appliquer.",
     faqTitle: "FAQ vendeurs",
     faq: [
       {

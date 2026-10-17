@@ -3,7 +3,7 @@ import { db } from "./db";
 
 // Programme « vendeurs fondateurs » : les premiers vendeurs payent une commission réduite pendant quelques mois.
 // Pour l'instant la page l'annonce ; l'application réelle du taux réduit viendra avec le paiement des vendeurs.
-export const FOUNDER_SPOTS = 10;
+export const FOUNDER_SPOTS = 50;
 export const FOUNDER_FEE_PERCENT = 5;
 export const FOUNDER_MONTHS = 6;
 

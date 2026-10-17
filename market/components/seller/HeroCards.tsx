@@ -18,9 +18,6 @@ export function HeroCards({ cards, locale }: { cards: HeroCard[]; locale: Locale
   const t = dictionaries[locale];
   return (
     <div className="relative mx-auto aspect-[5/4] w-full max-w-lg" aria-hidden="true">
-      <span className="absolute -top-2 left-1/2 z-20 -translate-x-1/2 rounded-full bg-card px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted shadow-sm">
-        {t.seller.example}
-      </span>
       {cards.slice(0, 3).map((card, i) => (
         // L'inclinaison est sur le conteneur, le flottement sur la carte (sinon les deux transformations s'annulent)
         <div key={card.title} className={`absolute ${POSITIONS[i]}`}>
