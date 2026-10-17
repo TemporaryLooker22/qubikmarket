@@ -61,7 +61,7 @@ export function Navbar({ user, pendingCount }: Props) {
           {user ? (
             <>
               <AccountMenu username={user.username} />
-              <Link href="/sell" className="hidden h-10 items-center gap-2 rounded-lg bg-text px-4 text-sm font-semibold text-bg transition hover:bg-text/85 sm:inline-flex">
+              <Link href="/sell" className="hidden h-10 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-text transition hover:bg-accent-hover sm:inline-flex">
                 <Zap className="h-4 w-4" strokeWidth={2} aria-hidden="true" /> Vendre
               </Link>
             </>
@@ -70,7 +70,7 @@ export function Navbar({ user, pendingCount }: Props) {
               <Link href="/login" className="hidden h-10 items-center rounded-lg px-3 text-sm font-medium text-muted transition hover:bg-surface hover:text-text sm:flex">
                 Connexion
               </Link>
-              <Link href="/register" className="inline-flex h-10 items-center gap-2 rounded-lg bg-text px-3 text-sm font-semibold text-bg transition hover:bg-text/85 sm:px-4">
+              <Link href="/register" className="inline-flex h-10 items-center gap-2 rounded-lg bg-accent px-3 text-sm font-semibold text-text transition hover:bg-accent-hover sm:px-4">
                 <UserPlus className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
                 <span className="hidden sm:inline">Créer un compte</span>
                 <span className="sm:hidden">Inscription</span>
@@ -123,17 +123,19 @@ function NavLink({ href, label, active, badge }: { href: string; label: string; 
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`flex h-10 items-center gap-2 rounded-lg px-3 text-[15px] font-medium transition hover:bg-surface ${active ? "text-text" : "text-muted hover:text-text"}`}
+      className={`relative flex h-10 items-center gap-2 rounded-lg px-3 text-[15px] font-medium transition hover:bg-surface ${active ? "text-text" : "text-muted hover:text-text"}`}
     >
       {label}
       {badge ? <Badge count={badge} /> : null}
+      {/* Petit trait jaune sous la page active */}
+      {active && <span className="absolute inset-x-3 -bottom-0.5 h-[3px] rounded-full bg-accent" aria-hidden="true" />}
     </Link>
   );
 }
 
 function Badge({ count }: { count: number }) {
   return (
-    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-text px-1.5 text-[11px] font-semibold text-bg">
+    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-[11px] font-bold text-text">
       {count > 99 ? "99+" : count}
     </span>
   );

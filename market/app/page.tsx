@@ -60,8 +60,8 @@ export default async function HomePage() {
     <div className="full-bleed">
       {/* 1. Recherche */}
       <section className="container-q py-20 text-center sm:py-28">
-        <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">Trouve ta prochaine ressource Roblox</h1>
-        <form action="/resources" className="mx-auto mt-8 flex max-w-xl items-center gap-2 rounded-xl border border-border-strong bg-bg p-1.5 pl-4 focus-within:border-text">
+        <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">Trouve ta prochaine ressource <span className="highlight">Roblox</span></h1>
+        <form action="/resources" className="mx-auto mt-8 flex max-w-xl items-center gap-2 rounded-xl border border-border-strong bg-bg p-1.5 pl-4 transition focus-within:border-text focus-within:ring-4 focus-within:ring-accent/40">
           <Search className="h-5 w-5 shrink-0 text-muted" aria-hidden="true" />
           <label htmlFor="home-search" className="sr-only">Rechercher une ressource</label>
           <input
@@ -70,7 +70,7 @@ export default async function HomePage() {
             placeholder="Système de pets, map horreur, UI de boutique…"
             className="min-w-0 flex-1 bg-transparent py-2 outline-none placeholder:text-muted"
           />
-          <button className="btn">Rechercher</button>
+          <button className="btn-accent">Rechercher</button>
         </form>
         <div className="mx-auto mt-5 flex max-w-2xl flex-wrap justify-center gap-2">
           {CATEGORIES.map((c) => (
@@ -96,7 +96,7 @@ export default async function HomePage() {
             <Link
               key={c.id}
               href={`/resources?category=${c.id}`}
-              className="flex flex-col gap-3 rounded-xl border border-border p-4 transition hover:border-border-strong hover:bg-surface"
+              className="flex flex-col gap-3 rounded-xl border border-border p-4 transition hover:border-accent hover:bg-accent-soft"
             >
               <CategoryIcon category={c.id} className="h-6 w-6" />
               <span className="font-medium">{c.label}</span>
@@ -152,7 +152,7 @@ export default async function HomePage() {
             ].map((step, i) => (
               <li key={step.title}>
                 <div className="flex items-center gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-text text-bg">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-text">
                     <step.icon className="h-5 w-5" aria-hidden="true" strokeWidth={1.75} />
                   </span>
                   <span className="text-sm text-muted">Étape {i + 1}</span>

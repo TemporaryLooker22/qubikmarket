@@ -1,8 +1,13 @@
 @import "tailwindcss";
 
-/* Palette de Qubik : clair, noir et blanc. Seuls les badges de scan sont en couleur.
-   Utilisable dans les classes Tailwind (bg-surface, text-muted, border-border…) */
+/* Palette de Qubik : clair, noir et blanc, avec le jaune du logo comme couleur d'identité.
+   Utilisable dans les classes Tailwind (bg-surface, text-muted, bg-accent…)
+   Règle : le jaune sert de FOND (avec du texte noir dessus) ou de surlignage, jamais de couleur
+   de texte sur fond blanc (illisible). */
 @theme {
+  --color-accent: #ffcb00; /* jaune exact du logo */
+  --color-accent-hover: #f0bf00;
+  --color-accent-soft: #fff5cc; /* fond jaune très léger */
   --color-bg: #ffffff;
   --color-surface: #f6f6f5;
   --color-surface-2: #ededec;
@@ -25,12 +30,27 @@ body {
   color: var(--color-text);
 }
 
+/* Texte sélectionné à la souris : surligné en jaune */
+::selection {
+  background: var(--color-accent);
+  color: var(--color-text);
+}
+
 @layer components {
   .container-q {
     @apply mx-auto w-full max-w-6xl px-4;
   }
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-lg bg-text px-4 py-2 text-sm font-medium text-bg transition hover:bg-text/85;
+  }
+  /* Bouton d'action principal, aux couleurs du logo */
+  .btn-accent {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-text transition hover:bg-accent-hover;
+  }
+  /* Surligneur jaune sous un mot (ex. le titre de l'accueil) */
+  .highlight {
+    background: linear-gradient(transparent 58%, var(--color-accent) 58%, var(--color-accent) 92%, transparent 92%);
+    padding-inline: 0.08em;
   }
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium transition hover:bg-surface;
