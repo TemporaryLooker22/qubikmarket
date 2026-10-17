@@ -153,12 +153,13 @@ model ResourceVersion {
   reviewNote  String?
 
   // Analyse IA du contenu (voir lib/ai) : notes sur 100, constats et conseils (JSON), signalement
-  aiStatus   String? // PENDING (à faire), DONE ou FAILED (le service n'a pas répondu)
+  aiStatus   String? // QUEUED (dans la file d'attente), PENDING (en cours), DONE ou FAILED (analyse impossible)
   aiMatch    Int? // correspondance avec la description
   aiQuality  Int? // qualité du contenu
   aiFlagged  Boolean? // une des deux notes sous le seuil
   aiReport   String? // { summary, findings: [{ level, text }], tips: [] }
-  aiAt       DateTime?
+  aiAt       DateTime? // entrée dans la file, puis fin de l'analyse
+  aiLanguage String? // langue du vendeur pour les constats et conseils (fr ou en)
   aiAttempts Int       @default(0)
   aiReviewed Boolean   @default(false) // signalement déjà examiné par un modérateur
   createdAt  DateTime  @default(now())
@@ -167,4 +168,10 @@ model ResourceVersion {
 
   @@unique([resourceId, version])
   @@index([resourceId, createdAt])
+}
+
+// Verrou court pour qu'un seul serveur à la fois traite une file d'attente (ex. « ai-queue »)
+model Lease {
+  name  String   @id
+  until DateTime
 }

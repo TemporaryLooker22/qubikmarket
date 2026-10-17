@@ -9,7 +9,9 @@ import { getDictionary } from "@/lib/i18n/server";
 import { formatAmount, formatPrice } from "@/lib/i18n/format";
 import type { ScanReport } from "@/lib/scan";
 import { ScanReportView } from "@/components/ScanReportView";
-import { AiReportView } from "@/components/AiReportView";
+import { AiReportView, QueueLabel } from "@/components/AiReportView";
+import { AutoRefresh } from "@/components/AutoRefresh";
+import { kickAiQueue, queueSpots, type QueueSpot } from "@/lib/ai/run";
 import { StatusBadge } from "@/components/StatusBadge";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { RowMenu } from "@/components/dashboard/RowMenu";
@@ -19,6 +21,9 @@ export async function generateMetadata() {
   const { t } = await getDictionary();
   return { title: t.dashboard.menu.resources };
 }
+
+// La file d'analyse IA avance aussi quand le vendeur regarde ses ressources (voir lib/ai/run.ts)
+export const maxDuration = 120;
 
 const STATUSES = ["ANALYZING", "APPROVED", "PENDING", "REJECTED", "UNLISTED"];
 const menuItem = "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium transition hover:bg-surface";
@@ -45,6 +50,20 @@ export default async function DashboardResourcesPage({ searchParams }: { searchP
   });
   if (all.length === 0) redirect("/dashboard/purchases");
 
+  // Versions du vendeur dans la file d'attente de vérification IA : place affichée sous le statut
+  const queued = await db.resourceVersion.findMany({
+    where: { resource: { sellerId: user.id }, aiStatus: { in: ["QUEUED", "PENDING"] } },
+    select: { id: true, resourceId: true },
+  });
+  const spots = await queueSpots(queued.map((v) => v.id));
+  const spotOf = new Map<string, QueueSpot>();
+  for (const v of queued) {
+    const spot = spots.get(v.id);
+    const known = spotOf.get(v.resourceId);
+    if (spot && (!known || spot.position < known.position)) spotOf.set(v.resourceId, spot);
+  }
+  if (queued.length > 0) kickAiQueue();
+
   // Le rapport complet (gros JSON) n'est chargé que pour la ressource ouverte
   const opened = reportId && all.some((r) => r.id === reportId)
     ? await db.resource.findUnique({
@@ -56,7 +75,7 @@ export default async function DashboardResourcesPage({ searchParams }: { searchP
             where: { status: { in: ["LIVE", "ANALYZING", "PENDING"] } },
             orderBy: { createdAt: "desc" },
             take: 1,
-            select: { aiStatus: true, aiMatch: true, aiQuality: true, aiFlagged: true, aiReport: true },
+            select: { id: true, aiStatus: true, aiMatch: true, aiQuality: true, aiFlagged: true, aiReport: true },
           },
         },
       })
@@ -77,6 +96,7 @@ export default async function DashboardResourcesPage({ searchParams }: { searchP
   return (
     <>
       <DashboardHeader title={t.dashboard.menu.resources} intro={t.dashboard.resourcesIntro} newResource={t.dashboard.newResource} />
+      {queued.length > 0 && <AutoRefresh />}
 
       {/* Filtres par statut (seulement ceux qui ont des ressources) */}
       <div className="mb-4 flex flex-wrap gap-1.5">
@@ -119,6 +139,7 @@ export default async function DashboardResourcesPage({ searchParams }: { searchP
             const sales = r.purchases.length;
             const net = r.purchases.reduce((n, p) => n + (p.earning?.amountCents ?? 0), 0);
             const showReport = report !== null && reportId === r.id;
+            const spot = spotOf.get(r.id);
             return (
               <li key={r.id} id={r.id} className="scroll-mt-28 py-3">
                 <div className="grid grid-cols-[64px_minmax(0,1fr)_32px] items-center gap-3 md:grid-cols-[84px_minmax(0,1fr)_128px_64px_96px_32px] md:gap-4">
@@ -133,12 +154,18 @@ export default async function DashboardResourcesPage({ searchParams }: { searchP
                     {/* Sur téléphone, le statut et les chiffres passent sous le titre */}
                     <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted md:hidden">
                       <StatusBadge status={r.status} />
+                      {spot && <QueueLabel spot={spot} />}
                       <span>{t.card.sales(sales)}</span>
                       {net > 0 && <span>· {formatAmount(net, locale)}</span>}
                     </div>
                   </div>
                   <div className="hidden md:block">
                     <StatusBadge status={r.status} />
+                    {spot && (
+                      <div className="mt-1">
+                        <QueueLabel spot={spot} />
+                      </div>
+                    )}
                   </div>
                   <span className="hidden text-right text-sm font-semibold md:block">{sales}</span>
                   <span className="hidden text-right text-sm font-semibold md:block">{net > 0 ? formatAmount(net, locale) : "—"}</span>

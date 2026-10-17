@@ -1,8 +1,8 @@
-import { AlertTriangle, BadgeCheck, Check, Flag, Loader2, X } from "lucide-react";
+import { AlertTriangle, BadgeCheck, Check, Clock, Flag, Loader2, X } from "lucide-react";
 import { getDictionary } from "@/lib/i18n/server";
-import { parseAiReport } from "@/lib/ai/run";
+import { parseAiReport, queueSpots, type QueueSpot } from "@/lib/ai/run";
 
-type Analysis = { aiStatus: string | null; aiMatch: number | null; aiQuality: number | null; aiFlagged: boolean | null; aiReport: string | null };
+type Analysis = { id?: string; aiStatus: string | null; aiMatch: number | null; aiQuality: number | null; aiFlagged: boolean | null; aiReport: string | null };
 
 const LEVELS = {
   ok: { Icon: Check, style: "bg-ok-bg text-ok" },
@@ -15,7 +15,20 @@ export async function AiReportView({ analysis, showTips = true }: { analysis: An
   const { t } = await getDictionary();
 
   if (!analysis.aiStatus) return null;
-  if (analysis.aiStatus === "PENDING") {
+  // En file d'attente : sa place et l'attente estimée
+  const spot = analysis.id && analysis.aiStatus === "QUEUED" ? (await queueSpots([analysis.id])).get(analysis.id) : undefined;
+  if (spot && spot.position > 0) {
+    return (
+      <div className="rounded-xl bg-bg p-4 text-sm">
+        <p className="flex items-center gap-2 font-semibold">
+          <Clock className="h-4 w-4" aria-hidden="true" />
+          {t.ai.queued}
+        </p>
+        <p className="mt-1 text-muted">{t.ai.queuedText(spot.position, t.ai.wait(spot.waitSeconds))}</p>
+      </div>
+    );
+  }
+  if (analysis.aiStatus === "PENDING" || analysis.aiStatus === "QUEUED") {
     return (
       <div className="rounded-xl bg-bg p-4 text-sm">
         <p className="flex items-center gap-2 font-semibold">
@@ -104,5 +117,16 @@ function Score({ label, value }: { label: string; value: number }) {
         <div className={`h-full rounded-full ${color}`} style={{ width: `${value}%` }} />
       </div>
     </div>
+  );
+}
+
+// Place dans la file, en une ligne (listes de ressources et historique des versions)
+export async function QueueLabel({ spot }: { spot: QueueSpot }) {
+  const { t } = await getDictionary();
+  return (
+    <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted">
+      {spot.position === 0 ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Clock className="h-3 w-3" aria-hidden="true" />}
+      {spot.position === 0 ? t.ai.queueRunning : `${t.ai.queueSpot(spot.position)} · ${t.ai.wait(spot.waitSeconds)}`}
+    </span>
   );
 }

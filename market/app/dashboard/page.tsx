@@ -106,6 +106,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       {message && (
         <p role="status" className={`animate-pop mb-4 rounded-xl px-4 py-3 text-sm font-medium ${messageStyle}`}>
           {message}
+          {published === "analyzing" && (
+            <Link href="/dashboard/resources" className="ml-1.5 font-bold underline underline-offset-2">
+              {t.dashboard.menu.resources} →
+            </Link>
+          )}
         </p>
       )}
 

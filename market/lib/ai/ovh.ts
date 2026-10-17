@@ -2,6 +2,7 @@ import "server-only";
 
 // Analyse IA via OVHcloud AI Endpoints (API compatible OpenAI, hébergée en Europe).
 // Sans clé : 2 requêtes par minute par adresse IP et par modèle. Avec OVH_AI_KEY : 400 par minute.
+// Si la clé est refusée par OVH (401/403), on réessaie sans clé : l'analyse continue, au rythme du niveau gratuit.
 
 const BASE_URL = process.env.OVH_AI_BASE_URL ?? "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1";
 const MODEL = process.env.QUBIK_AI_MODEL ?? "gpt-oss-120b";
@@ -60,11 +61,17 @@ export class AiError extends Error {
   ) {
     super(`OVH AI ${status}: ${body}`);
   }
-  // Trop de requêtes ou panne passagère : on peut réessayer
+  // Trop de requêtes, panne passagère ou OVH injoignable (status 0) : on peut réessayer
   get retryable() {
-    return this.status === 429 || this.status >= 500;
+    return this.status === 0 || this.status === 429 || this.status >= 500;
   }
 }
+
+// Une clé refusée n'est plus utilisée jusqu'au prochain démarrage du serveur
+let keyRejected = false;
+
+// Vrai si une clé valide est utilisée (pas besoin d'attendre 30 s entre deux analyses)
+export const hasAiKey = () => Boolean(process.env.OVH_AI_KEY) && !keyRejected;
 
 export async function analyzeWithAi(input: {
   title: string;
@@ -74,25 +81,36 @@ export async function analyzeWithAi(input: {
   digest: string;
   language: "fr" | "en";
 }): Promise<AiResult> {
-  const key = process.env.OVH_AI_KEY;
-  const res = await fetch(`${BASE_URL}/chat/completions`, {
-    method: "POST",
-    headers: { "content-type": "application/json", ...(key && { authorization: `Bearer ${key}` }) },
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-    body: JSON.stringify({
-      model: MODEL,
-      temperature: 0,
-      max_tokens: 1500,
-      response_format: { type: "json_schema", json_schema: { name: "qubik_review", strict: true, schema: SCHEMA } },
-      messages: [
-        { role: "system", content: systemPrompt(input.language) },
-        {
-          role: "user",
-          content: `Category: ${input.category}\nTitle: ${input.title}\nSummary: ${input.summary}\nDescription:\n${input.description.slice(0, 6000)}\n\n<file>\n${input.digest}\n</file>`,
-        },
-      ],
-    }),
+  const body = JSON.stringify({
+    model: MODEL,
+    temperature: 0,
+    max_tokens: 1500,
+    response_format: { type: "json_schema", json_schema: { name: "qubik_review", strict: true, schema: SCHEMA } },
+    messages: [
+      { role: "system", content: systemPrompt(input.language) },
+      {
+        role: "user",
+        content: `Category: ${input.category}\nTitle: ${input.title}\nSummary: ${input.summary}\nDescription:\n${input.description.slice(0, 6000)}\n\n<file>\n${input.digest}\n</file>`,
+      },
+    ],
   });
+  const send = (key?: string) =>
+    fetch(`${BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...(key && { authorization: `Bearer ${key}` }) },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      body,
+    }).catch((err: Error) => {
+      throw new AiError(0, err.message); // réseau coupé ou délai dépassé
+    });
+
+  const key = keyRejected ? undefined : process.env.OVH_AI_KEY;
+  let res = await send(key);
+  if (key && (res.status === 401 || res.status === 403)) {
+    console.error("Clé OVH refusée : analyses sans clé (niveau gratuit) en attendant une clé valide");
+    keyRejected = true;
+    res = await send();
+  }
   if (!res.ok) throw new AiError(res.status, (await res.text()).slice(0, 300));
   const json = await res.json();
   const content = json.choices?.[0]?.message?.content;

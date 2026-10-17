@@ -6,7 +6,6 @@
 import path from "node:path";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { after } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin, requireUser } from "@/lib/auth";
 import { scanFile } from "@/lib/scan";
@@ -14,7 +13,7 @@ import { detectImage, saveImage, saveUpload } from "@/lib/storage";
 import { ALLOWED_EXTENSIONS, CATEGORIES, MAX_FILE_SIZE, MAX_IMAGE_SIZE, MAX_IMAGES } from "@/lib/catalog";
 import { getDictionary } from "@/lib/i18n/server";
 import { isValidVersion, promoteVersion } from "@/lib/versions";
-import { analyzeVersion, analyzeVersions, findUnanalyzedVersionIds } from "@/lib/ai/run";
+import { enqueueAnalysis, findUnanalyzedVersionIds, kickAiQueue } from "@/lib/ai/run";
 
 // Résultat d'un enregistrement : une erreur à afficher, ou un message de réussite
 export type EditState = { error?: string; ok?: string } | undefined;
@@ -27,14 +26,14 @@ async function ownResource(resourceId: string) {
   return resource;
 }
 
-// Le texte d'une ressource en ligne a changé : l'IA revérifie que le contenu correspond (en arrière-plan).
+// Le texte d'une ressource en ligne a changé : l'IA revérifie que le contenu correspond (file d'attente).
 // Le résultat met à jour le badge « Contenu vérifié » ; un signalement apparaît dans la modération.
-function reanalyzeLiveVersion(resource: { id: string; status: string; version: string }, locale: "fr" | "en") {
+async function reanalyzeLiveVersion(resource: { id: string; status: string; version: string }, locale: "fr" | "en") {
   if (resource.status !== "APPROVED" && resource.status !== "UNLISTED") return;
-  after(async () => {
-    const live = await db.resourceVersion.findUnique({ where: { resourceId_version: { resourceId: resource.id, version: resource.version } } });
-    if (live) await analyzeVersion(live.id, locale);
-  });
+  const live = await db.resourceVersion.findUnique({ where: { resourceId_version: { resourceId: resource.id, version: resource.version } } });
+  if (!live) return;
+  await enqueueAnalysis(live.id, locale);
+  kickAiQueue();
 }
 
 function refresh(resource: { id: string; slug: string }) {
@@ -60,7 +59,7 @@ export async function updateResourceInfo(_: EditState, formData: FormData): Prom
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   // Le lien de la page (slug) ne change pas : les liens partagés continuent de marcher
   await db.resource.update({ where: { id: resource.id }, data: parsed.data });
-  reanalyzeLiveVersion(resource, locale);
+  await reanalyzeLiveVersion(resource, locale);
   refresh(resource);
   return { ok: t.edit.saved };
 }
@@ -73,7 +72,7 @@ export async function updateResourceDescription(_: EditState, formData: FormData
   if (description.length < 30) return { error: t.errors.descriptionMin };
   if (description.length > 10000) return { error: t.errors.descriptionMin };
   await db.resource.update({ where: { id: resource.id }, data: { description } });
-  reanalyzeLiveVersion(resource, locale);
+  await reanalyzeLiveVersion(resource, locale);
   refresh(resource);
   return { ok: t.edit.saved };
 }
@@ -208,8 +207,9 @@ export async function publishVersion(_: EditState, formData: FormData): Promise<
     return created;
   });
 
-  // Analyse IA en arrière-plan : le vendeur n'attend pas
-  after(() => analyzeVersion(created.id, locale));
+  // Analyse IA dans la file d'attente : le vendeur n'attend pas (sa place s'affiche dans Mon espace)
+  await enqueueAnalysis(created.id, locale);
+  kickAiQueue();
 
   refresh(resource);
   revalidatePath("/admin");
@@ -254,14 +254,11 @@ export async function reviewAiFlag(formData: FormData) {
   revalidatePath("/admin");
 }
 
-const ANALYZE_BATCH = 10; // par clic (sans clé OVH : 2 analyses par minute)
-
+// Toutes les anciennes ressources (et les analyses impossibles) rejoignent la file d'attente
 export async function analyzeExistingResources() {
   await requireAdmin();
   const { locale } = await getDictionary();
-  const ids = (await findUnanalyzedVersionIds()).slice(0, ANALYZE_BATCH);
-  // Marquées « à faire » tout de suite pour que la page affiche l'analyse en cours
-  await db.resourceVersion.updateMany({ where: { id: { in: ids } }, data: { aiStatus: "PENDING", aiAt: new Date() } });
-  after(() => analyzeVersions(ids, locale));
+  await enqueueAnalysis(await findUnanalyzedVersionIds(), locale);
+  kickAiQueue();
   revalidatePath("/admin");
 }

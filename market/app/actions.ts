@@ -7,7 +7,6 @@ import path from "node:path";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { redirect } from "next/navigation";
-import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { createSession, destroySession, getCurrentUser, requireAdmin, requireUser } from "@/lib/auth";
@@ -16,7 +15,7 @@ import { detectImage, saveImage, saveUpload } from "@/lib/storage";
 import { ALLOWED_EXTENSIONS, CATEGORIES, MAX_FILE_SIZE, MAX_IMAGE_SIZE, MAX_IMAGES, slugify } from "@/lib/catalog";
 import { createCheckoutSession, isDemoMode } from "@/lib/payments";
 import { grantFounderIfEligible } from "@/lib/sellers";
-import { analyzeVersion } from "@/lib/ai/run";
+import { enqueueAnalysis, kickAiQueue } from "@/lib/ai/run";
 import { createOnboardingLink, createSellerAccount, PAYOUT_COUNTRIES } from "@/lib/connect";
 import { cookies } from "next/headers";
 import { isLocale, type Dictionary } from "@/lib/i18n/dictionaries";
@@ -218,8 +217,12 @@ export async function publishResource(_: FormState, formData: FormData): Promise
     include: { versions: { select: { id: true } } },
   });
 
-  // Analyse IA en arrière-plan (sauf fichier dangereux, déjà refusé) : le vendeur n'attend pas
-  if (status !== "REJECTED") after(() => analyzeVersion(created.versions[0].id, locale));
+  // Analyse IA dans la file d'attente (sauf fichier dangereux, déjà refusé) : le vendeur n'attend pas,
+  // sa place dans la file s'affiche dans Mon espace
+  if (status !== "REJECTED") {
+    await enqueueAnalysis(created.versions[0].id, locale);
+    kickAiQueue();
+  }
 
   revalidatePath("/");
   redirect(`/dashboard?published=${status.toLowerCase()}`);

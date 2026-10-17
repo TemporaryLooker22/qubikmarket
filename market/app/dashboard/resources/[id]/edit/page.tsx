@@ -15,9 +15,12 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Thumb } from "@/components/dashboard/Thumb";
 import { DescriptionForm, ImagesForm, InfoForm, PriceForm } from "@/components/edit/EditForms";
 import { PublishVersionForm } from "@/components/edit/PublishVersionForm";
+import { QueueLabel } from "@/components/AiReportView";
+import { AutoRefresh } from "@/components/AutoRefresh";
+import { kickAiQueue, queueSpots } from "@/lib/ai/run";
 
 
-// L'analyse IA tourne en arrière-plan après la réponse : on laisse le temps aux nouveaux essais (OVH)
+// La file d'analyse IA avance en arrière-plan après la réponse (voir lib/ai/run.ts)
 export const maxDuration = 120;
 export async function generateMetadata() {
   const { t } = await getDictionary();
@@ -57,10 +60,14 @@ export default async function EditResourcePage({ params, searchParams }: { param
   const tab: Tab = TABS.includes(tabParam as Tab) ? (tabParam as Tab) : "info";
   const pendingVersions = resource.versions.filter((v) => v.status === "PENDING").length;
   const current = resource.versions.find((v) => v.version === resource.version);
+  // Versions dans la file d'attente de vérification IA : leur place s'affiche dans l'historique
+  const spots = await queueSpots(resource.versions.filter((v) => v.aiStatus === "QUEUED" || v.aiStatus === "PENDING").map((v) => v.id));
+  if (spots.size > 0) kickAiQueue();
   const feePercent = feePercentFor({ founderUntil: seller?.founderUntil ?? null }, new Date());
 
   return (
     <>
+      {spots.size > 0 && <AutoRefresh />}
       <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm text-muted">
         <Link href="/dashboard/resources" className="hover:text-text">
           {t.dashboard.menu.resources}
@@ -165,9 +172,12 @@ export default async function EditResourcePage({ params, searchParams }: { param
                       {v.notes && <p className="mt-1 whitespace-pre-line text-sm">{v.notes}</p>}
                       {v.reviewNote && <p className="mt-1 text-sm text-bad">{v.reviewNote}</p>}
                     </div>
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${VERSION_STYLES[v.status] ?? VERSION_STYLES.OLD}`}>
-                      {t.edit.versionStatus[v.status] ?? v.status}
-                    </span>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${VERSION_STYLES[v.status] ?? VERSION_STYLES.OLD}`}>
+                        {t.edit.versionStatus[v.status] ?? v.status}
+                      </span>
+                      {spots.get(v.id) && <QueueLabel spot={spots.get(v.id)!} />}
+                    </div>
                   </div>
                   {/* Rapport de scan de la version (ouvrable) */}
                   {v.scanVerdict !== "clean" && (

@@ -11,9 +11,10 @@ import { ScanBadge } from "@/components/ScanBadge";
 import { ScanReportView } from "@/components/ScanReportView";
 import { AiReportView } from "@/components/AiReportView";
 import { analyzeExistingResources, reviewAiFlag } from "@/app/resource-actions";
-import { AI_STUCK_MS, findUnanalyzedVersionIds } from "@/lib/ai/run";
+import { findUnanalyzedVersionIds, kickAiQueue, queueLength } from "@/lib/ai/run";
+import { AutoRefresh } from "@/components/AutoRefresh";
 
-// L'analyse IA tourne en arrière-plan après la réponse : on laisse le temps aux nouveaux essais (OVH)
+// La file d'analyse IA avance en arrière-plan après la réponse (voir lib/ai/run.ts)
 export const maxDuration = 120;
 
 export async function generateMetadata() {
@@ -25,7 +26,7 @@ export default async function AdminPage() {
   await requireAdmin();
   const { locale, t } = await getDictionary();
 
-  const aiFields = { aiStatus: true, aiMatch: true, aiQuality: true, aiFlagged: true, aiReport: true } as const;
+  const aiFields = { id: true, aiStatus: true, aiMatch: true, aiQuality: true, aiFlagged: true, aiReport: true } as const;
   const [pending, stats, pendingVersions, flaggedLive, unanalyzed, analyzing] = await Promise.all([
     db.resource.findMany({
       where: { status: "PENDING" },
@@ -50,12 +51,14 @@ export default async function AdminPage() {
       include: { resource: { select: { slug: true, title: true, category: true, priceCents: true, seller: { select: { username: true } } } } },
     }),
     findUnanalyzedVersionIds(),
-    db.resourceVersion.count({ where: { aiStatus: "PENDING", aiAt: { gte: new Date(Date.now() - AI_STUCK_MS) } } }),
+    queueLength(),
   ]);
+  if (analyzing > 0) kickAiQueue();
   const count = (s: string) => stats.find((x) => x.status === s)?._count ?? 0;
 
   return (
     <>
+      {analyzing > 0 && <AutoRefresh />}
       <h1>{t.admin.title}</h1>
       <p>{t.admin.intro}</p>
 
