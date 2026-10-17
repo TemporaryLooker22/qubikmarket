@@ -34,7 +34,7 @@ export function Navbar({ user, pendingCount }: Props) {
     <header className="sticky top-0 z-20 px-3 pt-3">
       <nav className="mx-auto flex h-16 max-w-6xl items-center gap-2 rounded-2xl border border-border bg-bg/95 px-3 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.04)] backdrop-blur sm:px-4">
         <Link href="/" className="mr-2 flex items-center gap-2 rounded-lg p-1 font-bold sm:mr-4" aria-label="Qubik, accueil">
-          <Logo className="h-8 w-8" />
+          <Logo className="h-7 w-7" />
           <span className="hidden text-base sm:inline">Qubik</span>
         </Link>
 
