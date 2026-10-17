@@ -97,7 +97,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     .slice(0, 4);
 
   const message = published ? t.dashboard.published[published] : null;
-  const messageStyle = { approved: "bg-ok-bg text-ok", pending: "bg-warn-bg text-warn", rejected: "bg-bad-bg text-bad" }[published ?? ""] ?? "bg-surface";
+  const messageStyle = { analyzing: "bg-accent-soft text-text", approved: "bg-ok-bg text-ok", pending: "bg-warn-bg text-warn", rejected: "bg-bad-bg text-bad" }[published ?? ""] ?? "bg-surface";
 
   return (
     <>

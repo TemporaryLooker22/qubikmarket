@@ -6,14 +6,15 @@
 import path from "node:path";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin, requireUser } from "@/lib/auth";
 import { scanFile } from "@/lib/scan";
 import { detectImage, saveImage, saveUpload } from "@/lib/storage";
 import { ALLOWED_EXTENSIONS, CATEGORIES, MAX_FILE_SIZE, MAX_IMAGE_SIZE, MAX_IMAGES } from "@/lib/catalog";
 import { getDictionary } from "@/lib/i18n/server";
-import { grantFounderIfEligible } from "@/lib/sellers";
 import { isValidVersion, promoteVersion } from "@/lib/versions";
+import { analyzeVersion, analyzeVersions, findUnanalyzedVersionIds } from "@/lib/ai/run";
 
 // Résultat d'un enregistrement : une erreur à afficher, ou un message de réussite
 export type EditState = { error?: string; ok?: string } | undefined;
@@ -26,6 +27,16 @@ async function ownResource(resourceId: string) {
   return resource;
 }
 
+// Le texte d'une ressource en ligne a changé : l'IA revérifie que le contenu correspond (en arrière-plan).
+// Le résultat met à jour le badge « Contenu vérifié » ; un signalement apparaît dans la modération.
+function reanalyzeLiveVersion(resource: { id: string; status: string; version: string }, locale: "fr" | "en") {
+  if (resource.status !== "APPROVED" && resource.status !== "UNLISTED") return;
+  after(async () => {
+    const live = await db.resourceVersion.findUnique({ where: { resourceId_version: { resourceId: resource.id, version: resource.version } } });
+    if (live) await analyzeVersion(live.id, locale);
+  });
+}
+
 function refresh(resource: { id: string; slug: string }) {
   revalidatePath(`/dashboard/resources/${resource.id}/edit`);
   revalidatePath(`/resources/${resource.slug}`);
@@ -36,7 +47,7 @@ function refresh(resource: { id: string; slug: string }) {
 // ---------- Infos, description, prix, images (visibles tout de suite, sans nouveau scan) ----------
 
 export async function updateResourceInfo(_: EditState, formData: FormData): Promise<EditState> {
-  const { t } = await getDictionary();
+  const { locale, t } = await getDictionary();
   const resource = await ownResource(String(formData.get("resourceId")));
   if (!resource) return { error: t.errors.notFound };
   const parsed = z
@@ -49,18 +60,20 @@ export async function updateResourceInfo(_: EditState, formData: FormData): Prom
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   // Le lien de la page (slug) ne change pas : les liens partagés continuent de marcher
   await db.resource.update({ where: { id: resource.id }, data: parsed.data });
+  reanalyzeLiveVersion(resource, locale);
   refresh(resource);
   return { ok: t.edit.saved };
 }
 
 export async function updateResourceDescription(_: EditState, formData: FormData): Promise<EditState> {
-  const { t } = await getDictionary();
+  const { locale, t } = await getDictionary();
   const resource = await ownResource(String(formData.get("resourceId")));
   if (!resource) return { error: t.errors.notFound };
   const description = String(formData.get("description") ?? "").trim();
   if (description.length < 30) return { error: t.errors.descriptionMin };
   if (description.length > 10000) return { error: t.errors.descriptionMin };
   await db.resource.update({ where: { id: resource.id }, data: { description } });
+  reanalyzeLiveVersion(resource, locale);
   refresh(resource);
   return { ok: t.edit.saved };
 }
@@ -117,7 +130,7 @@ export async function updateResourceImages(_: EditState, formData: FormData): Pr
 // ---------- Nouvelle version (nouveau fichier, scanné comme une publication) ----------
 
 export async function publishVersion(_: EditState, formData: FormData): Promise<EditState> {
-  const { t } = await getDictionary();
+  const { locale, t } = await getDictionary();
   const resource = await ownResource(String(formData.get("resourceId")));
   if (!resource) return { error: t.errors.notFound };
 
@@ -166,24 +179,22 @@ export async function publishVersion(_: EditState, formData: FormData): Promise<
   const live = resource.status === "APPROVED" || resource.status === "UNLISTED";
   const clean = report.verdict === "clean";
 
-  await db.$transaction(async (tx) => {
-    const created = await tx.resourceVersion.create({ data: { ...fileData, status: "PENDING" } });
-    if (clean) {
-      // Propre : remplace tout de suite la version en ligne
-      await promoteVersion(tx, created.id, live);
-      if (!live) await tx.resource.update({ where: { id: resource.id }, data: { status: "APPROVED", reviewNote: null } });
-    } else if (!live) {
+  const created = await db.$transaction(async (tx) => {
+    // Propre : analyse IA d'abord (« ANALYZING »), puis en ligne ou en modération (voir lib/ai/run.ts).
+    // À vérifier : attend un modérateur. Dans les deux cas, la version en ligne reste téléchargeable.
+    const created = await tx.resourceVersion.create({ data: { ...fileData, status: clean ? "ANALYZING" : "PENDING" } });
+    if (!live) {
       // Ressource pas encore en ligne (en vérification ou refusée) : la nouvelle version la remplace
-      // et repart en vérification
       await tx.resourceVersion.updateMany({
-        where: { resourceId: resource.id, id: { not: created.id }, status: "PENDING" },
+        where: { resourceId: resource.id, id: { not: created.id }, status: { in: ["PENDING", "ANALYZING"] } },
         data: { status: "OLD" },
       });
       await tx.resource.update({
         where: { id: resource.id },
         data: {
-          status: "PENDING",
+          status: clean ? "ANALYZING" : "PENDING",
           reviewNote: null,
+          aiVerified: false,
           version,
           fileName: fileData.fileName,
           filePath: fileData.filePath,
@@ -194,13 +205,15 @@ export async function publishVersion(_: EditState, formData: FormData): Promise<
         },
       });
     }
-    // Ressource en ligne + scan à vérifier : la version attend un modérateur, l'ancienne reste téléchargeable
+    return created;
   });
 
-  if (clean && !live) await grantFounderIfEligible(resource.sellerId);
+  // Analyse IA en arrière-plan : le vendeur n'attend pas
+  after(() => analyzeVersion(created.id, locale));
+
   refresh(resource);
   revalidatePath("/admin");
-  return { ok: clean ? t.edit.versionLive(version) : t.edit.versionPending(version) };
+  return { ok: clean ? t.edit.versionAnalyzing(version) : t.edit.versionPending(version) };
 }
 
 // ---------- Modération d'une nouvelle version (admins) ----------
@@ -215,10 +228,40 @@ export async function moderateVersion(formData: FormData) {
   if (!version || version.status !== "PENDING") return;
 
   if (approve) {
+    await db.resourceVersion.update({ where: { id: version.id }, data: { aiReviewed: true } });
     await db.$transaction((tx) => promoteVersion(tx, version.id, true));
   } else {
-    await db.resourceVersion.update({ where: { id: version.id }, data: { status: "REJECTED", reviewNote: note } });
+    await db.resourceVersion.update({ where: { id: version.id }, data: { status: "REJECTED", reviewNote: note, aiReviewed: true } });
   }
   refresh(version.resource);
+  revalidatePath("/admin");
+}
+
+// ---------- Analyse IA : signalements de ressources en ligne et analyse des anciennes ressources (admins) ----------
+
+// Ressource en ligne signalée par l'IA : « C'est bon » (on garde) ou « Retirer de la vente »
+// (les acheteurs gardent leur téléchargement)
+export async function reviewAiFlag(formData: FormData) {
+  await requireAdmin();
+  const versionId = String(formData.get("versionId"));
+  const unlist = formData.get("decision") === "unlist";
+  const note = String(formData.get("note") ?? "").trim() || null;
+  const version = await db.resourceVersion.update({ where: { id: versionId }, data: { aiReviewed: true }, include: { resource: true } });
+  if (unlist && version.resource.status === "APPROVED") {
+    await db.resource.update({ where: { id: version.resourceId }, data: { status: "UNLISTED", reviewNote: note } });
+  }
+  refresh(version.resource);
+  revalidatePath("/admin");
+}
+
+const ANALYZE_BATCH = 10; // par clic (sans clé OVH : 2 analyses par minute)
+
+export async function analyzeExistingResources() {
+  await requireAdmin();
+  const { locale } = await getDictionary();
+  const ids = (await findUnanalyzedVersionIds()).slice(0, ANALYZE_BATCH);
+  // Marquées « à faire » tout de suite pour que la page affiche l'analyse en cours
+  await db.resourceVersion.updateMany({ where: { id: { in: ids } }, data: { aiStatus: "PENDING", aiAt: new Date() } });
+  after(() => analyzeVersions(ids, locale));
   revalidatePath("/admin");
 }

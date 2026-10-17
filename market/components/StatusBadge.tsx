@@ -1,7 +1,8 @@
 import { getDictionary } from "@/lib/i18n/server";
 
-// Couleur de chaque statut : en ligne (vert), en vérification (orange), refusée (rouge), retirée (gris)
+// Couleur de chaque statut : analyse en cours (jaune clair), en ligne (vert), en vérification (orange), refusée (rouge), retirée (gris)
 const STYLES: Record<string, string> = {
+  ANALYZING: "bg-accent-soft text-text",
   APPROVED: "bg-ok-bg text-ok",
   PENDING: "bg-warn-bg text-warn",
   REJECTED: "bg-bad-bg text-bad",

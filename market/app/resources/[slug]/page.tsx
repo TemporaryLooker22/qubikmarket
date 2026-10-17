@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronRight, Download, Languages, Lock, ShieldCheck, Zap } from "lucide-react";
+import { BadgeCheck, ChevronRight, Download, Languages, Lock, ShieldCheck, Zap } from "lucide-react";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { categoryLabel } from "@/lib/catalog";
@@ -45,6 +45,8 @@ type Product = {
   version?: string;
   versionUpdatedAt?: Date | null;
   versions?: { version: string; notes: string | null; createdAt: Date }[];
+  // Badge « Contenu vérifié » : l'analyse IA confirme que le contenu correspond à la description
+  aiVerified?: boolean;
   // rating = null : pas encore d'avis (le système d'avis n'existe pas encore, seule la démo a des notes)
   seller: { username: string; resources: number; sales: number; rating: number | null; reviews: number };
 };
@@ -204,6 +206,12 @@ export default async function ResourcePage({ params, searchParams }: { params: P
               <div>
                 <h2 className="font-semibold">{product.scanVerdict === "clean" ? t.resource.securityClean : t.resource.securityReviewed}</h2>
                 <p className="mt-1 text-sm text-muted">{t.resource.securityText(product.scriptCount)}</p>
+                {product.aiVerified && (
+                  <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-ok-bg px-2.5 py-0.5 text-xs font-bold text-ok">
+                    <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                    {t.ai.verified}
+                  </span>
+                )}
               </div>
             </div>
             {report && (
@@ -347,6 +355,11 @@ function BuyBox({ product, access, locale, t, showAction = true }: { product: Pr
         <li className="flex items-center gap-2.5">
           <ShieldCheck className="h-4 w-4 text-text" aria-hidden="true" /> {t.resource.guarantees.verified}
         </li>
+        {product.aiVerified && (
+          <li className="flex items-center gap-2.5">
+            <BadgeCheck className="h-4 w-4 text-ok" aria-hidden="true" /> {t.ai.verified}
+          </li>
+        )}
       </ul>
     </div>
   );

@@ -16,6 +16,9 @@ import { Thumb } from "@/components/dashboard/Thumb";
 import { DescriptionForm, ImagesForm, InfoForm, PriceForm } from "@/components/edit/EditForms";
 import { PublishVersionForm } from "@/components/edit/PublishVersionForm";
 
+
+// L'analyse IA tourne en arrière-plan après la réponse : on laisse le temps aux nouveaux essais (OVH)
+export const maxDuration = 120;
 export async function generateMetadata() {
   const { t } = await getDictionary();
   return { title: t.edit.metaTitle };
@@ -25,6 +28,7 @@ const TABS = ["info", "images", "description", "price", "versions"] as const;
 type Tab = (typeof TABS)[number];
 const TAB_ICONS = { info: Info, images: ImageIcon, description: FileText, price: Tag, versions: History };
 const VERSION_STYLES: Record<string, string> = {
+  ANALYZING: "bg-accent-soft text-text",
   LIVE: "bg-ok-bg text-ok",
   OLD: "bg-surface text-muted",
   PENDING: "bg-warn-bg text-warn",

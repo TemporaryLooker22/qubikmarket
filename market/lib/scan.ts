@@ -30,3 +30,21 @@ export type ScanReport = {
 export function scanFile(bytes: Uint8Array, fileName: string): ScanReport {
   return scanner.scanFile(bytes, fileName);
 }
+
+// Contenu d'un fichier Roblox : tous les objets (classe, nom, chemin) et le code des scripts
+// (utilisé par l'analyse IA, voir lib/ai/digest.ts)
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const reader = require("./scanner/rbxm.js") as {
+  readRobloxFile(
+    bytes: Uint8Array,
+    fileName: string,
+  ): {
+    format: ScanReport["format"];
+    instances: { className: string; name: string; path: string; source?: string }[];
+    scripts: { className: string; name: string; path: string; source: string }[];
+  };
+};
+
+export function readRobloxFile(bytes: Uint8Array, fileName: string) {
+  return reader.readRobloxFile(bytes, fileName);
+}

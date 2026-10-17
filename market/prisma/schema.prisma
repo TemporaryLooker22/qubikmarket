@@ -37,7 +37,7 @@ model Resource {
   description String
   category    String
   priceCents  Int // 0 = gratuit
-  status      String  @default("PENDING") // PENDING, APPROVED, REJECTED ou UNLISTED (retirée de la vente)
+  status      String  @default("PENDING") // ANALYZING (analyse IA en cours), PENDING, APPROVED, REJECTED ou UNLISTED (retirée de la vente)
   reviewNote  String? // message du modérateur au vendeur
 
   // Résultat du scanner anti-backdoor
@@ -56,6 +56,8 @@ model Resource {
   version          String            @default("1.0")
   versionUpdatedAt DateTime? // dernière mise à jour du fichier (vide tant que c'est la version d'origine)
   versions         ResourceVersion[]
+  // Badge « Contenu vérifié » : l'analyse IA de la version en ligne confirme que le contenu correspond à la description
+  aiVerified       Boolean           @default(false)
 
   sellerId  String
   seller    User       @relation(fields: [sellerId], references: [id])
@@ -136,7 +138,7 @@ model SellerPayout {
 
 // Historique des fichiers d'une ressource : chaque nouvelle version passe au scanner
 model ResourceVersion {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   resourceId  String
   version     String // numéro choisi par le vendeur (1.0, 1.2, 2.0.1…)
   notes       String? // « Quoi de neuf ? », affiché sur la page produit
@@ -146,10 +148,20 @@ model ResourceVersion {
   scanVerdict String
   scanScore   Int
   scanReport  String
-  // LIVE (celle que les acheteurs téléchargent), OLD (ancienne), PENDING (en modération) ou REJECTED (refusée)
+  // ANALYZING (analyse IA en cours), LIVE (celle que les acheteurs téléchargent), OLD (ancienne), PENDING (en modération) ou REJECTED (refusée)
   status      String
   reviewNote  String?
-  createdAt   DateTime @default(now())
+
+  // Analyse IA du contenu (voir lib/ai) : notes sur 100, constats et conseils (JSON), signalement
+  aiStatus   String? // PENDING (à faire), DONE ou FAILED (le service n'a pas répondu)
+  aiMatch    Int? // correspondance avec la description
+  aiQuality  Int? // qualité du contenu
+  aiFlagged  Boolean? // une des deux notes sous le seuil
+  aiReport   String? // { summary, findings: [{ level, text }], tips: [] }
+  aiAt       DateTime?
+  aiAttempts Int       @default(0)
+  aiReviewed Boolean   @default(false) // signalement déjà examiné par un modérateur
+  createdAt  DateTime  @default(now())
 
   resource Resource @relation(fields: [resourceId], references: [id])
 

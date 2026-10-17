@@ -9,6 +9,7 @@ import { getDictionary } from "@/lib/i18n/server";
 import { formatAmount, formatPrice } from "@/lib/i18n/format";
 import type { ScanReport } from "@/lib/scan";
 import { ScanReportView } from "@/components/ScanReportView";
+import { AiReportView } from "@/components/AiReportView";
 import { StatusBadge } from "@/components/StatusBadge";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { RowMenu } from "@/components/dashboard/RowMenu";
@@ -19,7 +20,7 @@ export async function generateMetadata() {
   return { title: t.dashboard.menu.resources };
 }
 
-const STATUSES = ["APPROVED", "PENDING", "REJECTED", "UNLISTED"];
+const STATUSES = ["ANALYZING", "APPROVED", "PENDING", "REJECTED", "UNLISTED"];
 const menuItem = "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium transition hover:bg-surface";
 
 // Mes ressources : filtres par statut, ventes et revenus par ressource, menu d'actions et rapport de scan
@@ -46,7 +47,19 @@ export default async function DashboardResourcesPage({ searchParams }: { searchP
 
   // Le rapport complet (gros JSON) n'est chargé que pour la ressource ouverte
   const opened = reportId && all.some((r) => r.id === reportId)
-    ? await db.resource.findUnique({ where: { id: reportId }, select: { scanReport: true } })
+    ? await db.resource.findUnique({
+        where: { id: reportId },
+        select: {
+          scanReport: true,
+          // Analyse IA de la dernière version envoyée (en ligne, en analyse ou en vérification)
+          versions: {
+            where: { status: { in: ["LIVE", "ANALYZING", "PENDING"] } },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: { aiStatus: true, aiMatch: true, aiQuality: true, aiFlagged: true, aiReport: true },
+          },
+        },
+      })
     : null;
   const report = opened ? (JSON.parse(opened.scanReport) as ScanReport) : null;
 
@@ -176,6 +189,11 @@ export default async function DashboardResourcesPage({ searchParams }: { searchP
                       </p>
                     )}
                     <ScanReportView report={report} />
+                    {opened?.versions[0] && (
+                      <div className="mt-4">
+                        <AiReportView analysis={opened.versions[0]} />
+                      </div>
+                    )}
                   </div>
                 )}
               </li>

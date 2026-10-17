@@ -7,6 +7,7 @@ import path from "node:path";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { createSession, destroySession, getCurrentUser, requireAdmin, requireUser } from "@/lib/auth";
@@ -15,6 +16,7 @@ import { detectImage, saveImage, saveUpload } from "@/lib/storage";
 import { ALLOWED_EXTENSIONS, CATEGORIES, MAX_FILE_SIZE, MAX_IMAGE_SIZE, MAX_IMAGES, slugify } from "@/lib/catalog";
 import { createCheckoutSession, isDemoMode } from "@/lib/payments";
 import { grantFounderIfEligible } from "@/lib/sellers";
+import { analyzeVersion } from "@/lib/ai/run";
 import { createOnboardingLink, createSellerAccount, PAYOUT_COUNTRIES } from "@/lib/connect";
 import { cookies } from "next/headers";
 import { isLocale, type Dictionary } from "@/lib/i18n/dictionaries";
@@ -126,7 +128,7 @@ const resourceSchema = (e: Dictionary["errors"]) =>
 
 export async function publishResource(_: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
-  const { t } = await getDictionary();
+  const { locale, t } = await getDictionary();
 
   const parsed = resourceSchema(t.errors).safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
@@ -165,10 +167,10 @@ export async function publishResource(_: FormState, formData: FormData): Promise
   }
 
   // 2) Décision selon le verdict :
-  //    propre -> en ligne tout de suite (pas de file d'attente !)
+  //    propre -> analyse IA du contenu (quelques secondes), puis en ligne (ou modération si l'IA signale un problème)
   //    suspect -> vérification par un modérateur
   //    dangereux -> refus automatique
-  const status = report.verdict === "clean" ? "APPROVED" : report.verdict === "suspicious" ? "PENDING" : "REJECTED";
+  const status = report.verdict === "clean" ? "ANALYZING" : report.verdict === "suspicious" ? "PENDING" : "REJECTED";
   // Note enregistrée dans la langue du vendeur au moment de la publication
   const reviewNote = report.verdict === "dangerous" ? t.errors.autoReject : null;
 
@@ -180,7 +182,7 @@ export async function publishResource(_: FormState, formData: FormData): Promise
     ? `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`
     : baseSlug;
 
-  await db.resource.create({
+  const created = await db.resource.create({
     data: {
       slug,
       title: data.title,
@@ -208,15 +210,16 @@ export async function publishResource(_: FormState, formData: FormData): Promise
           scanVerdict: report.verdict,
           scanScore: report.score,
           scanReport: JSON.stringify(report),
-          status: status === "APPROVED" ? "LIVE" : status,
+          status,
           reviewNote,
         },
       },
     },
+    include: { versions: { select: { id: true } } },
   });
 
-  // Première ressource en ligne : le vendeur devient fondateur s'il reste des places
-  if (status === "APPROVED") await grantFounderIfEligible(user.id);
+  // Analyse IA en arrière-plan (sauf fichier dangereux, déjà refusé) : le vendeur n'attend pas
+  if (status !== "REJECTED") after(() => analyzeVersion(created.versions[0].id, locale));
 
   revalidatePath("/");
   redirect(`/dashboard?published=${status.toLowerCase()}`);
@@ -319,8 +322,13 @@ export async function moderateResource(formData: FormData) {
   // La version en attente de la ressource suit la décision
   await db.resourceVersion.updateMany({
     where: { resourceId, version: resource.version, status: "PENDING" },
-    data: { status: decision === "APPROVED" ? "LIVE" : "REJECTED", reviewNote: note },
+    data: { status: decision === "APPROVED" ? "LIVE" : "REJECTED", reviewNote: note, aiReviewed: true },
   });
+  // Badge « Contenu vérifié » seulement si l'IA n'a rien signalé (un modérateur peut approuver malgré un signalement)
+  if (decision === "APPROVED") {
+    const live = await db.resourceVersion.findUnique({ where: { resourceId_version: { resourceId, version: resource.version } } });
+    await db.resource.update({ where: { id: resourceId }, data: { aiVerified: live?.aiStatus === "DONE" && live.aiFlagged === false } });
+  }
   if (decision === "APPROVED") await grantFounderIfEligible(resource.sellerId);
   revalidatePath("/admin");
   revalidatePath("/");

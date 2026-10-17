@@ -6,6 +6,9 @@ import { db } from "@/lib/db";
 import { feePercentFor } from "@/lib/earnings";
 import { SellForm } from "@/components/SellForm";
 
+
+// L'analyse IA tourne en arrière-plan après la réponse : on laisse le temps aux nouveaux essais (OVH)
+export const maxDuration = 120;
 export async function generateMetadata() {
   const { t } = await getDictionary();
   return { title: t.sell.title };

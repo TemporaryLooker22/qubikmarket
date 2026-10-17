@@ -54,6 +54,8 @@ export async function promoteVersion(tx: Tx, versionId: string, updated: boolean
       scanVerdict: version.scanVerdict,
       scanScore: version.scanScore,
       scanReport: version.scanReport,
+      // Badge « Contenu vérifié » : celui de la nouvelle version en ligne
+      aiVerified: version.aiStatus === "DONE" && version.aiFlagged === false,
       ...(updated && { versionUpdatedAt: new Date() }),
     },
   });
