@@ -24,7 +24,15 @@ const formatRating = (n: number, locale: Locale) => n.toLocaleString(locale === 
 
 export async function generateMetadata({ params }: { params: Params }) {
   const member = await findMember((await params).username);
-  return member ? { title: member.username } : {};
+  if (!member) return {};
+  const resources = await db.resource.count({ where: { sellerId: member.id, status: "APPROVED" } });
+  const description = resources ? `${member.username} sells ${resources} Roblox resource${resources > 1 ? "s" : ""} on Qubik.` : `${member.username} on Qubik, the Roblox marketplace.`;
+  return {
+    title: member.username,
+    description,
+    alternates: { canonical: `/u/${encodeURIComponent(member.username)}` },
+    openGraph: { type: "profile", title: member.username, description, images: member.avatarUrl ? [member.avatarUrl] : [] },
+  };
 }
 
 // Profil public d'un membre : ses ressources en vente, les avis reçus en tant que vendeur et en tant qu'acheteur.

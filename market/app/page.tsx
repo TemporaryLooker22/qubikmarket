@@ -4,11 +4,15 @@ import { db } from "@/lib/db";
 import { CATEGORIES } from "@/lib/catalog";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatAmount, formatNumber } from "@/lib/i18n/format";
-import { DEMO_BEST_SELLERS, DEMO_ENABLED, DEMO_IMAGES, DEMO_LATEST } from "@/lib/demo";
+import { DEMO_BEST_SELLERS, DEMO_ENABLED, DEMO_LATEST } from "@/lib/demo";
+import { getShowcaseImages } from "@/lib/showcase";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Gallery } from "@/components/Gallery";
 import { HeroBackdrop } from "@/components/HeroBackdrop";
 import { ResourceCard } from "@/components/ResourceCard";
+
+// Adresse de référence de l'accueil pour Google
+export const metadata = { alternates: { canonical: "/" } };
 
 export const dynamic = "force-dynamic";
 
@@ -79,12 +83,15 @@ export default async function HomePage() {
   const [scannedCount, blockedCount, sellerCount] = stats;
   const [mainSetup, ...otherSetups] = featured;
 
+  // Fond animé du haut de page : miniatures des ressources en ligne (ou de la démo)
+  const heroImages = await getShowcaseImages();
+
   return (
     <div className="full-bleed">
       {/* 1. Recherche et catégories, devant les miniatures qui défilent */}
       <div className="relative isolate">
         {/* Miniatures : celles des exemples en mode démo (pas encore d'images pour les vraies ressources) */}
-        <HeroBackdrop images={DEMO_ENABLED ? DEMO_IMAGES : []} />
+        <HeroBackdrop images={heroImages} />
         <section className="container-q pb-6 pt-14 text-center sm:pt-16">
           <h1 className="animate-fade-up text-3xl font-semibold tracking-tight sm:text-5xl">
             {t.home.titleStart} <span className="highlight">{t.home.titleHighlight}</span>

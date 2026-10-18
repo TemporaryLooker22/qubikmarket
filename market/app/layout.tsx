@@ -11,6 +11,7 @@ import { Navbar } from "@/components/Navbar";
 import { SourceTracker } from "@/components/SourceTracker";
 import { Analytics } from "@vercel/analytics/next";
 import { DEMO_ENABLED } from "@/lib/demo";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 // Police du site : Plus Jakarta Sans, chargée et hébergée par Next.js
@@ -19,8 +20,12 @@ const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakart
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getDictionary();
   return {
+    metadataBase: new URL(SITE_URL),
     title: { default: t.meta.title, template: "%s · Qubik" },
     description: t.meta.description,
+    applicationName: SITE_NAME,
+    openGraph: { type: "website", siteName: SITE_NAME, title: t.meta.title, description: t.meta.description, url: SITE_URL },
+    twitter: { card: "summary_large_image", title: t.meta.title, description: t.meta.description },
     // Mode démo : faux produits et images d'autres créateurs, on demande à Google de ne pas indexer le site
     ...(DEMO_ENABLED && { robots: { index: false, follow: false } }),
   };

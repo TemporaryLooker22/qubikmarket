@@ -2,7 +2,8 @@
 // Activés seulement avec QUBIK_DEMO=1 (en local et sur l'aperçu Vercel), et seulement tant qu'il n'y a
 // pas de vraies ressources. Ne JAMAIS activer en production : les images sont des miniatures de jeux
 // Roblox existants, utilisées uniquement pour la maquette.
-export const DEMO_ENABLED = process.env.QUBIK_DEMO === "1";
+// Verrouillé hors production : même si QUBIK_DEMO=1 reste dans Vercel, le site en ligne ne l'utilise pas.
+export const DEMO_ENABLED = process.env.QUBIK_DEMO === "1" && process.env.VERCEL_ENV !== "production";
 
 export type DemoResource = {
   id: string;

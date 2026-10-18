@@ -25,6 +25,7 @@ import { canReview, REVIEWS_SHOWN, sellerRating, VISIBLE_REVIEW } from "@/lib/re
 import { ShareButton } from "@/components/product/ShareButton";
 import { responseTime } from "@/lib/chat";
 import { memberRating } from "@/lib/member-reviews";
+import { SITE_URL } from "@/lib/site";
 import { links } from "@/lib/notifications";
 import { UserAvatar } from "@/components/UserAvatar";
 import type { ResponseBucket } from "@/lib/chat-text";
@@ -82,8 +83,16 @@ export async function generateMetadata({ params }: { params: Params }) {
   const { slug } = await params;
   const demo = findDemo(slug);
   if (demo) return { title: demo.title, description: demo.summary };
-  const resource = await db.resource.findUnique({ where: { slug }, select: { title: true, summary: true, status: true } });
-  return resource?.status === "APPROVED" ? { title: resource.title, description: resource.summary } : {};
+  const resource = await db.resource.findUnique({ where: { slug }, select: { title: true, summary: true, status: true, images: true } });
+  if (resource?.status !== "APPROVED") return {};
+  const images = resource.images.slice(0, 1);
+  return {
+    title: resource.title,
+    description: resource.summary,
+    alternates: { canonical: `/resources/${slug}` },
+    openGraph: { type: "website", title: resource.title, description: resource.summary, url: `/resources/${slug}`, images },
+    twitter: { card: images.length ? "summary_large_image" : "summary", title: resource.title, description: resource.summary, images },
+  };
 }
 
 export default async function ResourcePage({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
@@ -200,8 +209,34 @@ export default async function ResourcePage({ params, searchParams }: { params: P
     }
   }
 
+  // Données produit pour Google (prix, disponibilité, note) : peuvent afficher les étoiles dans les résultats
+  const jsonLd =
+    !access.demo && product.status === "APPROVED"
+      ? {
+          "@context": "https://schema.org",
+          "@type": "Product",
+          name: product.title,
+          description: product.summary,
+          image: product.images.slice(0, 3),
+          category: label,
+          url: `${SITE_URL}/resources/${product.slug}`,
+          brand: { "@type": "Brand", name: product.seller.username },
+          offers: {
+            "@type": "Offer",
+            price: (product.priceCents / 100).toFixed(2),
+            priceCurrency: "EUR",
+            availability: "https://schema.org/InStock",
+            url: `${SITE_URL}/resources/${product.slug}`,
+          },
+          ...(product.rating && product.rating.count > 0 && {
+            aggregateRating: { "@type": "AggregateRating", ratingValue: product.rating.avg.toFixed(1), reviewCount: product.rating.count, bestRating: 5, worstRating: 1 },
+          }),
+        }
+      : null;
+
   return (
     <div className="full-bleed container-q pb-28 pt-6 lg:pb-0">
+      {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />}
       {/* Le vrai titre de la page (lu par Google et les lecteurs d'écran) ; le titre visible est dans l'encart */}
       <h1 className="sr-only">{product.title}</h1>
 

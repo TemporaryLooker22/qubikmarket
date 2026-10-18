@@ -14,7 +14,10 @@ import { SortSelect } from "@/components/catalog/SortSelect";
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const [{ t }, filters] = await Promise.all([getDictionary(), searchParams.then(parseFilters)]);
-  return { title: filters.category ? categoryLabel(filters.category) : t.catalog.title };
+  return {
+    title: filters.category ? categoryLabel(filters.category) : t.catalog.title,
+    alternates: { canonical: filters.category ? `/resources?category=${filters.category}` : "/resources" },
+  };
 }
 
 const euros = (v: string) => Math.round(Number(v) * 100);
