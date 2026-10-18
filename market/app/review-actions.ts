@@ -9,6 +9,7 @@ import { requireAdmin, requireUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/i18n/server";
 import { canReview, refreshRating, REVIEW_MAX } from "@/lib/reviews";
 import { logModeration } from "@/lib/moderation";
+import { links, notify, notifyAdmins } from "@/lib/notifications";
 
 export type ReviewState = { error?: string; ok?: string } | undefined;
 
@@ -40,6 +41,11 @@ export async function submitReview(_: ReviewState, formData: FormData): Promise<
     update: { rating, body: body || null, version: resource.version },
   });
   await refreshRating(resource.id);
+  // Nouvel avis (pas une modification) : le vendeur est prévenu
+  if (!existing) {
+    const title = (await db.resource.findUnique({ where: { id: resource.id }, select: { title: true } }))?.title ?? "";
+    await notify(resource.sellerId, "REVIEW_NEW", { title, user: user.username, rating }, links.reviews(resource.slug));
+  }
   refresh(resource.slug);
   return { ok: existing ? t.reviews.updated : t.reviews.published };
 }
@@ -53,6 +59,11 @@ export async function replyToReview(_: ReviewState, formData: FormData): Promise
   const review = await db.review.findUnique({ where: { id: String(formData.get("reviewId")) }, include: { resource: { select: { slug: true, sellerId: true } } } });
   if (!review || review.resource.sellerId !== user.id) return { error: t.errors.notFound };
   await db.review.update({ where: { id: review.id }, data: { reply: reply || null, repliedAt: reply ? new Date() : null } });
+  // Première réponse du vendeur : l'auteur de l'avis est prévenu
+  if (reply && !review.reply) {
+    const title = (await db.resource.findUnique({ where: { id: review.resourceId }, select: { title: true } }))?.title ?? "";
+    await notify(review.userId, "REVIEW_REPLY", { title, user: user.username }, links.reviews(review.resource.slug));
+  }
   refresh(review.resource.slug);
   return { ok: reply ? t.reviews.replyPublished : t.reviews.replyRemoved };
 }
@@ -75,6 +86,7 @@ export async function deleteReview(formData: FormData) {
     label: `${review.user.username} → ${review.resource.title}`,
     note: review.body ? `${review.rating}★ « ${review.body.slice(0, 120)} »` : `${review.rating}★`,
   });
+  await notify(review.userId, "REVIEW_REMOVED", { title: review.resource.title }, null);
   refresh(review.resource.slug);
   revalidatePath("/admin", "layout");
 }
@@ -104,6 +116,7 @@ export async function reportReview(_: ReviewState, formData: FormData): Promise<
     create: { reviewId: review.id, userId: user.id, reason },
     update: { reason, dismissedAt: null, createdAt: new Date() },
   });
+  await notifyAdmins("MOD_REPORT", { user: user.username }, "/admin/reviews");
   revalidatePath("/admin", "layout");
   return { ok: t.reviews.reported };
 }

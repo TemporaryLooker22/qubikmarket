@@ -10,14 +10,16 @@ import { LOCALES } from "@/lib/i18n/dictionaries";
 import { useI18n } from "@/lib/i18n/client";
 import { CategoryIcon } from "./CategoryIcon";
 import { Logo } from "./Logo";
+import { NotificationBell } from "./NotificationBell";
 
 type Props = {
   user: { username: string; email: string; role: string; isSeller: boolean } | null;
   pendingCount: number; // ressources en attente de modération (affiché aux admins)
+  unreadCount: number; // notifications non lues (cloche)
 };
 
 // Barre de navigation flottante, en haut de toutes les pages
-export function Navbar({ user, pendingCount }: Props) {
+export function Navbar({ user, pendingCount, unreadCount }: Props) {
   const pathname = usePathname();
   const { t } = useI18n();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -62,6 +64,7 @@ export function Navbar({ user, pendingCount }: Props) {
 
           {user ? (
             <>
+              <NotificationBell initialUnread={unreadCount} />
               <AccountMenu user={user} pendingCount={pendingCount} />
               <Link href="/sell" className="hidden h-10 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-text transition hover:-translate-y-px hover:bg-accent-hover sm:inline-flex">
                 <Zap className="h-4 w-4" strokeWidth={2} aria-hidden="true" /> {t.nav.sell}

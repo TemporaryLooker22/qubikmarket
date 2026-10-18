@@ -2,6 +2,7 @@ import "server-only";
 import { db } from "./db";
 import { stripe } from "./payments";
 import { refreshTransfersStatus } from "./connect";
+import { links, notify } from "./notifications";
 
 // Versements hebdomadaires aux vendeurs (lancés chaque lundi par une tâche Vercel, voir vercel.json).
 // Pour chaque vendeur dont le compte Stripe est prêt : on additionne ses gains disponibles
@@ -35,6 +36,7 @@ async function sendTransfer(payout: { id: string; sellerId: string; amountCents:
       db.sellerPayout.update({ where: { id: payout.id }, data: { status: "PAID", transferId: transfer.id } }),
       db.sellerEarning.updateMany({ where: { payoutId: payout.id }, data: { status: "PAID", transferId: transfer.id } }),
     ]);
+    await notify(payout.sellerId, "PAYOUT", { amount: payout.amountCents }, links.sales);
     return { sellerId: payout.sellerId, amountCents: payout.amountCents, status: "PAID" };
   } catch (err) {
     // Échec (solde Stripe insuffisant, compte bloqué…) : les gains repartent en attente pour le prochain passage

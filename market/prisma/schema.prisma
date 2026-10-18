@@ -39,6 +39,7 @@ model User {
   signupCountry         String?
   reviewReports         ReviewReport[]
   moderationLogs        ModerationLog[]
+  notifications         Notification[]
 }
 
 model Resource {
@@ -253,4 +254,21 @@ model ModerationLog {
   moderator User @relation(fields: [moderatorId], references: [id])
 
   @@index([createdAt])
+}
+
+// Notification d'un membre (cloche de la barre de navigation) : une vente, une ressource en ligne ou refusée,
+// un avis, une nouvelle version d'un achat… Le texte est écrit à l'affichage, dans la langue du visiteur,
+// à partir du type et des données (voir lib/notifications.ts et le bloc « notif » des dictionnaires).
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  data      Json      @default("{}")
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }

@@ -5,6 +5,9 @@ export const LOCALES = ["en", "fr"] as const;
 export type Locale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = "en";
 
+// Données d'une notification (voir lib/notifications.ts), avec le montant déjà mis en forme (money)
+export type NotifText = { title?: string; user?: string; version?: string; note?: string; rating?: number; reason?: string; part?: string; setup?: boolean; months?: number; amount?: number; money: string };
+
 export const en = {
   meta: {
     title: "Qubik — The Roblox marketplace",
@@ -425,6 +428,44 @@ export const en = {
     sellerCtaTitle: "Do you create on Roblox?",
     sellerCtaText: "Sell your systems, maps and models. Live in 10 seconds, 96% for you.",
     sellerCtaButton: "Start selling",
+  },
+  notif: {
+    title: "Notifications",
+    open: "Open notifications",
+    unread: (n: number) => (n === 1 ? "1 unread notification" : `${n} unread notifications`),
+    empty: "Nothing new for now. Sales, reviews and updates on your resources will show up here.",
+    markAll: "Mark all as read",
+    types: {
+      SALE: (d) => `${d.user} bought “${d.title}” (+${d.money})${d.setup ? ". Set up your payouts to receive your earnings." : ""}`,
+      FREE_GET: (d) => `${d.user} got your free resource “${d.title}”`,
+      REFUND: (d) => `A sale of “${d.title}” was refunded (−${d.money})`,
+      DISPUTE: (d) => `A buyer disputed their payment for “${d.title}”: ${d.money} on hold`,
+      DISPUTE_WON: (d) => `Dispute won for “${d.title}”: your earnings are back`,
+      PAYOUT: (d) => `Payout sent: ${d.money} on its way to your bank account`,
+      FOUNDER: (d) => `You're a founding seller: ${d.amount}% fee for ${d.months} months`,
+      RES_LIVE: (d) => `“${d.title}” is live!`,
+      RES_HELD: (d) =>
+        d.reason === "description"
+          ? `“${d.title}” is waiting for a moderator: its description is incomplete. Complete it to go live faster.`
+          : `“${d.title}” is waiting for a moderator: the AI flagged its content.`,
+      RES_APPROVED: (d) => `A moderator approved “${d.title}”: it's live!`,
+      RES_REJECTED: (d) => `“${d.title}” was rejected${d.note ? `: ${d.note}` : ""}`,
+      RES_UNLISTED: (d) => `“${d.title}” was removed from sale by the moderators${d.note ? `: ${d.note}` : ""}`,
+      RES_RELISTED: (d) => `“${d.title}” is back on sale`,
+      RES_DELETED: (d) => `“${d.title}” was deleted by the moderators`,
+      RES_EDITED: (d) => `A moderator edited “${d.title}”${d.part ? ` (${d.part})` : ""}`,
+      VER_LIVE: (d) => `v${d.version} of “${d.title}” is live`,
+      VER_HELD: (d) =>
+        `v${d.version} of “${d.title}” is waiting for a moderator${d.reason === "description" ? ": the description is incomplete" : ""}`,
+      VER_REJECTED: (d) => `v${d.version} of “${d.title}” was rejected${d.note ? `: ${d.note}` : ""}`,
+      REVIEW_NEW: (d) => `${d.user} left a ${d.rating}★ review on “${d.title}”`,
+      REVIEW_REPLY: (d) => `${d.user} replied to your review of “${d.title}”`,
+      REVIEW_REMOVED: (d) => `Your review of “${d.title}” was removed by the moderators`,
+      NEW_VERSION: (d) => `New version v${d.version} of “${d.title}” is available`,
+      MOD_PENDING: (d) => `To review: “${d.title}”${d.version && d.version !== "1.0" ? ` v${d.version}` : ""}${d.user ? ` by ${d.user}` : ""}`,
+      MOD_FLAG: (d) => `The AI flagged “${d.title}” (live)`,
+      MOD_REPORT: (d) => `${d.user} reported a review`,
+    } as Record<string, (d: NotifText) => string>,
   },
   reviews: {
     title: "Reviews",
@@ -1194,6 +1235,43 @@ export const fr: Dictionary = {
     sellerCtaTitle: "Tu crées sur Roblox ?",
     sellerCtaText: "Vends tes systèmes, maps et modèles. En ligne en 10 secondes, 96 % pour toi.",
     sellerCtaButton: "Commencer à vendre",
+  },
+  notif: {
+    title: "Notifications",
+    open: "Ouvrir les notifications",
+    unread: (n) => (n === 1 ? "1 notification non lue" : `${n} notifications non lues`),
+    empty: "Rien de nouveau pour l'instant. Tes ventes, tes avis et les nouvelles de tes ressources s'afficheront ici.",
+    markAll: "Tout marquer comme lu",
+    types: {
+      SALE: (d) => `${d.user} a acheté « ${d.title} » (+${d.money})${d.setup ? ". Configure tes versements pour recevoir tes gains." : ""}`,
+      FREE_GET: (d) => `${d.user} a obtenu ta ressource gratuite « ${d.title} »`,
+      REFUND: (d) => `Une vente de « ${d.title} » a été remboursée (−${d.money})`,
+      DISPUTE: (d) => `Un acheteur conteste son paiement pour « ${d.title} » : ${d.money} en attente`,
+      DISPUTE_WON: (d) => `Contestation gagnée pour « ${d.title} » : tes gains sont rétablis`,
+      PAYOUT: (d) => `Versement envoyé : ${d.money} en route vers ton compte bancaire`,
+      FOUNDER: (d) => `Tu es vendeur fondateur : commission de ${d.amount} % pendant ${d.months} mois`,
+      RES_LIVE: (d) => `« ${d.title} » est en ligne !`,
+      RES_HELD: (d) =>
+        d.reason === "description"
+          ? `« ${d.title} » attend un modérateur : sa description est incomplète. Complète-la pour passer en ligne plus vite.`
+          : `« ${d.title} » attend un modérateur : l'IA a signalé son contenu.`,
+      RES_APPROVED: (d) => `Un modérateur a approuvé « ${d.title} » : elle est en ligne !`,
+      RES_REJECTED: (d) => `« ${d.title} » a été refusée${d.note ? ` : ${d.note}` : ""}`,
+      RES_UNLISTED: (d) => `« ${d.title} » a été retirée de la vente par la modération${d.note ? ` : ${d.note}` : ""}`,
+      RES_RELISTED: (d) => `« ${d.title} » est de nouveau en vente`,
+      RES_DELETED: (d) => `« ${d.title} » a été supprimée par la modération`,
+      RES_EDITED: (d) => `Un modérateur a modifié « ${d.title} »${d.part ? ` (${d.part})` : ""}`,
+      VER_LIVE: (d) => `La v${d.version} de « ${d.title} » est en ligne`,
+      VER_HELD: (d) => `La v${d.version} de « ${d.title} » attend un modérateur${d.reason === "description" ? " : la description est incomplète" : ""}`,
+      VER_REJECTED: (d) => `La v${d.version} de « ${d.title} » a été refusée${d.note ? ` : ${d.note}` : ""}`,
+      REVIEW_NEW: (d) => `${d.user} a laissé un avis ${d.rating}★ sur « ${d.title} »`,
+      REVIEW_REPLY: (d) => `${d.user} a répondu à ton avis sur « ${d.title} »`,
+      REVIEW_REMOVED: (d) => `Ton avis sur « ${d.title} » a été supprimé par la modération`,
+      NEW_VERSION: (d) => `Nouvelle version v${d.version} de « ${d.title} » disponible`,
+      MOD_PENDING: (d) => `À vérifier : « ${d.title} »${d.version && d.version !== "1.0" ? ` v${d.version}` : ""}${d.user ? ` par ${d.user}` : ""}`,
+      MOD_FLAG: (d) => `L'IA a signalé « ${d.title} » (en ligne)`,
+      MOD_REPORT: (d) => `${d.user} a signalé un avis`,
+    },
   },
   reviews: {
     title: "Avis",

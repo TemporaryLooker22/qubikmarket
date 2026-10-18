@@ -17,6 +17,7 @@ import { createCheckoutSession, isDemoMode } from "@/lib/payments";
 import { buyerFeeCents } from "@/lib/buyer-fee";
 import { grantFounderIfEligible } from "@/lib/sellers";
 import { logModeration } from "@/lib/moderation";
+import { links, notify, notifyAdmins } from "@/lib/notifications";
 import { enqueueAnalysis, kickAiQueue } from "@/lib/ai/run";
 import { createOnboardingLink, createSellerAccount, PAYOUT_COUNTRIES } from "@/lib/connect";
 import { cookies, headers } from "next/headers";
@@ -244,6 +245,8 @@ export async function publishResource(_: FormState, formData: FormData): Promise
     kickAiQueue();
   }
   if (status === "APPROVED") await grantFounderIfEligible(user.id);
+  // Scan « à vérifier » : les modérateurs sont prévenus (le vendeur voit déjà le résultat à l'écran)
+  if (status === "PENDING") await notifyAdmins("MOD_PENDING", { title: data.title, user: user.username, reason: "scan" }, "/admin/queue");
 
   revalidatePath("/");
   redirect(`/dashboard?published=${status.toLowerCase()}`);
@@ -309,6 +312,7 @@ export async function buyResource(formData: FormData) {
       create: { userId: user.id, resourceId, amountCents: resource.priceCents, status: "PAID", paidAt: new Date() },
       update: { status: "PAID", paidAt: new Date() },
     });
+    if (resource.priceCents === 0) await notify(resource.sellerId, "FREE_GET", { title: resource.title, user: user.username }, links.sales);
     revalidatePath(`/resources/${resource.slug}`);
     redirect(`/resources/${resource.slug}?bought=1`);
   }
@@ -360,6 +364,12 @@ export async function moderateResource(formData: FormData) {
   }
   if (decision === "APPROVED") await grantFounderIfEligible(resource.sellerId);
   await logModeration({ moderatorId: admin.id, action: decision === "APPROVED" ? "APPROVE" : "REJECT", targetType: "resource", targetId: resource.id, label: resource.title, note });
+  await notify(
+    resource.sellerId,
+    decision === "APPROVED" ? "RES_APPROVED" : "RES_REJECTED",
+    { title: resource.title, note: note ?? undefined },
+    decision === "APPROVED" ? links.resource(resource.slug) : links.report(resource.id),
+  );
   revalidatePath("/admin", "layout");
   revalidatePath("/");
 }

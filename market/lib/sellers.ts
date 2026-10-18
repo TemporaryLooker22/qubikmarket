@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "./db";
+import { notify } from "./notifications";
 
 // Programme « vendeurs fondateurs » : les premiers vendeurs payent une commission réduite pendant quelques mois.
 export const FOUNDER_SPOTS = 50;
@@ -20,5 +21,6 @@ export async function grantFounderIfEligible(userId: string) {
   if ((await founderSpotsLeft()) === 0) return;
   const until = new Date();
   until.setMonth(until.getMonth() + FOUNDER_MONTHS);
-  await db.user.updateMany({ where: { id: userId, founderUntil: null }, data: { founderUntil: until } });
+  const { count } = await db.user.updateMany({ where: { id: userId, founderUntil: null }, data: { founderUntil: until } });
+  if (count === 1) await notify(userId, "FOUNDER", { amount: FOUNDER_FEE_PERCENT, months: FOUNDER_MONTHS }, "/dashboard/sales");
 }

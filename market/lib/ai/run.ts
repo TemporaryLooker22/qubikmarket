@@ -7,6 +7,7 @@ import { grantFounderIfEligible } from "@/lib/sellers";
 import { promoteVersion } from "@/lib/versions";
 import { hasRobloxContent, type ScanReport } from "@/lib/scan";
 import { buildDigest } from "./digest";
+import { links, notify, notifyAdmins } from "@/lib/notifications";
 import { AiError, analyzeWithAi, hasAiKey } from "./ovh";
 
 // File d'attente des analyses IA.
@@ -152,6 +153,8 @@ async function applyResult(versionId: string, result: Awaited<ReturnType<typeof 
   const flagged = result ? result.match < AI_THRESHOLD || result.quality < AI_THRESHOLD || result.description < AI_THRESHOLD : null;
   const report: AiReport | null = result ? { summary: result.summary, findings: result.findings, tips: result.tips } : null;
 
+  // Ce qui s'est passé, pour prévenir le vendeur et les modérateurs après coup
+  let outcome: "resource" | "version" | "live" | null = null;
   const version = await db.$transaction(async (tx) => {
     const version = await tx.resourceVersion.update({
       where: { id: versionId },
@@ -174,16 +177,34 @@ async function applyResult(versionId: string, result: Awaited<ReturnType<typeof 
       // Nouvelle publication au scan propre : en ligne si l'IA est d'accord, sinon un modérateur décide
       await tx.resource.update({ where: { id: resource.id }, data: { status: passed ? "APPROVED" : "PENDING", aiVerified: passed } });
       await tx.resourceVersion.update({ where: { id: version.id }, data: { status: passed ? "LIVE" : "PENDING" } });
+      outcome = "resource";
     } else if (version.status === "ANALYZING") {
       // Nouvelle version au scan propre d'une ressource en ligne
       if (passed) await promoteVersion(tx, version.id, true);
       else await tx.resourceVersion.update({ where: { id: version.id }, data: { status: "PENDING" } });
+      outcome = "version";
     } else if (resource.version === version.version && (resource.status === "APPROVED" || resource.status === "UNLISTED")) {
       // Réanalyse de la version en ligne : seul le badge change (un signalement va dans la modération)
       await tx.resource.update({ where: { id: resource.id }, data: { aiVerified: passed } });
+      outcome = "live";
     }
     return version;
   });
+
+  // Notifications : en ligne, ou envoyée en vérification (raison : description incomplète ou contenu)
+  const resource = version.resource;
+  const passed = flagged === false;
+  const reason = result && result.match >= AI_THRESHOLD && result.quality >= AI_THRESHOLD ? "description" : "content";
+  const data = { title: resource.title, version: version.version, reason } as const;
+  if (outcome === "resource") {
+    await notify(resource.sellerId, passed ? "RES_LIVE" : "RES_HELD", data, passed ? links.resource(resource.slug) : links.report(resource.id));
+    if (!passed) await notifyAdmins("MOD_PENDING", data, "/admin/queue");
+  } else if (outcome === "version") {
+    await notify(resource.sellerId, passed ? "VER_LIVE" : "VER_HELD", data, links.versions(resource.id));
+    if (!passed) await notifyAdmins("MOD_PENDING", data, "/admin/queue");
+  } else if (outcome === "live" && flagged) {
+    await notifyAdmins("MOD_FLAG", data, "/admin/flags");
+  }
 
   const now = await db.resource.findUnique({ where: { id: version.resourceId }, select: { status: true, sellerId: true } });
   if (now?.status === "APPROVED") await grantFounderIfEligible(now.sellerId);

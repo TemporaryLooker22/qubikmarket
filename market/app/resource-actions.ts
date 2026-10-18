@@ -16,6 +16,7 @@ import { getDictionary } from "@/lib/i18n/server";
 import { isValidVersion, promoteVersion } from "@/lib/versions";
 import { enqueueAnalysis, findUnanalyzedVersionIds, kickAiQueue } from "@/lib/ai/run";
 import { logModeration } from "@/lib/moderation";
+import { links, notify, notifyAdmins } from "@/lib/notifications";
 
 // Résultat d'un enregistrement : une erreur à afficher, ou un message de réussite
 export type EditState = { error?: string; ok?: string } | undefined;
@@ -29,6 +30,7 @@ async function ownResource(resourceId: string, part: string) {
   if (resource.sellerId !== user.id) {
     if (user.role !== "ADMIN") return null;
     await logModeration({ moderatorId: user.id, action: "EDIT", targetType: "resource", targetId: resource.id, label: resource.title, note: part });
+    await notify(resource.sellerId, "RES_EDITED", { title: resource.title, part }, `/dashboard/resources/${resource.id}/edit`);
     revalidatePath("/admin", "layout");
   }
   return resource;
@@ -247,6 +249,8 @@ export async function publishVersion(_: EditState, formData: FormData): Promise<
 
   refresh(resource);
   revalidatePath("/admin", "layout");
+  // Scan « à vérifier » : les modérateurs sont prévenus
+  if (!clean) await notifyAdmins("MOD_PENDING", { title: resource.title, version, reason: "scan" }, "/admin/queue");
   return { ok: clean ? t.edit.versionAnalyzing(version) : t.edit.versionPending(version) };
 }
 
@@ -268,6 +272,12 @@ export async function moderateVersion(formData: FormData) {
     await db.resourceVersion.update({ where: { id: version.id }, data: { status: "REJECTED", reviewNote: note, aiReviewed: true } });
   }
   await logModeration({ moderatorId: admin.id, action: approve ? "APPROVE" : "REJECT", targetType: "version", targetId: version.id, label: `${version.resource.title} v${version.version}`, note });
+  await notify(
+    version.resource.sellerId,
+    approve ? "VER_LIVE" : "VER_REJECTED",
+    { title: version.resource.title, version: version.version, note: note ?? undefined },
+    links.versions(version.resourceId),
+  );
   refresh(version.resource);
   revalidatePath("/admin", "layout");
 }
@@ -286,6 +296,7 @@ export async function reviewAiFlag(formData: FormData) {
     await db.resource.update({ where: { id: version.resourceId }, data: { status: "UNLISTED", reviewNote: note } });
   }
   await logModeration({ moderatorId: admin.id, action: unlist ? "UNLIST" : "KEEP", targetType: "resource", targetId: version.resourceId, label: version.resource.title, note });
+  if (unlist) await notify(version.resource.sellerId, "RES_UNLISTED", { title: version.resource.title, note: note ?? undefined }, links.report(version.resourceId));
   refresh(version.resource);
   revalidatePath("/admin", "layout");
 }

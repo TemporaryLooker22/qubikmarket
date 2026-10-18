@@ -2,6 +2,7 @@ import "server-only";
 import Stripe from "stripe";
 import { db } from "./db";
 import { recordSaleEarning, restoreSaleEarning, reverseSaleEarning } from "./earnings";
+import { links, notify } from "./notifications";
 
 // Sans clé Stripe dans .env, Qubik fonctionne en "mode démo" : les achats sont simulés.
 export const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
@@ -85,7 +86,7 @@ export async function fulfillCheckoutSession(session: Stripe.Checkout.Session) {
     return typeof product === "object" && product !== null && !product.deleted && product.metadata?.kind === BUYER_FEE_KIND;
   });
 
-  await db.$transaction(async (tx) => {
+  const fulfilled = await db.$transaction(async (tx) => {
     // Seulement depuis « en attente » : un ancien événement reçu en retard ne doit pas annuler un remboursement
     const { count } = await tx.purchase.updateMany({
       where: { id: purchaseId, status: "PENDING" },
@@ -102,17 +103,48 @@ export async function fulfillCheckoutSession(session: Stripe.Checkout.Session) {
       },
     });
     if (count === 1) await recordSaleEarning(tx, purchaseId, paidAt);
+    return count === 1;
   });
+  if (fulfilled) await notifySale(purchaseId);
+}
+
+// Le vendeur apprend sa vente (et qu'il doit configurer ses versements s'il ne l'a pas encore fait)
+async function notifySale(purchaseId: string) {
+  const purchase = await db.purchase.findUnique({
+    where: { id: purchaseId },
+    select: {
+      user: { select: { username: true } },
+      earning: { select: { amountCents: true } },
+      resource: { select: { title: true, sellerId: true, seller: { select: { stripeTransfersActive: true } } } },
+    },
+  });
+  if (!purchase) return;
+  await notify(
+    purchase.resource.sellerId,
+    "SALE",
+    { title: purchase.resource.title, user: purchase.user.username, amount: purchase.earning?.amountCents ?? 0, setup: !purchase.resource.seller.stripeTransfersActive },
+    links.sales,
+  );
 }
 
 // Remboursement ou contestation bancaire : l'acheteur perd l'accès au téléchargement et le gain du vendeur est annulé.
 // Contestation gagnée : tout revient comme avant.
 export async function setPurchaseStatusByPaymentIntent(paymentIntentId: string, status: "PAID" | "REFUNDED" | "DISPUTED") {
-  await db.$transaction(async (tx) => {
+  const changed = await db.$transaction(async (tx) => {
     const purchase = await tx.purchase.findUnique({ where: { stripePaymentIntentId: paymentIntentId }, select: { id: true, status: true } });
-    if (!purchase || purchase.status === "PENDING" || purchase.status === status) return;
+    if (!purchase || purchase.status === "PENDING" || purchase.status === status) return null;
     await tx.purchase.update({ where: { id: purchase.id }, data: { status } });
     if (status === "PAID") await restoreSaleEarning(tx, purchase.id);
     else await reverseSaleEarning(tx, purchase.id);
+    return purchase.id;
   });
+  if (!changed) return;
+  // Le vendeur est prévenu : remboursement, contestation ouverte, ou contestation gagnée
+  const purchase = await db.purchase.findUnique({
+    where: { id: changed },
+    select: { amountCents: true, earning: { select: { amountCents: true } }, resource: { select: { title: true, sellerId: true } } },
+  });
+  if (!purchase) return;
+  const type = status === "REFUNDED" ? "REFUND" : status === "DISPUTED" ? "DISPUTE" : "DISPUTE_WON";
+  await notify(purchase.resource.sellerId, type, { title: purchase.resource.title, amount: purchase.earning?.amountCents ?? 0 }, links.sales);
 }

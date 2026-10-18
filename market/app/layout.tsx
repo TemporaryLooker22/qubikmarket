@@ -30,6 +30,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // Pastille « Modération » : seulement calculée pour les admins
   // (éléments à vérifier + signalements de l'IA + avis signalés, voir lib/moderation.ts)
   const pendingCount = user?.role === "ADMIN" ? await moderationCounts().then((c) => c.queue + c.flags + c.reports) : 0;
+  // Cloche : notifications non lues (la liste se charge au clic)
+  const unreadCount = user ? await db.notification.count({ where: { userId: user.id, readAt: null } }) : 0;
   // Le menu du compte propose « Devenir vendeur » à ceux qui n'ont encore rien publié
   const isSeller = user ? (await db.resource.count({ where: { sellerId: user.id } })) > 0 : false;
 
@@ -37,7 +39,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang={locale} className={jakarta.variable}>
       <body className="flex min-h-screen flex-col font-sans antialiased">
         <LocaleProvider locale={locale}>
-          <Navbar user={user ? { username: user.username, email: user.email, role: user.role, isSeller } : null} pendingCount={pendingCount} />
+          <Navbar user={user ? { username: user.username, email: user.email, role: user.role, isSeller } : null} pendingCount={pendingCount} unreadCount={unreadCount} />
 
           <main className="flex-1 pb-16">{children}</main>
 

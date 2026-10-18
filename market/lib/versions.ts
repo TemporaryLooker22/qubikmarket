@@ -1,5 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
+import { buyerIds, links, notify } from "./notifications";
 
 // Versions d'une ressource (table ResourceVersion). La ressource garde toujours en direct les champs
 // fichier et scan de sa version en ligne : c'est ce que télécharge l'acheteur (/api/download).
@@ -59,4 +60,9 @@ export async function promoteVersion(tx: Tx, versionId: string, updated: boolean
       ...(updated && { versionUpdatedAt: new Date() }),
     },
   });
+  // Les acheteurs apprennent qu'une nouvelle version est disponible
+  if (updated) {
+    const resource = await tx.resource.findUniqueOrThrow({ where: { id: version.resourceId }, select: { title: true } });
+    await notify(await buyerIds(version.resourceId, tx), "NEW_VERSION", { title: resource.title, version: version.version }, links.purchases, tx);
+  }
 }

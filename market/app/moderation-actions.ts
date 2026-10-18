@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { banUser, logModeration, unbanUser } from "@/lib/moderation";
+import { links, notify } from "@/lib/notifications";
 import { getDictionary } from "@/lib/i18n/server";
 import { hasRobloxContent, type ScanReport } from "@/lib/scan";
 import { deleteStored } from "@/lib/storage";
@@ -54,18 +55,24 @@ function refreshResources(slugs: string[]) {
 // Retirer de la vente : la ressource quitte le catalogue, les acheteurs gardent leur téléchargement
 export async function adminUnlist(target: string | null, formData: FormData) {
   const admin = await requireAdmin();
-  const resources = await db.resource.findMany({ where: { id: { in: pickedIds(target, formData) }, status: "APPROVED" }, select: { id: true, slug: true, title: true } });
+  const resources = await db.resource.findMany({ where: { id: { in: pickedIds(target, formData) }, status: "APPROVED" }, select: { id: true, slug: true, title: true, sellerId: true } });
   await db.resource.updateMany({ where: { id: { in: resources.map((r) => r.id) } }, data: { status: "UNLISTED" } });
-  for (const r of resources) await logModeration({ moderatorId: admin.id, action: "UNLIST", targetType: "resource", targetId: r.id, label: r.title });
+  for (const r of resources) {
+    await logModeration({ moderatorId: admin.id, action: "UNLIST", targetType: "resource", targetId: r.id, label: r.title });
+    await notify(r.sellerId, "RES_UNLISTED", { title: r.title }, links.report(r.id));
+  }
   refreshResources(resources.map((r) => r.slug));
 }
 
 // Remettre en vente une ressource retirée
 export async function adminRelist(target: string | null, formData: FormData) {
   const admin = await requireAdmin();
-  const resources = await db.resource.findMany({ where: { id: { in: pickedIds(target, formData) }, status: "UNLISTED" }, select: { id: true, slug: true, title: true } });
+  const resources = await db.resource.findMany({ where: { id: { in: pickedIds(target, formData) }, status: "UNLISTED" }, select: { id: true, slug: true, title: true, sellerId: true } });
   await db.resource.updateMany({ where: { id: { in: resources.map((r) => r.id) } }, data: { status: "APPROVED", unlistedByBan: false } });
-  for (const r of resources) await logModeration({ moderatorId: admin.id, action: "RELIST", targetType: "resource", targetId: r.id, label: r.title });
+  for (const r of resources) {
+    await logModeration({ moderatorId: admin.id, action: "RELIST", targetType: "resource", targetId: r.id, label: r.title });
+    await notify(r.sellerId, "RES_RELISTED", { title: r.title }, links.resource(r.slug));
+  }
   refreshResources(resources.map((r) => r.slug));
 }
 
@@ -108,5 +115,6 @@ export async function adminDelete(id: string) {
     console.error("Suppression des fichiers :", err),
   );
   await logModeration({ moderatorId: admin.id, action: "DELETE", targetType: "resource", targetId: id, label: `${resource.title} (${resource.slug})` });
+  await notify(resource.sellerId, "RES_DELETED", { title: resource.title }, null);
   refreshResources([resource.slug]);
 }
