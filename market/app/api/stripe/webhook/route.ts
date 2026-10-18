@@ -4,7 +4,7 @@ import { fulfillCheckoutSession, setPurchaseStatusByPaymentIntent, stripe } from
 
 // Webhook Stripe : Stripe prévient le site quand un paiement aboutit, est remboursé ou contesté.
 // C'est la source fiable : l'acheteur peut fermer la page avant de revenir sur /checkout/success.
-// Adresse à déclarer dans Stripe : https://qubikmarket.vercel.app/api/stripe/webhook
+// Adresse déclarée dans Stripe : https://qubikmarket.vercel.app/api/stripe/webhook (toujours valable, voir next.config.ts)
 export async function POST(req: Request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!stripe || !secret) return NextResponse.json({ error: "Stripe non configuré" }, { status: 503 });
