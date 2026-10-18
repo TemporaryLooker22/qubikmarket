@@ -28,6 +28,11 @@ model User {
   purchases             Purchase[]
   earnings              SellerEarning[]
   reviews               Review[]
+  // Bannissement par un modérateur : plus de connexion, ressources retirées de la vente, avis masqués (réversible)
+  bannedAt              DateTime?
+  banReason             String?
+  reviewReports         ReviewReport[]
+  moderationLogs        ModerationLog[]
 }
 
 model Resource {
@@ -65,6 +70,9 @@ model Resource {
   ratingCount Int      @default(0)
   ratingScore Float    @default(0) // pour le tri « Mieux notées » (moyenne pondérée par le nombre d'avis)
   reviews     Review[]
+
+  // Retirée de la vente parce que son vendeur a été banni : elle revient en ligne s'il est débanni
+  unlistedByBan Boolean @default(false)
 
   sellerId  String
   seller    User       @relation(fields: [sellerId], references: [id])
@@ -200,9 +208,42 @@ model Review {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  resource Resource @relation(fields: [resourceId], references: [id])
-  user     User     @relation(fields: [userId], references: [id])
+  resource Resource       @relation(fields: [resourceId], references: [id])
+  user     User           @relation(fields: [userId], references: [id])
+  reports  ReviewReport[]
 
   @@unique([userId, resourceId])
   @@index([resourceId, createdAt])
+}
+
+// Signalement d'un avis par un membre (insultes, spam…) : il apparaît dans la modération jusqu'à ce qu'un
+// modérateur supprime l'avis ou ignore le signalement
+model ReviewReport {
+  id          String    @id @default(cuid())
+  reviewId    String
+  userId      String // qui a signalé
+  reason      String?
+  createdAt   DateTime  @default(now())
+  dismissedAt DateTime? // signalement ignoré par un modérateur
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([reviewId, userId])
+}
+
+// Journal des décisions de modération (qui, quoi, quand, avec la note envoyée)
+model ModerationLog {
+  id          String   @id @default(cuid())
+  moderatorId String
+  action      String // APPROVE, REJECT, KEEP, UNLIST, REVIEW_DELETE, REPORTS_DISMISS, BAN, UNBAN
+  targetType  String // resource, version, review ou user
+  targetId    String
+  label       String // ce qui est concerné, au moment de la décision (titre, pseudo…)
+  note        String?
+  createdAt   DateTime @default(now())
+
+  moderator User @relation(fields: [moderatorId], references: [id])
+
+  @@index([createdAt])
 }

@@ -5,9 +5,11 @@ import type { Dictionary, Locale } from "@/lib/i18n/dictionaries";
 import { formatDate } from "@/lib/i18n/format";
 import { Stars } from "@/components/Stars";
 import { ReplyForm } from "./ReplyForm";
+import { ReportButton } from "./ReportButton";
 
 export type ReviewData = {
   id: string;
+  userId?: string;
   rating: number;
   body: string | null;
   version: string;
@@ -18,12 +20,14 @@ export type ReviewData = {
 };
 
 // Un avis : auteur, étoiles, date, version, commentaire et réponse du vendeur.
-// canReply : le vendeur peut répondre ; canDelete : un modérateur peut supprimer l'avis.
+// canReply : le vendeur peut répondre ; canDelete : un modérateur peut supprimer l'avis ;
+// viewerId : le membre connecté, qui peut signaler l'avis (sauf le sien).
 export function ReviewItem({
   review,
   sellerName,
   canReply = false,
   canDelete = false,
+  viewerId,
   locale,
   t,
 }: {
@@ -31,6 +35,7 @@ export function ReviewItem({
   sellerName: string;
   canReply?: boolean;
   canDelete?: boolean;
+  viewerId?: string;
   locale: Locale;
   t: Dictionary;
 }) {
@@ -75,6 +80,11 @@ export function ReviewItem({
           {canReply && (
             <div className="mt-2.5">
               <ReplyForm key={review.reply ?? ""} reviewId={review.id} initial={review.reply} />
+            </div>
+          )}
+          {viewerId && review.userId && viewerId !== review.userId && (
+            <div className="mt-2">
+              <ReportButton reviewId={review.id} />
             </div>
           )}
           {canDelete && (

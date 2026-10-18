@@ -14,6 +14,9 @@ export const REVIEWS_SHOWN = 3; // avis affichés avant « Voir les autres avis 
 const PRIOR_COUNT = 3;
 const PRIOR_MEAN = 3.5;
 
+// Avis affichés : ceux des membres bannis sont masqués (et ne comptent pas dans les notes)
+export const VISIBLE_REVIEW = { user: { bannedAt: null } };
+
 // L'utilisateur peut-il donner son avis ? (achat payé ou obtenu gratuitement, puis téléchargé)
 export async function canReview(userId: string, resourceId: string) {
   const purchase = await db.purchase.findUnique({
@@ -26,7 +29,7 @@ export async function canReview(userId: string, resourceId: string) {
 
 // Recalcule la note d'une ressource après un avis ajouté, modifié ou supprimé
 export async function refreshRating(resourceId: string) {
-  const { _avg, _count, _sum } = await db.review.aggregate({ where: { resourceId }, _avg: { rating: true }, _count: true, _sum: { rating: true } });
+  const { _avg, _count, _sum } = await db.review.aggregate({ where: { resourceId, ...VISIBLE_REVIEW }, _avg: { rating: true }, _count: true, _sum: { rating: true } });
   const count = _count;
   await db.resource.update({
     where: { id: resourceId },
@@ -40,6 +43,6 @@ export async function refreshRating(resourceId: string) {
 
 // Note moyenne de toutes les ressources d'un vendeur (encart « Vendeur » et Mon espace)
 export async function sellerRating(sellerId: string) {
-  const { _avg, _count } = await db.review.aggregate({ where: { resource: { sellerId } }, _avg: { rating: true }, _count: true });
+  const { _avg, _count } = await db.review.aggregate({ where: { resource: { sellerId }, ...VISIBLE_REVIEW }, _avg: { rating: true }, _count: true });
   return { rating: _count ? (_avg.rating ?? 0) : null, reviews: _count };
 }

@@ -187,7 +187,7 @@ async function applyResult(versionId: string, result: Awaited<ReturnType<typeof 
 
   revalidatePath(`/resources/${version.resource.slug}`);
   revalidatePath("/dashboard", "layout");
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/");
 }
 

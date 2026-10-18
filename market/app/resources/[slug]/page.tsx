@@ -21,7 +21,7 @@ import { Stars } from "@/components/Stars";
 import { ProductGallery } from "@/components/product/ProductGallery";
 import { ReviewForm } from "@/components/reviews/ReviewForm";
 import { ReviewItem, type ReviewData } from "@/components/reviews/ReviewItem";
-import { canReview, REVIEWS_SHOWN, sellerRating } from "@/lib/reviews";
+import { canReview, REVIEWS_SHOWN, sellerRating, VISIBLE_REVIEW } from "@/lib/reviews";
 import { ShareButton } from "@/components/product/ShareButton";
 
 type Params = Promise<{ slug: string }>;
@@ -65,6 +65,7 @@ type Reviews = {
   isSeller: boolean;
   isAdmin: boolean;
   showAll: boolean;
+  viewerId?: string;
 };
 
 // Ce que le visiteur peut faire sur cette ressource
@@ -122,8 +123,8 @@ export default async function ResourcePage({ params, searchParams }: { params: P
         include: { seller: { select: { username: true } } },
       }),
       // Avis : les plus récents d'abord
-      db.review.findMany({ where: { resourceId: resource.id }, orderBy: { createdAt: "desc" }, include: { user: { select: { username: true } } } }),
-      db.review.groupBy({ by: ["rating"], where: { resourceId: resource.id }, _count: true }),
+      db.review.findMany({ where: { resourceId: resource.id, ...VISIBLE_REVIEW }, orderBy: { createdAt: "desc" }, include: { user: { select: { username: true } } } }),
+      db.review.groupBy({ by: ["rating"], where: { resourceId: resource.id, ...VISIBLE_REVIEW }, _count: true }),
       sellerRating(resource.sellerId),
       user && !isOwner ? canReview(user.id, resource.id) : Promise.resolve("no" as const),
     ]);
@@ -136,6 +137,7 @@ export default async function ResourcePage({ params, searchParams }: { params: P
       isSeller: isOwner,
       isAdmin,
       showAll: avis === "all",
+      viewerId: user?.id,
     };
 
     const scan = JSON.parse(resource.scanReport) as ScanReport;
@@ -503,7 +505,7 @@ function ReviewsSection({ product, reviews, locale, t }: { product: Product; rev
       {shown.length > 0 && (
         <ul className="mt-5 divide-y divide-border">
           {shown.map((r) => (
-            <ReviewItem key={r.id} review={r} sellerName={product.seller.username} canReply={reviews.isSeller} canDelete={reviews.isAdmin} locale={locale} t={t} />
+            <ReviewItem key={r.id} review={r} sellerName={product.seller.username} canReply={reviews.isSeller} canDelete={reviews.isAdmin} viewerId={reviews.viewerId} locale={locale} t={t} />
           ))}
         </ul>
       )}

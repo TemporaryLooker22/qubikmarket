@@ -41,8 +41,9 @@ export async function getCurrentUser() {
   try {
     const { payload } = await jwtVerify(token, secretKey());
     if (!payload.sub) return null;
+    // Un compte banni n'est plus connecté (voir lib/moderation.ts)
     return await db.user.findUnique({
-      where: { id: payload.sub },
+      where: { id: payload.sub, bannedAt: null },
       select: { id: true, username: true, email: true, role: true },
     });
   } catch {

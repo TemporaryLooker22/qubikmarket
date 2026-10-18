@@ -14,6 +14,7 @@ import { ALLOWED_EXTENSIONS, CATEGORIES, MAX_FILE_SIZE, MAX_IMAGE_SIZE, MAX_IMAG
 import { getDictionary } from "@/lib/i18n/server";
 import { isValidVersion, promoteVersion } from "@/lib/versions";
 import { enqueueAnalysis, findUnanalyzedVersionIds, kickAiQueue } from "@/lib/ai/run";
+import { logModeration } from "@/lib/moderation";
 
 // Résultat d'un enregistrement : une erreur à afficher, ou un message de réussite
 export type EditState = { error?: string; ok?: string } | undefined;
@@ -212,14 +213,14 @@ export async function publishVersion(_: EditState, formData: FormData): Promise<
   kickAiQueue();
 
   refresh(resource);
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return { ok: clean ? t.edit.versionAnalyzing(version) : t.edit.versionPending(version) };
 }
 
 // ---------- Modération d'une nouvelle version (admins) ----------
 
 export async function moderateVersion(formData: FormData) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const versionId = String(formData.get("versionId"));
   const approve = formData.get("decision") === "approve";
   const note = String(formData.get("note") ?? "").trim() || null;
@@ -233,8 +234,9 @@ export async function moderateVersion(formData: FormData) {
   } else {
     await db.resourceVersion.update({ where: { id: version.id }, data: { status: "REJECTED", reviewNote: note, aiReviewed: true } });
   }
+  await logModeration({ moderatorId: admin.id, action: approve ? "APPROVE" : "REJECT", targetType: "version", targetId: version.id, label: `${version.resource.title} v${version.version}`, note });
   refresh(version.resource);
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 // ---------- Analyse IA : signalements de ressources en ligne et analyse des anciennes ressources (admins) ----------
@@ -242,7 +244,7 @@ export async function moderateVersion(formData: FormData) {
 // Ressource en ligne signalée par l'IA : « C'est bon » (on garde) ou « Retirer de la vente »
 // (les acheteurs gardent leur téléchargement)
 export async function reviewAiFlag(formData: FormData) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const versionId = String(formData.get("versionId"));
   const unlist = formData.get("decision") === "unlist";
   const note = String(formData.get("note") ?? "").trim() || null;
@@ -250,8 +252,9 @@ export async function reviewAiFlag(formData: FormData) {
   if (unlist && version.resource.status === "APPROVED") {
     await db.resource.update({ where: { id: version.resourceId }, data: { status: "UNLISTED", reviewNote: note } });
   }
+  await logModeration({ moderatorId: admin.id, action: unlist ? "UNLIST" : "KEEP", targetType: "resource", targetId: version.resourceId, label: version.resource.title, note });
   refresh(version.resource);
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 // Toutes les anciennes ressources (et les analyses impossibles) rejoignent la file d'attente
@@ -260,5 +263,5 @@ export async function analyzeExistingResources() {
   const { locale } = await getDictionary();
   await enqueueAnalysis(await findUnanalyzedVersionIds(), locale);
   kickAiQueue();
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }

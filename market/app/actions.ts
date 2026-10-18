@@ -16,6 +16,7 @@ import { ALLOWED_EXTENSIONS, CATEGORIES, MAX_FILE_SIZE, MAX_IMAGE_SIZE, MAX_IMAG
 import { createCheckoutSession, isDemoMode } from "@/lib/payments";
 import { buyerFeeCents } from "@/lib/buyer-fee";
 import { grantFounderIfEligible } from "@/lib/sellers";
+import { logModeration } from "@/lib/moderation";
 import { enqueueAnalysis, kickAiQueue } from "@/lib/ai/run";
 import { createOnboardingLink, createSellerAccount, PAYOUT_COUNTRIES } from "@/lib/connect";
 import { cookies } from "next/headers";
@@ -103,6 +104,10 @@ export async function login(_: FormState, formData: FormData): Promise<FormState
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     const { t } = await getDictionary();
     return { error: t.errors.badLogin };
+  }
+  if (user.bannedAt) {
+    const { t } = await getDictionary();
+    return { error: t.errors.banned };
   }
 
   await createSession(user.id);
@@ -319,7 +324,7 @@ export async function buyResource(formData: FormData) {
 // ---------- Modération ----------
 
 export async function moderateResource(formData: FormData) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const resourceId = String(formData.get("resourceId"));
   const decision = formData.get("decision") === "approve" ? "APPROVED" : "REJECTED";
   const note = String(formData.get("note") ?? "").trim() || null;
@@ -339,6 +344,7 @@ export async function moderateResource(formData: FormData) {
     await db.resource.update({ where: { id: resourceId }, data: { aiVerified: live?.aiStatus === "DONE" && live.aiFlagged === false } });
   }
   if (decision === "APPROVED") await grantFounderIfEligible(resource.sellerId);
-  revalidatePath("/admin");
+  await logModeration({ moderatorId: admin.id, action: decision === "APPROVED" ? "APPROVE" : "REJECT", targetType: "resource", targetId: resource.id, label: resource.title, note });
+  revalidatePath("/admin", "layout");
   revalidatePath("/");
 }

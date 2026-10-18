@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { moderationCounts } from "@/lib/moderation";
 import { getDictionary } from "@/lib/i18n/server";
 import { LocaleProvider } from "@/lib/i18n/client";
 import Link from "next/link";
@@ -25,12 +26,8 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const [user, { locale, t }] = await Promise.all([getCurrentUser(), getDictionary()]);
   // Pastille « Modération » : seulement calculée pour les admins
-  // (ressources en attente + nouvelles versions de ressources en ligne)
-  const pendingCount =
-    user?.role === "ADMIN"
-      ? (await db.resource.count({ where: { status: "PENDING" } })) +
-        (await db.resourceVersion.count({ where: { status: "PENDING", resource: { status: { in: ["APPROVED", "UNLISTED"] } } } }))
-      : 0;
+  // (éléments à vérifier + signalements de l'IA + avis signalés, voir lib/moderation.ts)
+  const pendingCount = user?.role === "ADMIN" ? await moderationCounts().then((c) => c.queue + c.flags + c.reports) : 0;
   // Le menu du compte propose « Devenir vendeur » à ceux qui n'ont encore rien publié
   const isSeller = user ? (await db.resource.count({ where: { sellerId: user.id } })) > 0 : false;
 

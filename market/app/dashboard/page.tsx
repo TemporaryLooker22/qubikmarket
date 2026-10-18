@@ -10,7 +10,7 @@ import { SalesChart, type ChartDay } from "@/components/dashboard/SalesChart";
 import { Thumb } from "@/components/dashboard/Thumb";
 import { ReviewItem } from "@/components/reviews/ReviewItem";
 import { Stars } from "@/components/Stars";
-import { sellerRating } from "@/lib/reviews";
+import { sellerRating, VISIBLE_REVIEW } from "@/lib/reviews";
 
 export async function generateMetadata() {
   const { t } = await getDictionary();
@@ -63,7 +63,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     }),
     // Derniers avis sur ses ressources (le vendeur peut y répondre)
     db.review.findMany({
-      where: { resource: { sellerId: user.id } },
+      where: { resource: { sellerId: user.id }, ...VISIBLE_REVIEW },
       orderBy: { createdAt: "desc" },
       take: 5,
       include: { user: { select: { username: true } }, resource: { select: { title: true, slug: true } } },
@@ -232,7 +232,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         ) : (
           <ul className="divide-y divide-border">
             {latestReviews.map((r) => (
-              <ReviewItem key={r.id} review={r} sellerName={user.username} canReply locale={locale} t={t} />
+              <ReviewItem key={r.id} review={r} sellerName={user.username} canReply viewerId={user.id} locale={locale} t={t} />
             ))}
           </ul>
         )}

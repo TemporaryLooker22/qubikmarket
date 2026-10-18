@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { requireAdmin, requireUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/i18n/server";
 import { canReview, refreshRating, REVIEW_MAX } from "@/lib/reviews";
+import { logModeration } from "@/lib/moderation";
 
 export type ReviewState = { error?: string; ok?: string } | undefined;
 
@@ -58,10 +59,51 @@ export async function replyToReview(_: ReviewState, formData: FormData): Promise
 
 // Suppression d'un avis par un modérateur (insultes, spam, hors sujet…)
 export async function deleteReview(formData: FormData) {
-  await requireAdmin();
-  const review = await db.review.findUnique({ where: { id: String(formData.get("reviewId")) }, include: { resource: { select: { slug: true } } } });
+  const admin = await requireAdmin();
+  const review = await db.review.findUnique({
+    where: { id: String(formData.get("reviewId")) },
+    include: { resource: { select: { slug: true, title: true } }, user: { select: { username: true } } },
+  });
   if (!review) return;
   await db.review.delete({ where: { id: review.id } });
   await refreshRating(review.resourceId);
+  await logModeration({
+    moderatorId: admin.id,
+    action: "REVIEW_DELETE",
+    targetType: "review",
+    targetId: review.id,
+    label: `${review.user.username} → ${review.resource.title}`,
+    note: review.body ? `${review.rating}★ « ${review.body.slice(0, 120)} »` : `${review.rating}★`,
+  });
   refresh(review.resource.slug);
+  revalidatePath("/admin", "layout");
+}
+
+// Signalements d'un avis ignorés par un modérateur : l'avis reste en ligne
+export async function dismissReviewReports(formData: FormData) {
+  const admin = await requireAdmin();
+  const review = await db.review.findUnique({
+    where: { id: String(formData.get("reviewId")) },
+    include: { resource: { select: { title: true } }, user: { select: { username: true } } },
+  });
+  if (!review) return;
+  await db.reviewReport.updateMany({ where: { reviewId: review.id, dismissedAt: null }, data: { dismissedAt: new Date() } });
+  await logModeration({ moderatorId: admin.id, action: "REPORTS_DISMISS", targetType: "review", targetId: review.id, label: `${review.user.username} → ${review.resource.title}` });
+  revalidatePath("/admin", "layout");
+}
+
+// Un membre (ou le vendeur) signale un avis : insultes, spam, hors sujet…
+export async function reportReview(_: ReviewState, formData: FormData): Promise<ReviewState> {
+  const user = await requireUser();
+  const { t } = await getDictionary();
+  const reason = String(formData.get("reason") ?? "").trim().slice(0, 300) || null;
+  const review = await db.review.findUnique({ where: { id: String(formData.get("reviewId")) }, select: { id: true, userId: true } });
+  if (!review || review.userId === user.id) return { error: t.errors.notFound };
+  await db.reviewReport.upsert({
+    where: { reviewId_userId: { reviewId: review.id, userId: user.id } },
+    create: { reviewId: review.id, userId: user.id, reason },
+    update: { reason, dismissedAt: null, createdAt: new Date() },
+  });
+  revalidatePath("/admin", "layout");
+  return { ok: t.reviews.reported };
 }

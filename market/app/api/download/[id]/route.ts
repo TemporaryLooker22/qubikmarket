@@ -5,7 +5,8 @@ import { readUpload } from "@/lib/storage";
 import { getDictionary } from "@/lib/i18n/server";
 
 // Téléchargement sécurisé : seulement pour le vendeur, les modérateurs et les acheteurs
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+// ?version=<id> : le fichier d'une autre version (vendeur et modérateurs, ex. une version en attente de vérification)
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [user, { t }] = await Promise.all([getCurrentUser(), getDictionary()]);
   if (!user) return NextResponse.json({ error: t.errors.loginRequired }, { status: 401 });
@@ -28,11 +29,19 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     await db.purchase.update({ where: { id: purchase.id }, data: { lastDownloadedAt: new Date() } });
   }
 
-  const file = await readUpload(resource.filePath);
+  let stored = { filePath: resource.filePath, fileName: resource.fileName };
+  const versionId = new URL(req.url).searchParams.get("version");
+  if (versionId && (isOwner || isAdmin)) {
+    const version = await db.resourceVersion.findFirst({ where: { id: versionId, resourceId: resource.id }, select: { filePath: true, fileName: true } });
+    if (!version) return NextResponse.json({ error: t.errors.notFound }, { status: 404 });
+    stored = version;
+  }
+
+  const file = await readUpload(stored.filePath);
   return new NextResponse(new Uint8Array(file), {
     headers: {
       "Content-Type": "application/octet-stream",
-      "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(resource.fileName)}`,
+      "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(stored.fileName)}`,
       "Cache-Control": "private, no-store",
     },
   });
