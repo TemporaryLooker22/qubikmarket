@@ -3,8 +3,8 @@ import Link from "next/link";
 import { categoryLabel } from "@/lib/catalog";
 import { dictionaries, type Locale } from "@/lib/i18n/dictionaries";
 import { formatPrice } from "@/lib/i18n/format";
-import { Star } from "lucide-react";
 import { CategoryIcon } from "./CategoryIcon";
+import { Stars } from "./Stars";
 
 type Props = {
   resource: {
@@ -72,15 +72,25 @@ export function ResourceCard({ resource, locale, href, size = "normal", rank, sa
         <p className={`mt-0.5 truncate font-semibold ${large ? "text-lg" : "text-[15px]"}`}>{resource.title}</p>
         <p className="mt-1 flex items-center justify-between gap-2 truncate text-xs text-muted">
           <span className="truncate">{t.card.by(resource.seller.username)}</span>
-          {resource.ratingCount ? (
-            <span className="inline-flex shrink-0 items-center gap-1 font-semibold text-text" aria-label={t.resource.rating(formatRating(resource.ratingAvg ?? 0, locale))}>
-              <Star className="h-3.5 w-3.5 text-accent" fill="currentColor" strokeWidth={0} aria-hidden="true" />
-              {formatRating(resource.ratingAvg ?? 0, locale)}
-              <span className="font-normal text-muted">({resource.ratingCount})</span>
-            </span>
-          ) : null}
           {sales !== undefined && <span className="shrink-0 font-medium text-text">{t.card.sales(sales)}</span>}
         </p>
+        {/* Note des acheteurs : étoiles, note moyenne et nombre d'avis (vraies ressources seulement) */}
+        {resource.ratingCount !== undefined && (
+          <p className="mt-1.5 flex items-center gap-1.5 text-xs">
+            {resource.ratingCount > 0 ? (
+              <>
+                <Stars rating={resource.ratingAvg ?? 0} label={t.resource.rating(formatRating(resource.ratingAvg ?? 0, locale))} className="h-3.5 w-3.5" />
+                <span className="font-semibold">{formatRating(resource.ratingAvg ?? 0, locale)}</span>
+                <span className="text-muted">({resource.ratingCount})</span>
+              </>
+            ) : (
+              <>
+                <Stars rating={0} label={t.resource.noReviews} className="h-3.5 w-3.5" />
+                <span className="text-muted">{t.resource.noReviews}</span>
+              </>
+            )}
+          </p>
+        )}
       </div>
     </Link>
   );
