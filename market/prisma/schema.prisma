@@ -31,6 +31,12 @@ model User {
   // Bannissement par un modérateur : plus de connexion, ressources retirées de la vente, avis masqués (réversible)
   bannedAt              DateTime?
   banReason             String?
+  // Provenance à l'inscription (voir components/SourceTracker.tsx) : site ou campagne d'origine, adresse du lien,
+  // page d'arrivée et pays (déduit de l'adresse IP par Vercel, l'adresse IP n'est pas gardée)
+  signupSource          String?
+  signupReferrer        String?
+  signupLanding         String?
+  signupCountry         String?
   reviewReports         ReviewReport[]
   moderationLogs        ModerationLog[]
 }

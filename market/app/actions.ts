@@ -19,7 +19,7 @@ import { grantFounderIfEligible } from "@/lib/sellers";
 import { logModeration } from "@/lib/moderation";
 import { enqueueAnalysis, kickAiQueue } from "@/lib/ai/run";
 import { createOnboardingLink, createSellerAccount, PAYOUT_COUNTRIES } from "@/lib/connect";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { isLocale, type Dictionary } from "@/lib/i18n/dictionaries";
 import { getDictionary, LOCALE_COOKIE } from "@/lib/i18n/server";
 
@@ -74,12 +74,26 @@ export async function register(_: FormState, formData: FormData): Promise<FormSt
   // Le tout premier compte créé devient administrateur (pratique pour démarrer)
   const isFirstUser = (await db.user.count()) === 0;
 
+  // Provenance (envoyée par le formulaire, voir components/SourceTracker.tsx) et pays (en-tête ajouté par Vercel)
+  let visit: { source?: unknown; referrer?: unknown; landing?: unknown } = {};
+  try {
+    visit = JSON.parse(String(formData.get("source") ?? "")) ?? {};
+  } catch {
+    // pas de provenance
+  }
+  const text = (v: unknown, max: number) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
+  const country = (await headers()).get("x-vercel-ip-country");
+
   const user = await db.user.create({
     data: {
       username,
       email,
       passwordHash: await bcrypt.hash(password, 10),
       role: isFirstUser ? "ADMIN" : "USER",
+      signupSource: text(visit.source, 60) ?? "direct",
+      signupReferrer: text(visit.referrer, 200),
+      signupLanding: text(visit.landing, 120),
+      signupCountry: country && /^[A-Z]{2}$/.test(country) ? country : null,
     },
   });
 

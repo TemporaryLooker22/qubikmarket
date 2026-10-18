@@ -6,6 +6,7 @@ import { Check, Eye, EyeOff, Loader2, X } from "lucide-react";
 import { checkUsername, login, register } from "@/app/actions";
 import { useI18n } from "@/lib/i18n/client";
 import { SubmitButton } from "./SubmitButton";
+import { readVisitSource } from "./SourceTracker";
 
 const inputClass =
   "h-11 w-full rounded-lg border border-border bg-card px-3.5 text-[15px] outline-none transition placeholder:text-muted focus:border-text focus:ring-4 focus:ring-accent/30";
@@ -42,11 +43,15 @@ export function RegisterForm({ next }: { next?: string }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const mismatch = confirm.length > 0 && confirm !== password;
+  // D'où vient le visiteur (voir SourceTracker) : enregistré avec le compte
+  const [source, setSource] = useState("");
+  useEffect(() => setSource(readVisitSource()), []);
 
   return (
     <form action={action} className="space-y-4">
       <ErrorBox message={state?.error} />
       <input type="hidden" name="next" value={next ?? ""} />
+      <input type="hidden" name="source" value={source} />
 
       <Field label={t.auth.username}>{(id) => <UsernameInput id={id} />}</Field>
 

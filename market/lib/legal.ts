@@ -151,6 +151,8 @@ const PRIVACY: Record<Locale, LegalDoc> = {
 - **Activity:** resources you publish (files, images, descriptions), purchases, downloads, moderation decisions and scan reports.
 - **Payments:** handled by Stripe. We receive the payment status and amount, never your card details.
 - **Technical data:** IP address and server logs (security and troubleshooting), and two cookies described below.
+- **How you found Qubik:** when you create your account, we save the site or campaign link that brought you (for example discord.com or a ?ref= link), the first page you saw and your country (worked out from your IP address, which we don't keep). It helps us know which links bring new members.
+- **Visit statistics:** anonymous and without cookies (Vercel Web Analytics): pages viewed, site of origin, country and type of device, counted together. They can't be used to identify you.
 
 We do not sell your data and we do not use advertising trackers.
 
@@ -168,13 +170,13 @@ Qubik only uses cookies that are **strictly necessary**:
 - \`qubik_session\`: keeps you logged in (secure, unreadable by scripts).
 - \`qubik-lang\`: remembers your language (English or French) for one year.
 
-These cookies do not need your consent, which is why there is no cookie banner.
+These cookies do not need your consent, which is why there is no cookie banner. The visit statistics use no cookies; the site of origin is kept only in your browser tab (session storage) until you sign up or close the tab.
 
 ## 4. Who processes your data
 
 We use trusted providers who process data on our behalf:
 
-- **Vercel** (hosting and file storage) — servers in the EU and the United States, covered by the EU Standard Contractual Clauses.
+- **Vercel** (hosting, file storage and visit statistics) — servers in the EU and the United States, covered by the EU Standard Contractual Clauses.
 - **Neon** (database) — EU region (Frankfurt).
 - **Stripe** (payments).
 - **Translation services** (MyMemory or DeepL) — only receive the public descriptions of resources, never your personal data.
@@ -215,6 +217,8 @@ We may update this policy. The date of the latest version is shown at the top of
 - **Activité :** ressources que tu publies (fichiers, images, descriptions), achats, téléchargements, décisions de modération et rapports de scan.
 - **Paiements :** gérés par Stripe. Nous recevons le statut et le montant du paiement, jamais tes coordonnées bancaires.
 - **Données techniques :** adresse IP et journaux du serveur (sécurité et résolution de problèmes), et deux cookies décrits plus bas.
+- **Comment tu as connu Qubik :** à la création de ton compte, nous gardons le site ou le lien de campagne qui t'a amené (par exemple discord.com ou un lien ?ref=), la première page vue et ton pays (déduit de ton adresse IP, que nous ne gardons pas). Ça nous aide à savoir quels liens amènent de nouveaux membres.
+- **Statistiques de visite :** anonymes et sans cookie (Vercel Web Analytics) : pages vues, site d'origine, pays et type d'appareil, comptés ensemble. Elles ne permettent pas de t'identifier.
 
 Nous ne vendons pas tes données et n'utilisons aucun traceur publicitaire.
 
@@ -232,13 +236,13 @@ Qubik n'utilise que des cookies **strictement nécessaires** :
 - \`qubik_session\` : te garde connecté (sécurisé, illisible par les scripts).
 - \`qubik-lang\` : retient ta langue (anglais ou français) pendant un an.
 
-Ces cookies ne nécessitent pas ton consentement : c'est pour ça qu'il n'y a pas de bandeau cookies.
+Ces cookies ne nécessitent pas ton consentement : c'est pour ça qu'il n'y a pas de bandeau cookies. Les statistiques de visite n'utilisent pas de cookie ; le site d'origine est gardé seulement dans ton onglet (stockage de session) jusqu'à ton inscription ou la fermeture de l'onglet.
 
 ## 4. Qui traite tes données
 
 Nous faisons appel à des prestataires de confiance qui traitent les données pour notre compte :
 
-- **Vercel** (hébergement et stockage des fichiers) — serveurs dans l'UE et aux États-Unis, encadrés par les clauses contractuelles types de l'UE.
+- **Vercel** (hébergement, stockage des fichiers et statistiques de visite) — serveurs dans l'UE et aux États-Unis, encadrés par les clauses contractuelles types de l'UE.
 - **Neon** (base de données) — région UE (Francfort).
 - **Stripe** (paiements).
 - **Services de traduction** (MyMemory ou DeepL) — ne reçoivent que les descriptions publiques des ressources, jamais tes données personnelles.

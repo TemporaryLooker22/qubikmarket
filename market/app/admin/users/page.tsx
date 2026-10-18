@@ -97,6 +97,15 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
                   {t.mod.memberSince(member.email, formatDate(member.createdAt, locale))}
                   {member.resources.length > 0 && ` · ${member.stripeTransfersActive ? t.mod.payoutsOn : t.mod.payoutsOff}`}
                 </p>
+                {/* Provenance à l'inscription */}
+                {(member.signupSource || member.signupCountry) && (
+                  <p className="text-sm text-muted">
+                    {t.mod.signupFrom} <strong className="text-text">{member.signupSource === "direct" ? t.mod.originDirect : member.signupSource}</strong>
+                    {member.signupCountry && ` · ${new Intl.DisplayNames([locale === "fr" ? "fr-FR" : "en-GB"], { type: "region" }).of(member.signupCountry)}`}
+                    {member.signupReferrer && ` · ${member.signupReferrer}`}
+                    {member.signupLanding && ` · ${t.mod.signupLanding(member.signupLanding)}`}
+                  </p>
+                )}
               </div>
             </div>
 

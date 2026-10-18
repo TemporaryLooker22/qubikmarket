@@ -7,6 +7,8 @@ import { getDictionary } from "@/lib/i18n/server";
 import { LocaleProvider } from "@/lib/i18n/client";
 import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
+import { SourceTracker } from "@/components/SourceTracker";
+import { Analytics } from "@vercel/analytics/next";
 import { DEMO_ENABLED } from "@/lib/demo";
 import "./globals.css";
 
@@ -57,6 +59,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </div>
           </footer>
         </LocaleProvider>
+        {/* Statistiques de visite sans cookie (Vercel Web Analytics) et provenance des inscriptions */}
+        <Analytics />
+        <SourceTracker />
       </body>
     </html>
   );
