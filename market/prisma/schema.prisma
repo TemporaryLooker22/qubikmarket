@@ -64,6 +64,8 @@ model Resource {
 
   // Captures d'écran (adresses publiques, jusqu'à 6). La première sert de miniature.
   images String[] @default([])
+  // Vidéo de présentation YouTube (facultative) : l'identifiant de la vidéo, affichée en premier dans la galerie
+  videoId String?
 
   // Version en ligne : les champs fichier et scan ci-dessus sont toujours ceux de cette version
   version          String            @default("1.0")

@@ -7,6 +7,7 @@ import {
   updateResourceImages,
   updateResourceInfo,
   updateResourcePrice,
+  updateResourceVideo,
   type EditState,
 } from "@/app/resource-actions";
 import { MAX_FORM_SIZE } from "@/lib/catalog";
@@ -16,6 +17,8 @@ import { DescriptionEditor } from "@/components/sell/DescriptionEditor";
 import { ImagePicker, type PickedImage } from "@/components/sell/ImagePicker";
 import { parsePrice, PRICE, PriceField } from "@/components/sell/PriceField";
 import { useFileUpload } from "@/components/sell/useFileUpload";
+import { VideoField } from "@/components/sell/VideoField";
+import { parseYouTubeId } from "@/lib/youtube";
 
 // Formulaires des onglets Infos, Images, Description et Prix de la page « Modifier une ressource ».
 // Chaque onglet s'enregistre séparément, sans nouveau scan (le fichier ne change pas).
@@ -180,6 +183,31 @@ export function PriceForm({ resourceId, initialCents, feePercent }: { resourceId
     >
       <PriceField paid={paid} onPaidChange={setPaid} price={price} onPriceChange={setPrice} feePercent={feePercent} inputClass={inputClass} />
       <SaveBar state={state} pending={pending} note={t.edit.priceText} localError={localError} />
+    </form>
+  );
+}
+
+// Vidéo de présentation YouTube (onglet Images)
+export function VideoForm({ resourceId, initial }: { resourceId: string; initial: string }) {
+  const { t } = useI18n();
+  const { state, pending, submit } = useEditAction(updateResourceVideo);
+  const [video, setVideo] = useState(initial);
+  const invalid = video.trim() !== "" && !parseYouTubeId(video);
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (invalid) return;
+        submit(() => {
+          const fd = new FormData();
+          fd.set("resourceId", resourceId);
+          fd.set("video", video.trim());
+          return fd;
+        });
+      }}
+    >
+      <VideoField value={video} onChange={setVideo} inputClass={inputClass} showLabel={false} />
+      <SaveBar state={state} pending={pending} note={t.edit.instantNote} />
     </form>
   );
 }

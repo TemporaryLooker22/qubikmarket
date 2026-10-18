@@ -11,6 +11,7 @@ import { db } from "@/lib/db";
 import { createSession, destroySession, getCurrentUser, requireAdmin, requireUser } from "@/lib/auth";
 import { hasRobloxContent, scanUpload } from "@/lib/scan";
 import { isUploadedImage, receiveUpload } from "@/lib/uploads";
+import { parseYouTubeId } from "@/lib/youtube";
 import { detectImage, saveImage } from "@/lib/storage";
 import { CATEGORIES, MAX_IMAGE_SIZE, MAX_IMAGES, slugify } from "@/lib/catalog";
 import { createCheckoutSession, isDemoMode } from "@/lib/payments";
@@ -157,6 +158,11 @@ export async function publishResource(_: FormState, formData: FormData): Promise
   const priceCents = Math.round(data.price * 100);
   if (priceCents > 0 && priceCents < 100) return { error: t.errors.priceMin };
 
+  // Vidéo de présentation YouTube (facultative)
+  const videoInput = String(formData.get("video") ?? "").trim();
+  const videoId = videoInput ? parseYouTubeId(videoInput) : null;
+  if (videoInput && !videoId) return { error: t.errors.videoInvalid };
+
 
   // Captures d'écran (facultatives) : on vérifie que ce sont de vraies images avant de les garder
   const imageFiles = formData.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
@@ -219,6 +225,7 @@ export async function publishResource(_: FormState, formData: FormData): Promise
       filePath: file.filePath,
       fileSize: file.fileSize,
       images: imageUrls,
+      videoId,
       sellerId: user.id,
       // Première version de l'historique (les mises à jour s'ajoutent depuis « Modifier → Versions »)
       versions: {

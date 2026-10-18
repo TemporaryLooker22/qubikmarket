@@ -12,6 +12,7 @@ import { ImagePicker, type PickedImage } from "./sell/ImagePicker";
 import { DescriptionEditor, DESCRIPTION_MIN } from "./sell/DescriptionEditor";
 import { SellAside } from "./sell/SellAside";
 import { useFileUpload } from "./sell/useFileUpload";
+import { VideoField } from "./sell/VideoField";
 import { CategoryPicker } from "./sell/CategoryPicker";
 import { parsePrice, PRICE, PriceField } from "./sell/PriceField";
 
@@ -37,6 +38,7 @@ export function SellForm({ feePercent, username, directUpload }: { feePercent: n
   const [category, setCategory] = useState("");
   const [images, setImages] = useState<PickedImage[]>([]);
   const [description, setDescription] = useState("");
+  const [video, setVideo] = useState("");
   const [paid, setPaid] = useState(true);
   const [price, setPrice] = useState("");
   const [localError, setLocalError] = useState<string>();
@@ -152,6 +154,9 @@ export function SellForm({ feePercent, username, directUpload }: { feePercent: n
         {/* 3. Images */}
         <Section n={3} done={ready.image} title={t.sell.imagesTitle} text={t.sell.imagesText(MAX_IMAGES)}>
           <ImagePicker images={images} onChange={setImages} direct={directUpload} />
+          <div className="mt-5 border-t border-border pt-5">
+            <VideoField value={video} onChange={setVideo} inputClass={inputClass} />
+          </div>
         </Section>
 
         {/* 4. Description */}

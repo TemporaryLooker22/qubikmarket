@@ -14,7 +14,8 @@ import { ScanBadge } from "@/components/ScanBadge";
 import { ScanReportView } from "@/components/ScanReportView";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Thumb } from "@/components/dashboard/Thumb";
-import { DescriptionForm, ImagesForm, InfoForm, PriceForm } from "@/components/edit/EditForms";
+import { DescriptionForm, ImagesForm, InfoForm, PriceForm, VideoForm } from "@/components/edit/EditForms";
+import { youTubeWatch } from "@/lib/youtube";
 import { PublishVersionForm } from "@/components/edit/PublishVersionForm";
 import { QueueLabel } from "@/components/AiReportView";
 import { AutoRefresh } from "@/components/AutoRefresh";
@@ -133,6 +134,11 @@ export default async function EditResourcePage({ params, searchParams }: { param
       {tab === "images" && (
         <Card title={t.sell.imagesTitle} text={t.sell.imagesText(MAX_IMAGES)}>
           <ImagesForm resourceId={resource.id} initial={resource.images} directUpload={directUploads} />
+        </Card>
+      )}
+      {tab === "images" && (
+        <Card title={t.sell.videoTitle} text={t.sell.videoText}>
+          <VideoForm resourceId={resource.id} initial={resource.videoId ? youTubeWatch(resource.videoId) : ""} />
         </Card>
       )}
       {tab === "description" && (

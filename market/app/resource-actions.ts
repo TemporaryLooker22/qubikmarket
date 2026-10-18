@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import { requireAdmin, requireUser } from "@/lib/auth";
 import { hasRobloxContent, scanUpload, type ScanReport } from "@/lib/scan";
 import { isUploadedImage, receiveUpload } from "@/lib/uploads";
+import { parseYouTubeId } from "@/lib/youtube";
 import { grantFounderIfEligible } from "@/lib/sellers";
 import { detectImage, saveImage } from "@/lib/storage";
 import { CATEGORIES, MAX_IMAGE_SIZE, MAX_IMAGES } from "@/lib/catalog";
@@ -96,6 +97,19 @@ export async function updateResourceDescription(_: EditState, formData: FormData
   if (description.length > 10000) return { error: t.errors.descriptionMin };
   await db.resource.update({ where: { id: resource.id }, data: { description } });
   await reanalyzeLiveVersion(resource, locale);
+  refresh(resource);
+  return { ok: t.edit.saved };
+}
+
+// Vidéo de présentation YouTube : un lien (ou rien pour la retirer)
+export async function updateResourceVideo(_: EditState, formData: FormData): Promise<EditState> {
+  const { t } = await getDictionary();
+  const resource = await ownResource(String(formData.get("resourceId")), "vidéo");
+  if (!resource) return { error: t.errors.notFound };
+  const input = String(formData.get("video") ?? "").trim();
+  const videoId = input ? parseYouTubeId(input) : null;
+  if (input && !videoId) return { error: t.errors.videoInvalid };
+  await db.resource.update({ where: { id: resource.id }, data: { videoId } });
   refresh(resource);
   return { ok: t.edit.saved };
 }

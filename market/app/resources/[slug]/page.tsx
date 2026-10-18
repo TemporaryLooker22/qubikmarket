@@ -37,6 +37,7 @@ type Product = {
   category: string;
   priceCents: number;
   images: string[];
+  videoId?: string | null; // vidéo de présentation YouTube
   fileName: string;
   fileSize: number;
   createdAt: Date;
@@ -211,7 +212,7 @@ export default async function ResourcePage({ params, searchParams }: { params: P
       <div className="mt-4 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0 space-y-6">
           <div className="animate-fade-up">
-            <ProductGallery images={product.images} category={product.category} title={product.title} />
+            <ProductGallery images={product.images} category={product.category} title={product.title} videoId={product.videoId} />
           </div>
 
           {/* Titre, prix… sur mobile et tablette (sur ordinateur : dans l'encart à droite) */}
