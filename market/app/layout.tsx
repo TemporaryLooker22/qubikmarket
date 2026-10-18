@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { moderationCounts } from "@/lib/moderation";
+import { unreadConversations } from "@/lib/chat";
 import { getDictionary } from "@/lib/i18n/server";
 import { LocaleProvider } from "@/lib/i18n/client";
 import Link from "next/link";
@@ -29,9 +30,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const [user, { locale, t }] = await Promise.all([getCurrentUser(), getDictionary()]);
   // Pastille « Modération » : seulement calculée pour les admins
   // (éléments à vérifier + signalements de l'IA + avis signalés, voir lib/moderation.ts)
-  const pendingCount = user?.role === "ADMIN" ? await moderationCounts().then((c) => c.queue + c.flags + c.reports) : 0;
+  const pendingCount = user?.role === "ADMIN" ? await moderationCounts().then((c) => c.queue + c.flags + c.reports + c.chats) : 0;
   // Cloche : notifications non lues (la liste se charge au clic)
   const unreadCount = user ? await db.notification.count({ where: { userId: user.id, readAt: null } }) : 0;
+  // Icône Messages : conversations avec des messages non lus
+  const chatUnread = user ? await unreadConversations(user.id) : 0;
   // Le menu du compte propose « Devenir vendeur » à ceux qui n'ont encore rien publié
   const isSeller = user ? (await db.resource.count({ where: { sellerId: user.id } })) > 0 : false;
 
@@ -39,7 +42,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang={locale} className={jakarta.variable}>
       <body className="flex min-h-screen flex-col font-sans antialiased">
         <LocaleProvider locale={locale}>
-          <Navbar user={user ? { username: user.username, email: user.email, role: user.role, isSeller } : null} pendingCount={pendingCount} unreadCount={unreadCount} />
+          <Navbar user={user ? { username: user.username, email: user.email, role: user.role, isSeller } : null} pendingCount={pendingCount} unreadCount={unreadCount} chatUnread={chatUnread} />
 
           <main className="flex-1 pb-16">{children}</main>
 

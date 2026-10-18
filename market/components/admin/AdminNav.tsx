@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Flag, LayoutDashboard, Package, ScrollText, ShieldCheck, Star, Users, type LucideIcon } from "lucide-react";
+import { Flag, LayoutDashboard, MessagesSquare, Package, ScrollText, ShieldCheck, Star, Users, type LucideIcon } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 
-type Props = { username: string; counts: { queue: number; flags: number; reports: number } };
+type Props = { username: string; counts: { queue: number; flags: number; reports: number; chats: number } };
 
 // Menu de la modération : colonne à gauche sur ordinateur, rangée d'onglets qui défile sur téléphone
 export function AdminNav({ username, counts }: Props) {
@@ -16,6 +16,7 @@ export function AdminNav({ username, counts }: Props) {
     { href: "/admin/queue", label: t.mod.menu.queue, icon: ShieldCheck, count: counts.queue },
     { href: "/admin/flags", label: t.mod.menu.flags, icon: Flag, count: counts.flags },
     { href: "/admin/reviews", label: t.mod.menu.reviews, icon: Star, count: counts.reports },
+    { href: "/admin/messages", label: t.mod.menu.chats, icon: MessagesSquare, count: counts.chats },
     { href: "/admin/resources", label: t.mod.menu.resources, icon: Package },
     { href: "/admin/users", label: t.mod.menu.users, icon: Users },
     { href: "/admin/log", label: t.mod.menu.log, icon: ScrollText },

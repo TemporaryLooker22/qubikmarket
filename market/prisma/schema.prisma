@@ -12,17 +12,17 @@ datasource db {
 }
 
 model User {
-  id                    String          @id @default(cuid())
-  username              String          @unique
-  email                 String          @unique
+  id                    String               @id @default(cuid())
+  username              String               @unique
+  email                 String               @unique
   passwordHash          String
-  role                  String          @default("USER") // USER ou ADMIN
-  createdAt             DateTime        @default(now())
+  role                  String               @default("USER") // USER ou ADMIN
+  createdAt             DateTime             @default(now())
   // Vendeur fondateur : commission réduite jusqu'à cette date (voir lib/sellers.ts)
   founderUntil          DateTime?
   // Compte Stripe du vendeur pour recevoir ses gains (Stripe Connect), et s'il peut déjà recevoir des virements
-  stripeAccountId       String?         @unique
-  stripeTransfersActive Boolean         @default(false)
+  stripeAccountId       String?              @unique
+  stripeTransfersActive Boolean              @default(false)
   payouts               SellerPayout[]
   resources             Resource[]
   purchases             Purchase[]
@@ -40,6 +40,14 @@ model User {
   reviewReports         ReviewReport[]
   moderationLogs        ModerationLog[]
   notifications         Notification[]
+  // Messagerie entre membres (voir lib/chat.ts)
+  lastSeenAt            DateTime? // dernière activité sur le site (point vert « en ligne » dans les messages)
+  conversationsA        Conversation[]       @relation("ConversationA")
+  conversationsB        Conversation[]       @relation("ConversationB")
+  messages              Message[]
+  blocks                Block[]              @relation("Blocker")
+  blockedBy             Block[]              @relation("Blocked")
+  conversationReports   ConversationReport[]
 }
 
 model Resource {
@@ -63,7 +71,7 @@ model Resource {
   fileSize Int
 
   // Captures d'écran (adresses publiques, jusqu'à 6). La première sert de miniature.
-  images String[] @default([])
+  images  String[] @default([])
   // Vidéo de présentation YouTube (facultative) : l'identifiant de la vidéo, affichée en premier dans la galerie
   videoId String?
 
@@ -180,17 +188,17 @@ model ResourceVersion {
   reviewNote  String?
 
   // Analyse IA du contenu (voir lib/ai) : notes sur 100, constats et conseils (JSON), signalement
-  aiStatus   String? // QUEUED (dans la file d'attente), PENDING (en cours), DONE ou FAILED (analyse impossible)
-  aiMatch    Int? // correspondance avec la description
-  aiQuality  Int? // qualité du contenu
+  aiStatus      String? // QUEUED (dans la file d'attente), PENDING (en cours), DONE ou FAILED (analyse impossible)
+  aiMatch       Int? // correspondance avec la description
+  aiQuality     Int? // qualité du contenu
   aiDescription Int? // description complète et utile pour l'acheteur (0 à 100)
-  aiFlagged  Boolean? // une des deux notes sous le seuil
-  aiReport   String? // { summary, findings: [{ level, text }], tips: [] }
-  aiAt       DateTime? // entrée dans la file, puis fin de l'analyse
-  aiLanguage String? // langue du vendeur pour les constats et conseils (fr ou en)
-  aiAttempts Int       @default(0)
-  aiReviewed Boolean   @default(false) // signalement déjà examiné par un modérateur
-  createdAt  DateTime  @default(now())
+  aiFlagged     Boolean? // une des deux notes sous le seuil
+  aiReport      String? // { summary, findings: [{ level, text }], tips: [] }
+  aiAt          DateTime? // entrée dans la file, puis fin de l'analyse
+  aiLanguage    String? // langue du vendeur pour les constats et conseils (fr ou en)
+  aiAttempts    Int       @default(0)
+  aiReviewed    Boolean   @default(false) // signalement déjà examiné par un modérateur
+  createdAt     DateTime  @default(now())
 
   resource Resource @relation(fields: [resourceId], references: [id])
 
@@ -273,4 +281,80 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+// Conversation privée entre deux membres (un seul fil par paire : userAId est le plus petit des deux identifiants).
+// Les infos du dernier message sont recopiées ici pour afficher la liste et les non-lus sans tout relire.
+model Conversation {
+  id            String    @id @default(cuid())
+  userAId       String
+  userBId       String
+  startedById   String // qui a écrit en premier (limite de nouvelles conversations par jour)
+  readA         DateTime? // dernière lecture de chacun (« Vu » et non-lus)
+  readB         DateTime?
+  lastMessageAt DateTime  @default(now())
+  lastSenderId  String?
+  lastPreview   String    @default("")
+  createdAt     DateTime  @default(now())
+
+  userA    User                 @relation("ConversationA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB    User                 @relation("ConversationB", fields: [userBId], references: [id], onDelete: Cascade)
+  messages Message[]
+  reports  ConversationReport[]
+
+  @@unique([userAId, userBId])
+  @@index([userAId, lastMessageAt])
+  @@index([userBId, lastMessageAt])
+  @@index([startedById, createdAt])
+}
+
+// Message d'une conversation. kind ABOUT : carte « À propos de [ressource] » ajoutée quand on contacte
+// un vendeur depuis une ressource.
+model Message {
+  id             String    @id @default(cuid())
+  conversationId String
+  senderId       String
+  kind           String    @default("TEXT") // TEXT ou ABOUT
+  body           String    @default("")
+  images         String[]  @default([]) // jusqu'à 4 images (Vercel Blob)
+  resourceId     String? // carte ABOUT
+  offPlatform    Boolean   @default(false) // parle de payer ailleurs (PayPal, Discord…) : alerte affichée
+  replyMs        Int? // temps mis pour répondre au message de l'autre (temps de réponse du vendeur)
+  deletedAt      DateTime? // supprimé par la modération
+  createdAt      DateTime  @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([senderId, createdAt])
+}
+
+// Membre bloqué : il ne peut plus écrire à celui qui l'a bloqué (et inversement)
+model Block {
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@id([blockerId, blockedId])
+}
+
+// Signalement d'une conversation : seules les conversations signalées sont lisibles par la modération
+model ConversationReport {
+  id             String    @id @default(cuid())
+  conversationId String
+  userId         String // qui a signalé
+  reason         String // SCAM, OFF_PLATFORM, HARASSMENT ou OTHER
+  note           String?
+  createdAt      DateTime  @default(now())
+  dismissedAt    DateTime? // traité par un modérateur
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([dismissedAt])
 }

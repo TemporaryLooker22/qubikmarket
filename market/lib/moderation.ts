@@ -4,13 +4,13 @@ import { refreshRating } from "./reviews";
 
 // Modération : journal des décisions et bannissement des membres.
 
-export type ModerationAction = "APPROVE" | "REJECT" | "KEEP" | "UNLIST" | "RELIST" | "EDIT" | "DELETE" | "REANALYZE" | "REVIEW_DELETE" | "REPORTS_DISMISS" | "BAN" | "UNBAN";
+export type ModerationAction = "APPROVE" | "REJECT" | "KEEP" | "UNLIST" | "RELIST" | "EDIT" | "DELETE" | "REANALYZE" | "REVIEW_DELETE" | "REPORTS_DISMISS" | "BAN" | "UNBAN" | "CHAT_DISMISS" | "CHAT_MESSAGE_DELETE";
 
 // Garde une trace de chaque décision (page Modération → Journal)
 export async function logModeration(entry: {
   moderatorId: string;
   action: ModerationAction;
-  targetType: "resource" | "version" | "review" | "user";
+  targetType: "resource" | "version" | "review" | "user" | "conversation";
   targetId: string;
   label: string;
   note?: string | null;
@@ -53,11 +53,13 @@ export const AI_FLAGS = { status: "LIVE", aiFlagged: true, aiReviewed: false, re
 export const REPORTED_REVIEWS = { reports: { some: { dismissedAt: null } }, user: { bannedAt: null } };
 
 export async function moderationCounts() {
-  const [resources, versions, flags, reports] = await Promise.all([
+  const [resources, versions, flags, reports, chats] = await Promise.all([
     db.resource.count({ where: QUEUE_RESOURCES }),
     db.resourceVersion.count({ where: QUEUE_VERSIONS }),
     db.resourceVersion.count({ where: AI_FLAGS }),
     db.review.count({ where: REPORTED_REVIEWS }),
+    // Conversations avec au moins un signalement en attente
+    db.conversation.count({ where: { reports: { some: { dismissedAt: null } } } }),
   ]);
-  return { queue: resources + versions, flags, reports };
+  return { queue: resources + versions, flags, reports, chats };
 }

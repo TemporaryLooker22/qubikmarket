@@ -152,6 +152,7 @@ const PRIVACY: Record<Locale, LegalDoc> = {
 - **Payments:** handled by Stripe. We receive the payment status and amount, never your card details.
 - **Technical data:** IP address and server logs (security and troubleshooting), and two cookies described below.
 - **How you found Qubik:** when you create your account, we save the site or campaign link that brought you (for example discord.com or a ?ref= link), the first page you saw and your country (worked out from your IP address, which we don't keep). It helps us know which links bring new members.
+- **Private messages:** messages and images you send to other members. They are private: the moderators can only read a conversation if one of its members reports it. A message that talks about paying outside Qubik (PayPal, Discord…) shows a safety warning; nothing is blocked or read by a person.
 - **Showcase videos:** some resources show a YouTube video. The YouTube player only loads when you click play; YouTube (Google) may then set its own cookies.
 - **Visit statistics:** anonymous and without cookies (Vercel Web Analytics): pages viewed, site of origin, country and type of device, counted together. They can't be used to identify you.
 
@@ -186,6 +187,7 @@ We use trusted providers who process data on our behalf:
 
 - Account data: as long as your account is open, then deleted within 30 days of closure, except what we must keep by law.
 - Purchase and payment records: 10 years (Belgian accounting obligations).
+- Private messages: as long as both accounts are open (deleted with your account).
 - Server logs: up to 12 months.
 
 ## 6. Your rights
@@ -219,6 +221,7 @@ We may update this policy. The date of the latest version is shown at the top of
 - **Paiements :** gérés par Stripe. Nous recevons le statut et le montant du paiement, jamais tes coordonnées bancaires.
 - **Données techniques :** adresse IP et journaux du serveur (sécurité et résolution de problèmes), et deux cookies décrits plus bas.
 - **Comment tu as connu Qubik :** à la création de ton compte, nous gardons le site ou le lien de campagne qui t'a amené (par exemple discord.com ou un lien ?ref=), la première page vue et ton pays (déduit de ton adresse IP, que nous ne gardons pas). Ça nous aide à savoir quels liens amènent de nouveaux membres.
+- **Messages privés :** les messages et images que tu envoies aux autres membres. Ils sont privés : les modérateurs ne peuvent lire une conversation que si l'un de ses membres la signale. Un message qui parle de payer hors de Qubik (PayPal, Discord…) affiche une alerte de sécurité ; rien n'est bloqué ni lu par une personne.
 - **Vidéos de présentation :** certaines ressources montrent une vidéo YouTube. Le lecteur YouTube ne se charge que si tu lances la vidéo ; YouTube (Google) peut alors déposer ses propres cookies.
 - **Statistiques de visite :** anonymes et sans cookie (Vercel Web Analytics) : pages vues, site d'origine, pays et type d'appareil, comptés ensemble. Elles ne permettent pas de t'identifier.
 
@@ -253,6 +256,7 @@ Nous faisons appel à des prestataires de confiance qui traitent les données po
 
 - Données du compte : tant que ton compte est ouvert, puis supprimées dans les 30 jours après sa fermeture, sauf ce que la loi nous oblige à garder.
 - Achats et paiements : 10 ans (obligations comptables belges).
+- Messages privés : tant que les deux comptes existent (supprimés avec ton compte).
 - Journaux du serveur : 12 mois maximum.
 
 ## 6. Tes droits

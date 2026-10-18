@@ -36,7 +36,10 @@ export type NotificationType =
   // Modérateurs
   | "MOD_PENDING" // nouvel élément à vérifier
   | "MOD_FLAG" // ressource en ligne signalée par l'IA
-  | "MOD_REPORT"; // avis signalé
+  | "MOD_REPORT" // avis signalé
+  | "MOD_CHAT" // conversation signalée
+  // Messagerie
+  | "MESSAGE"; // nouveau message (une seule notification par conversation tant qu'elle n'est pas lue)
 
 export type NotificationData = {
   title?: string; // titre de la ressource
@@ -88,4 +91,6 @@ export const links = {
   reviews: (slug: string) => `/resources/${slug}#avis`,
   report: (id: string) => `/dashboard/resources?report=${id}#${id}`,
   versions: (id: string) => `/dashboard/resources/${id}/edit?tab=versions`,
+  chat: (id: string) => `/messages/${id}`,
+  adminChat: (id: string) => `/admin/messages/${id}`,
 };

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { BadgeCheck, ChevronRight, Download, Languages, Lock, ShieldCheck, Zap } from "lucide-react";
+import { BadgeCheck, ChevronRight, Clock, Download, Languages, Lock, MessageCircle, ShieldCheck, Zap } from "lucide-react";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { categoryLabel } from "@/lib/catalog";
@@ -23,6 +23,8 @@ import { ReviewForm } from "@/components/reviews/ReviewForm";
 import { ReviewItem, type ReviewData } from "@/components/reviews/ReviewItem";
 import { canReview, REVIEWS_SHOWN, sellerRating, VISIBLE_REVIEW } from "@/lib/reviews";
 import { ShareButton } from "@/components/product/ShareButton";
+import { responseTime } from "@/lib/chat";
+import type { ResponseBucket } from "@/lib/chat-text";
 
 type Params = Promise<{ slug: string }>;
 type SearchParams = Promise<{ bought?: string; original?: string; avis?: string }>;
@@ -70,7 +72,8 @@ type Reviews = {
 };
 
 // Ce que le visiteur peut faire sur cette ressource
-type Access = { demo: boolean; canDownload: boolean; canBuy: boolean; loggedIn: boolean; bought: boolean };
+// contact : bouton « Contacter le vendeur » (absent sur ses propres ressources et les exemples de démo)
+type Access = { demo: boolean; canDownload: boolean; canBuy: boolean; loggedIn: boolean; bought: boolean; contact?: { href: string; response: ResponseBucket | null } | null };
 
 export async function generateMetadata({ params }: { params: Params }) {
   const { slug } = await params;
@@ -114,7 +117,7 @@ export default async function ResourcePage({ params, searchParams }: { params: P
     const visible = resource.status === "APPROVED" || isOwner || isAdmin || (resource.status === "UNLISTED" && purchase?.status === "PAID");
     if (!visible) notFound();
 
-    const [sellerResources, sellerSales, similarResources, reviewList, distribution, sellerStars, reviewStatus] = await Promise.all([
+    const [sellerResources, sellerSales, similarResources, reviewList, distribution, sellerStars, reviewStatus, sellerResponse] = await Promise.all([
       db.resource.count({ where: { sellerId: resource.sellerId, status: "APPROVED" } }),
       db.purchase.count({ where: { status: "PAID", resource: { sellerId: resource.sellerId } } }),
       db.resource.findMany({
@@ -128,6 +131,8 @@ export default async function ResourcePage({ params, searchParams }: { params: P
       db.review.groupBy({ by: ["rating"], where: { resourceId: resource.id, ...VISIBLE_REVIEW }, _count: true }),
       sellerRating(resource.sellerId),
       user && !isOwner ? canReview(user.id, resource.id) : Promise.resolve("no" as const),
+      // Temps de réponse habituel du vendeur dans la messagerie
+      isOwner ? Promise.resolve(null) : responseTime(resource.sellerId),
     ]);
 
     const mine = user ? reviewList.find((r) => r.userId === user.id) : undefined;
@@ -160,6 +165,7 @@ export default async function ResourcePage({ params, searchParams }: { params: P
       canBuy: resource.status === "APPROVED" && !isOwner,
       loggedIn: Boolean(user),
       bought: Boolean(bought),
+      contact: isOwner ? null : { href: `/messages/new?to=${encodeURIComponent(resource.seller.username)}&r=${resource.id}`, response: sellerResponse },
     };
     similar = similarResources;
   }
@@ -402,6 +408,23 @@ function BuyBox({ product, access, locale, t, showAction = true }: { product: Pr
       )}
       {!access.loggedIn && access.canBuy && product.priceCents > 0 && <p className="mt-2 text-xs text-muted">{t.resource.loginToBuy}</p>}
       {isDemoMode && access.canBuy && !access.canDownload && product.priceCents > 0 && <p className="mt-2 text-xs text-warn">{t.resource.demo}</p>}
+
+      {access.contact && (
+        <>
+          <Link
+            href={access.contact.href}
+            prefetch={false}
+            className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border-strong text-sm font-semibold transition hover:bg-bg"
+          >
+            <MessageCircle className="h-4 w-4" aria-hidden="true" /> {t.chat.contact}
+          </Link>
+          {access.contact.response && (
+            <p className="mt-1.5 flex items-center justify-center gap-1.5 text-xs text-muted">
+              <Clock className="h-3 w-3" aria-hidden="true" /> {t.chat.response[access.contact.response]}
+            </p>
+          )}
+        </>
+      )}
 
       <ShareButton className="mt-2 w-full" />
 

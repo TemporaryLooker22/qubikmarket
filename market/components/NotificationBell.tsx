@@ -12,6 +12,7 @@ import {
   Download,
   Flag,
   Loader2,
+  MessageCircle,
   MessageSquareWarning,
   Pencil,
   RotateCcw,
@@ -57,6 +58,8 @@ const ICONS: Record<string, { Icon: LucideIcon; tone: string }> = {
   MOD_PENDING: { Icon: ShieldCheck, tone: "bg-accent-soft text-text" },
   MOD_FLAG: { Icon: Flag, tone: "bg-warn-bg text-warn" },
   MOD_REPORT: { Icon: MessageSquareWarning, tone: "bg-bad-bg text-bad" },
+  MOD_CHAT: { Icon: MessageSquareWarning, tone: "bg-bad-bg text-bad" },
+  MESSAGE: { Icon: MessageCircle, tone: "bg-accent-soft text-text" },
 };
 
 // Cloche de la barre de navigation : pastille des notifications non lues, et la liste au clic.
