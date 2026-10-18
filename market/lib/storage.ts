@@ -7,8 +7,10 @@ import { put } from "@vercel/blob";
 // Deux modes de stockage des fichiers des vendeurs :
 // - sur Vercel (BLOB_READ_WRITE_TOKEN défini) : Vercel Blob, avec une adresse impossible à deviner
 // - en local : le dossier storage/uploads
-// Dans les deux cas, l'adresse n'est jamais montrée aux visiteurs : on passe par /api/download.
+// L'adresse n'est pas affichée sur le site : on passe par /api/download (qui redirige vers le fichier au-delà de 4 Mo).
 const useBlob = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+// Les fichiers vendus (jusqu'à 50 Mo) partent directement du navigateur vers Vercel Blob (voir lib/uploads.ts)
+export const directUploads = useBlob;
 const STORAGE_DIR = path.join(process.cwd(), "storage", "uploads");
 
 export async function saveUpload(bytes: Uint8Array, originalName: string) {

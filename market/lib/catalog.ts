@@ -18,14 +18,13 @@ export function categoryLabel(id: string) {
   return CATEGORIES.find((c) => c.id === id)?.label ?? id;
 }
 
-export const ALLOWED_EXTENSIONS = [".rbxm", ".rbxmx", ".rbxl", ".rbxlx", ".lua", ".luau"];
-// Vercel limite la taille d'une requête à 4,5 Mo
-export const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4 Mo
+// Formats acceptés et taille maximale du fichier vendu : voir lib/formats.ts
+export { ALLOWED_EXTENSIONS, MAX_FILE_SIZE } from "./formats";
 
 // Captures d'écran : compressées dans le navigateur avant l'envoi (voir SellForm)
 export const MAX_IMAGES = 6;
 export const MAX_IMAGE_SIZE = 1024 * 1024; // 1 Mo par image après compression
-// Limite de Vercel pour tout le formulaire (fichier + images + textes), avec une marge
+// Limite de Vercel (4,5 Mo par requête) pour tout le formulaire (images + textes, et le fichier en local sans Vercel Blob), avec une marge
 export const MAX_FORM_SIZE = 4.3 * 1024 * 1024;
 
 // "Système de porte automatique !" -> "systeme-de-porte-automatique"

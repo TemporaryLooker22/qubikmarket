@@ -3,6 +3,7 @@ import { ChevronRight, ShieldCheck } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/i18n/server";
 import { db } from "@/lib/db";
+import { directUploads } from "@/lib/storage";
 import { feePercentFor } from "@/lib/earnings";
 import { SellForm } from "@/components/SellForm";
 
@@ -35,7 +36,7 @@ export default async function SellPage() {
           <ShieldCheck className="h-4 w-4 shrink-0 text-ok" aria-hidden="true" />
           {t.sell.intro}
         </p>
-        <SellForm feePercent={feePercent} username={user.username} />
+        <SellForm feePercent={feePercent} username={user.username} directUpload={directUploads} />
       </div>
     </div>
   );

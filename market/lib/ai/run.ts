@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { readUpload } from "@/lib/storage";
 import { grantFounderIfEligible } from "@/lib/sellers";
 import { promoteVersion } from "@/lib/versions";
+import { hasRobloxContent, type ScanReport } from "@/lib/scan";
 import { buildDigest } from "./digest";
 import { AiError, analyzeWithAi, hasAiKey } from "./ovh";
 
@@ -194,12 +195,15 @@ async function applyResult(versionId: string, result: Awaited<ReturnType<typeof 
 // ---------- Anciennes ressources ----------
 
 // Ressources jamais analysées (publiées avant l'analyse IA) ou dont l'analyse a échoué
+// (seulement les fichiers avec du contenu Roblox : l'IA ne peut pas analyser une image, un son ou un modèle 3D)
 export async function findUnanalyzedVersionIds() {
   const resources = await db.resource.findMany({
     where: { status: { in: ["APPROVED", "UNLISTED", "PENDING"] } },
-    select: { version: true, versions: { where: { OR: [{ aiStatus: null }, { aiStatus: "FAILED" }] }, select: { id: true, version: true } } },
+    select: { version: true, versions: { where: { OR: [{ aiStatus: null }, { aiStatus: "FAILED" }] }, select: { id: true, version: true, scanReport: true } } },
   });
-  return resources.flatMap((r) => r.versions.filter((v) => v.version === r.version).map((v) => v.id));
+  return resources.flatMap((r) =>
+    r.versions.filter((v) => v.version === r.version && hasRobloxContent(JSON.parse(v.scanReport) as ScanReport)).map((v) => v.id),
+  );
 }
 
 export function parseAiReport(raw: string | null): AiReport | null {

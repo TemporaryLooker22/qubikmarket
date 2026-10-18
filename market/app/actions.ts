@@ -3,16 +3,16 @@
 // Toutes les actions déclenchées par les formulaires du site.
 // Elles s'exécutent sur le serveur : l'utilisateur ne peut pas les modifier.
 
-import path from "node:path";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { createSession, destroySession, getCurrentUser, requireAdmin, requireUser } from "@/lib/auth";
-import { scanFile } from "@/lib/scan";
-import { detectImage, saveImage, saveUpload } from "@/lib/storage";
-import { ALLOWED_EXTENSIONS, CATEGORIES, MAX_FILE_SIZE, MAX_IMAGE_SIZE, MAX_IMAGES, slugify } from "@/lib/catalog";
+import { hasRobloxContent, scanUpload } from "@/lib/scan";
+import { receiveUpload } from "@/lib/uploads";
+import { detectImage, saveImage } from "@/lib/storage";
+import { CATEGORIES, MAX_IMAGE_SIZE, MAX_IMAGES, slugify } from "@/lib/catalog";
 import { createCheckoutSession, isDemoMode } from "@/lib/payments";
 import { buyerFeeCents } from "@/lib/buyer-fee";
 import { grantFounderIfEligible } from "@/lib/sellers";
@@ -142,13 +142,6 @@ export async function publishResource(_: FormState, formData: FormData): Promise
   const priceCents = Math.round(data.price * 100);
   if (priceCents > 0 && priceCents < 100) return { error: t.errors.priceMin };
 
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) return { error: t.errors.fileMissing };
-  if (file.size > MAX_FILE_SIZE) return { error: t.errors.fileTooBig };
-  const ext = path.extname(file.name).toLowerCase();
-  if (!ALLOWED_EXTENSIONS.includes(ext)) {
-    return { error: t.errors.fileFormat(ALLOWED_EXTENSIONS.join(", ")) };
-  }
 
   // Captures d'écran (facultatives) : on vérifie que ce sont de vraies images avant de les garder
   const imageFiles = formData.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
@@ -162,25 +155,29 @@ export async function publishResource(_: FormState, formData: FormData): Promise
     images.push({ bytes, ext });
   }
 
-  // 1) Scan anti-backdoor automatique
-  const bytes = new Uint8Array(await file.arrayBuffer());
+  // 1) Le fichier (envoyé directement dans le stockage, ou avec le formulaire en local : voir lib/uploads.ts)
+  const file = await receiveUpload(formData, t);
+  if ("error" in file) return { error: file.error };
+
+  // 2) Scan anti-backdoor automatique (fichiers Roblox, et contenu des archives .zip)
   let report;
   try {
-    report = scanFile(bytes, file.name);
+    report = scanUpload(file.bytes, file.fileName);
   } catch (err) {
     return { error: t.errors.fileUnreadable((err as Error).message) };
   }
 
-  // 2) Décision selon le verdict :
-  //    propre -> analyse IA du contenu (quelques secondes), puis en ligne (ou modération si l'IA signale un problème)
+  // 3) Décision selon le verdict :
+  //    propre -> analyse IA du contenu Roblox, puis en ligne (ou modération si l'IA signale un problème) ;
+  //              sans contenu Roblox (image, son, modèle 3D…), l'IA ne peut rien analyser : en ligne tout de suite
   //    suspect -> vérification par un modérateur
   //    dangereux -> refus automatique
-  const status = report.verdict === "clean" ? "ANALYZING" : report.verdict === "suspicious" ? "PENDING" : "REJECTED";
+  const analyzable = hasRobloxContent(report);
+  const status = report.verdict === "clean" ? (analyzable ? "ANALYZING" : "APPROVED") : report.verdict === "suspicious" ? "PENDING" : "REJECTED";
   // Note enregistrée dans la langue du vendeur au moment de la publication
   const reviewNote = report.verdict === "dangerous" ? t.errors.autoReject : null;
 
-  // 3) Enregistrement
-  const storedName = await saveUpload(bytes, file.name);
+  // 4) Enregistrement
   const imageUrls = await Promise.all(images.map((img) => saveImage(img.bytes, img.ext)));
   const baseSlug = slugify(data.title) || "ressource";
   const slug = (await db.resource.findUnique({ where: { slug: baseSlug } }))
@@ -200,22 +197,22 @@ export async function publishResource(_: FormState, formData: FormData): Promise
       scanVerdict: report.verdict,
       scanScore: report.score,
       scanReport: JSON.stringify(report),
-      fileName: file.name,
-      filePath: storedName,
-      fileSize: file.size,
+      fileName: file.fileName,
+      filePath: file.filePath,
+      fileSize: file.fileSize,
       images: imageUrls,
       sellerId: user.id,
       // Première version de l'historique (les mises à jour s'ajoutent depuis « Modifier → Versions »)
       versions: {
         create: {
           version: "1.0",
-          fileName: file.name,
-          filePath: storedName,
-          fileSize: file.size,
+          fileName: file.fileName,
+          filePath: file.filePath,
+          fileSize: file.fileSize,
           scanVerdict: report.verdict,
           scanScore: report.score,
           scanReport: JSON.stringify(report),
-          status,
+          status: status === "APPROVED" ? "LIVE" : status, // une version en ligne a le statut LIVE
           reviewNote,
         },
       },
@@ -225,10 +222,11 @@ export async function publishResource(_: FormState, formData: FormData): Promise
 
   // Analyse IA dans la file d'attente (sauf fichier dangereux, déjà refusé) : le vendeur n'attend pas,
   // sa place dans la file s'affiche dans Mon espace
-  if (status !== "REJECTED") {
+  if (status !== "REJECTED" && analyzable) {
     await enqueueAnalysis(created.versions[0].id, locale);
     kickAiQueue();
   }
+  if (status === "APPROVED") await grantFounderIfEligible(user.id);
 
   revalidatePath("/");
   redirect(`/dashboard?published=${status.toLowerCase()}`);

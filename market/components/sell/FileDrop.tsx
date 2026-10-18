@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { FileBox, Loader2, RefreshCw, ShieldAlert, ShieldCheck, ShieldX, Upload } from "lucide-react";
 import type { ScanReport, Severity } from "@/lib/scan";
-import { ALLOWED_EXTENSIONS } from "@/lib/catalog";
+import { ALLOWED_EXTENSIONS, FORMAT_GROUPS } from "@/lib/formats";
 import { useI18n } from "@/lib/i18n/client";
 import { formatSize } from "@/lib/i18n/format";
 
@@ -16,8 +16,8 @@ export type ScanState =
 
 const SEVERITY_ORDER: Severity[] = ["critical", "high", "medium", "low"];
 
-// Zone de dépôt du fichier Roblox, puis résultat du scan anti-backdoor
-export function FileDrop({ file, scan, error, onFile }: { file: File | null; scan: ScanState; error?: string; onFile: (file: File) => void }) {
+// Zone de dépôt du fichier vendu (tous les formats acceptés, voir lib/formats.ts), puis résultat du scan anti-backdoor
+export function FileDrop({ file, scan, error, onFile, maxMb }: { file: File | null; scan: ScanState; error?: string; onFile: (file: File) => void; maxMb: number }) {
   const { t } = useI18n();
   const [dragging, setDragging] = useState(false);
 
@@ -61,12 +61,13 @@ export function FileDrop({ file, scan, error, onFile }: { file: File | null; sca
           </span>
           <span className="mt-3 text-[15px] font-semibold">{t.sell.dropTitle}</span>
           <span className="mt-0.5 text-sm text-muted">
-            <span className="underline underline-offset-2">{t.sell.dropBrowse}</span> · {t.sell.dropMax}
+            <span className="underline underline-offset-2">{t.sell.dropBrowse}</span> · {t.sell.dropMax(maxMb)}
           </span>
           <span className="mt-3 flex flex-wrap justify-center gap-1.5">
-            {ALLOWED_EXTENSIONS.map((ext) => (
-              <span key={ext} className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-semibold text-muted">
-                {ext}
+            {/* Un groupe par type de fichier ; les extensions au survol */}
+            {FORMAT_GROUPS.map((g) => (
+              <span key={g.id} title={g.exts.join(" ")} className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-semibold text-muted">
+                {t.sell.formatGroups[g.id]}
               </span>
             ))}
           </span>
@@ -103,7 +104,11 @@ function FileName({ file, scan }: { file: File; scan: ScanState }) {
     <div className="min-w-0 flex-1">
       <p className="truncate font-semibold">{file.name}</p>
       <p className="text-xs text-muted">
-        {scan.status === "done" ? t.sell.fileMeta(size, scan.report.scriptCount, scan.report.instanceCount) : size}
+        {scan.status !== "done"
+          ? size
+          : scan.report.fileCount !== undefined
+            ? t.sell.fileMetaFiles(size, scan.report.fileCount)
+            : t.sell.fileMeta(size, scan.report.scriptCount, scan.report.instanceCount)}
       </p>
     </div>
   );
@@ -141,7 +146,7 @@ function ScanResult({ scan }: { scan: ScanState }) {
   const style = VERDICT_STYLES[report.verdict];
   const title = { clean: t.sell.scanClean, suspicious: t.sell.scanSuspicious, dangerous: t.sell.scanDangerous }[report.verdict];
   const text = {
-    clean: t.sell.scanCleanText(report.scriptCount),
+    clean: report.fileCount !== undefined && report.scriptCount === 0 ? t.sell.scanCleanMedia : t.sell.scanCleanText(report.scriptCount),
     suspicious: t.sell.scanSuspiciousText(findings.length),
     dangerous: t.sell.scanDangerousText,
   }[report.verdict];

@@ -4,13 +4,14 @@ import Link from "next/link";
 import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import { Loader2, Rocket } from "lucide-react";
 import { publishResource } from "@/app/actions";
-import { ALLOWED_EXTENSIONS, MAX_FILE_SIZE, MAX_FORM_SIZE, MAX_IMAGES } from "@/lib/catalog";
+import { ALLOWED_EXTENSIONS, MAX_FORM_SIZE, MAX_IMAGES } from "@/lib/catalog";
 import { useI18n } from "@/lib/i18n/client";
 import { scanInBrowser } from "@/lib/scan-client";
 import { FileDrop, type ScanState } from "./sell/FileDrop";
 import { ImagePicker, type PickedImage } from "./sell/ImagePicker";
 import { DescriptionEditor, DESCRIPTION_MIN } from "./sell/DescriptionEditor";
 import { SellAside } from "./sell/SellAside";
+import { useFileUpload } from "./sell/useFileUpload";
 import { CategoryPicker } from "./sell/CategoryPicker";
 import { parsePrice, PRICE, PriceField } from "./sell/PriceField";
 
@@ -23,9 +24,10 @@ const SUMMARY = { min: 10, max: 160 };
 
 // Formulaire de mise en vente : fichier (scanné dans le navigateur dès le dépôt), informations, images,
 // description et prix, avec un aperçu en direct de la carte du catalogue
-export function SellForm({ feePercent, username }: { feePercent: number; username: string }) {
+export function SellForm({ feePercent, username, directUpload }: { feePercent: number; username: string; directUpload: boolean }) {
   const { t, locale } = useI18n();
   const [state, formAction, pending] = useActionState(publishResource, undefined);
+  const upload = useFileUpload(directUpload);
 
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string>();
@@ -50,7 +52,7 @@ export function SellForm({ feePercent, username }: { feePercent: number; usernam
   const chooseFile = async (picked: File) => {
     const ext = picked.name.slice(picked.name.lastIndexOf(".")).toLowerCase();
     if (!ALLOWED_EXTENSIONS.includes(ext)) return setFileError(t.errors.fileFormat(ALLOWED_EXTENSIONS.join(", ")));
-    if (picked.size > MAX_FILE_SIZE) return setFileError(t.errors.fileTooBig);
+    if (picked.size > upload.maxSize) return setFileError(t.errors.fileTooBig);
     setFileError(undefined);
     setFile(picked);
     setScan({ status: "scanning" });
@@ -76,21 +78,22 @@ export function SellForm({ feePercent, username }: { feePercent: number; usernam
     image: images.length > 0,
   };
 
-  // Envoi : on ajoute le fichier et les images compressées au formulaire.
-  // Pas d'action de formulaire directe, pour que React ne vide pas les champs si le serveur renvoie une erreur.
-  const submit = (e: React.FormEvent<HTMLFormElement>) => {
+  // Envoi : d'abord le fichier (directement dans le stockage, avec la progression), puis le formulaire
+  // avec les images compressées. Pas d'action de formulaire directe, pour que React ne vide pas les champs
+  // si le serveur renvoie une erreur.
+  const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLocalError(undefined);
     if (!file) return setLocalError(t.errors.fileMissing);
     if (!category) return setLocalError(t.errors.category);
     if (!priceOk) return setLocalError(priceCents > PRICE.max * 100 ? t.errors.priceMax : t.errors.priceMin);
-    const total = file.size + images.reduce((n, i) => n + (i.file?.size ?? 0), 0);
+    const total = (directUpload ? 0 : file.size) + images.reduce((n, i) => n + (i.file?.size ?? 0), 0);
     if (total > MAX_FORM_SIZE) return setLocalError(t.errors.formTooBig);
 
     const formData = new FormData(e.currentTarget);
     formData.set("price", paid ? price : "0");
-    formData.set("file", file);
     images.forEach((i) => i.file && formData.append("images", i.file));
+    if (!(await upload.attach(file, formData))) return setLocalError(t.errors.uploadFailed);
     startTransition(() => formAction(formData));
   };
 
@@ -101,7 +104,7 @@ export function SellForm({ feePercent, username }: { feePercent: number; usernam
       <div className="min-w-0 space-y-4">
         {/* 1. Fichier */}
         <Section n={1} done={ready.file} title={t.sell.fileTitle} text={t.sell.fileText}>
-          <FileDrop file={file} scan={scan} error={fileError} onFile={chooseFile} />
+          <FileDrop file={file} scan={scan} error={fileError} onFile={chooseFile} maxMb={upload.maxMb} />
         </Section>
 
         {/* 2. Informations */}
@@ -162,11 +165,11 @@ export function SellForm({ feePercent, username }: { feePercent: number; usernam
           <div className="flex flex-wrap items-center gap-4">
             <button
               type="submit"
-              disabled={pending}
+              disabled={pending || upload.progress !== null}
               className="flex h-12 items-center justify-center gap-2 rounded-xl bg-accent px-7 text-[15px] font-semibold text-text transition hover:-translate-y-px hover:bg-accent-hover disabled:translate-y-0 disabled:opacity-60"
             >
-              {pending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Rocket className="h-4 w-4" aria-hidden="true" />}
-              {pending ? t.sell.submitting : t.sell.submit}
+              {pending || upload.progress !== null ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Rocket className="h-4 w-4" aria-hidden="true" />}
+              {upload.progress !== null ? t.sell.uploading(upload.progress) : pending ? t.sell.submitting : t.sell.submit}
             </button>
             <p className="min-w-56 flex-1 text-xs text-muted">
               {t.sell.legalStart}

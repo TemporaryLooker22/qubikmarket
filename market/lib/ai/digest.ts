@@ -1,5 +1,7 @@
 import "server-only";
 import { readRobloxFile } from "@/lib/scan";
+import { unpack } from "@/lib/file-scan";
+import { extOf, kindOf } from "@/lib/formats";
 
 // Résumé d'un fichier Roblox pour l'analyse IA : le nombre d'objets par type, l'arborescence (les pièces
 // répétées sont regroupées) et le code des scripts, le tout limité en taille.
@@ -10,7 +12,22 @@ const MAX_SCRIPT_CHARS = 3500;
 const MAX_TOTAL_SCRIPT_CHARS = 45000;
 const PART_CLASSES = new Set(["Part", "MeshPart", "UnionOperation", "WedgePart", "CornerWedgePart", "TrussPart", "SpawnLocation", "Seat"]);
 
+// Archive .zip (pack de plusieurs fichiers) : la liste des fichiers, puis le résumé des fichiers Roblox et scripts
+const MAX_ARCHIVE_LINES = 200;
+const MAX_ARCHIVE_ROBLOX = 6;
+
 export function buildDigest(bytes: Uint8Array, fileName: string) {
+  if (extOf(fileName) !== ".zip") return robloxDigest(bytes, fileName);
+  const entries = unpack(bytes);
+  const lines = [`Archive: ${fileName} (${bytes.length} bytes, ${entries.length} files)`, "", "Files (path - size in bytes):"];
+  for (const [name, data] of entries.slice(0, MAX_ARCHIVE_LINES)) lines.push(`- ${name} - ${data.length}`);
+  if (entries.length > MAX_ARCHIVE_LINES) lines.push(`... ${entries.length - MAX_ARCHIVE_LINES} more files`);
+  const roblox = entries.filter(([name]) => ["roblox", "script"].includes(kindOf(name, true) ?? ""));
+  for (const [name, data] of roblox.slice(0, MAX_ARCHIVE_ROBLOX)) lines.push("", `=== ${name} ===`, robloxDigest(data, name));
+  return lines.join("\n");
+}
+
+function robloxDigest(bytes: Uint8Array, fileName: string) {
   const file = readRobloxFile(bytes, fileName);
   const lines: string[] = [];
   lines.push(`File: ${fileName} (${file.format}, ${bytes.length} bytes)`);

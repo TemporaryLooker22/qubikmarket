@@ -3,16 +3,28 @@
 import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import { Loader2, Upload } from "lucide-react";
 import { publishVersion } from "@/app/resource-actions";
-import { ALLOWED_EXTENSIONS, MAX_FILE_SIZE } from "@/lib/catalog";
+import { ALLOWED_EXTENSIONS } from "@/lib/catalog";
 import { useI18n } from "@/lib/i18n/client";
 import { scanInBrowser } from "@/lib/scan-client";
 import { FileDrop, type ScanState } from "@/components/sell/FileDrop";
+import { useFileUpload } from "@/components/sell/useFileUpload";
 import { inputClass } from "./EditForms";
 
 // « Publier une nouvelle version » : dépôt du fichier (scanné dans le navigateur), numéro et « Quoi de neuf ? »
-export function PublishVersionForm({ resourceId, currentVersion, suggestion }: { resourceId: string; currentVersion: string; suggestion: string }) {
+export function PublishVersionForm({
+  resourceId,
+  currentVersion,
+  suggestion,
+  directUpload,
+}: {
+  resourceId: string;
+  currentVersion: string;
+  suggestion: string;
+  directUpload: boolean;
+}) {
   const { t } = useI18n();
   const [state, formAction, pending] = useActionState(publishVersion, undefined);
+  const upload = useFileUpload(directUpload);
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string>();
   const [scan, setScan] = useState<ScanState>({ status: "idle" });
@@ -34,7 +46,7 @@ export function PublishVersionForm({ resourceId, currentVersion, suggestion }: {
   const chooseFile = async (picked: File) => {
     const ext = picked.name.slice(picked.name.lastIndexOf(".")).toLowerCase();
     if (!ALLOWED_EXTENSIONS.includes(ext)) return setFileError(t.errors.fileFormat(ALLOWED_EXTENSIONS.join(", ")));
-    if (picked.size > MAX_FILE_SIZE) return setFileError(t.errors.fileTooBig);
+    if (picked.size > upload.maxSize) return setFileError(t.errors.fileTooBig);
     setFileError(undefined);
     setFile(picked);
     setScan({ status: "scanning" });
@@ -56,7 +68,7 @@ export function PublishVersionForm({ resourceId, currentVersion, suggestion }: {
 
   return (
     <form
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
         setLocalError(undefined);
         if (!file) return setLocalError(t.errors.fileMissing);
@@ -64,11 +76,11 @@ export function PublishVersionForm({ resourceId, currentVersion, suggestion }: {
         fd.set("resourceId", resourceId);
         fd.set("version", version.trim());
         fd.set("notes", notes);
-        fd.set("file", file);
+        if (!(await upload.attach(file, fd))) return setLocalError(t.errors.uploadFailed);
         startTransition(() => formAction(fd));
       }}
     >
-      <FileDrop file={file} scan={scan} error={fileError} onFile={chooseFile} />
+      <FileDrop file={file} scan={scan} error={fileError} onFile={chooseFile} maxMb={upload.maxMb} />
       {outcome && <p className="mt-2 text-sm text-muted">{outcome}</p>}
 
       <div className="mt-5 grid gap-4 sm:grid-cols-[180px_minmax(0,1fr)]">
@@ -107,9 +119,9 @@ export function PublishVersionForm({ resourceId, currentVersion, suggestion }: {
         ) : (
           <p className="mr-auto text-xs text-muted">{t.edit.buyersNote}</p>
         )}
-        <button type="submit" disabled={pending} className="btn-accent rounded-xl px-5 py-2.5 disabled:opacity-60">
-          {pending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Upload className="h-4 w-4" aria-hidden="true" />}
-          {pending ? t.edit.publishing : t.edit.publish(version.trim())}
+        <button type="submit" disabled={pending || upload.progress !== null} className="btn-accent rounded-xl px-5 py-2.5 disabled:opacity-60">
+          {pending || upload.progress !== null ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Upload className="h-4 w-4" aria-hidden="true" />}
+          {upload.progress !== null ? t.sell.uploading(upload.progress) : pending ? t.edit.publishing : t.edit.publish(version.trim())}
         </button>
       </div>
     </form>

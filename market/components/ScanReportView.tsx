@@ -22,7 +22,9 @@ export async function ScanReportView({ report }: { report: ScanReport }) {
     <div className="text-sm">
       <div className="flex flex-wrap items-center gap-2">
         <ScanBadge verdict={report.verdict} />
-        <span className="text-muted">{t.report.summary(report.scriptCount, report.instanceCount, report.score)}</span>
+        <span className="text-muted">
+          {report.fileCount !== undefined ? t.report.files(report.fileCount, report.scriptCount, report.score) : t.report.summary(report.scriptCount, report.instanceCount, report.score)}
+        </span>
       </div>
       {groups.size === 0 && <p className="mt-2 text-muted">{t.report.noIssue}</p>}
       <ul className="mt-3 space-y-2">

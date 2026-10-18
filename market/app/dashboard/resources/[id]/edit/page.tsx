@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronRight, Download, ExternalLink, FileText, History, Image as ImageIcon, Info, Tag } from "lucide-react";
 import { db } from "@/lib/db";
+import { directUploads } from "@/lib/storage";
 import { requireUser } from "@/lib/auth";
 import { MAX_IMAGES } from "@/lib/catalog";
 import { feePercentFor } from "@/lib/earnings";
@@ -156,7 +157,12 @@ export default async function EditResourcePage({ params, searchParams }: { param
           </Card>
 
           <Card title={t.edit.newTitle} text={t.edit.newText}>
-            <PublishVersionForm resourceId={resource.id} currentVersion={resource.version} suggestion={suggestNextVersion(latestVersion(resource.versions.map((v) => v.version)))} />
+            <PublishVersionForm
+              resourceId={resource.id}
+              currentVersion={resource.version}
+              suggestion={suggestNextVersion(latestVersion(resource.versions.map((v) => v.version)))}
+              directUpload={directUploads}
+            />
           </Card>
 
           <Card title={t.edit.history} text={t.edit.historyText}>

@@ -1,4 +1,5 @@
 import "server-only";
+import { scanAnyFile } from "./file-scan";
 
 // Le scanner anti-backdoor (le même code que Qubik Scanner)
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -19,7 +20,8 @@ export type Finding = {
 
 export type ScanReport = {
   fileName: string;
-  format: "binary" | "xml" | "text";
+  format: "binary" | "xml" | "text" | "media" | "archive"; // media : image, son, 3D… ; archive : .zip
+  fileCount?: number; // fichiers vérifiés (archives et médias)
   instanceCount: number;
   scriptCount: number;
   findings: Finding[];
@@ -30,6 +32,14 @@ export type ScanReport = {
 export function scanFile(bytes: Uint8Array, fileName: string): ScanReport {
   return scanner.scanFile(bytes, fileName);
 }
+
+// N'importe quel format accepté (fichier Roblox, image, son, 3D, archive .zip…) : voir lib/file-scan.ts
+export function scanUpload(bytes: Uint8Array, fileName: string): ScanReport {
+  return scanAnyFile(bytes, fileName, scanner);
+}
+
+// Le fichier contient-il du contenu Roblox que l'IA peut analyser (objets ou scripts) ?
+export const hasRobloxContent = (report: ScanReport) => report.instanceCount > 0 || report.scriptCount > 0;
 
 // Contenu d'un fichier Roblox : tous les objets (classe, nom, chemin) et le code des scripts
 // (utilisé par l'analyse IA, voir lib/ai/digest.ts)

@@ -3,14 +3,15 @@
 // Actions de la page « Modifier une ressource » (Mon espace → Mes ressources → Modifier)
 // et modération des nouvelles versions. Elles s'exécutent sur le serveur.
 
-import path from "node:path";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireAdmin, requireUser } from "@/lib/auth";
-import { scanFile } from "@/lib/scan";
-import { detectImage, saveImage, saveUpload } from "@/lib/storage";
-import { ALLOWED_EXTENSIONS, CATEGORIES, MAX_FILE_SIZE, MAX_IMAGE_SIZE, MAX_IMAGES } from "@/lib/catalog";
+import { hasRobloxContent, scanUpload, type ScanReport } from "@/lib/scan";
+import { receiveUpload } from "@/lib/uploads";
+import { grantFounderIfEligible } from "@/lib/sellers";
+import { detectImage, saveImage } from "@/lib/storage";
+import { CATEGORIES, MAX_IMAGE_SIZE, MAX_IMAGES } from "@/lib/catalog";
 import { getDictionary } from "@/lib/i18n/server";
 import { isValidVersion, promoteVersion } from "@/lib/versions";
 import { enqueueAnalysis, findUnanalyzedVersionIds, kickAiQueue } from "@/lib/ai/run";
@@ -32,7 +33,8 @@ async function ownResource(resourceId: string) {
 async function reanalyzeLiveVersion(resource: { id: string; status: string; version: string }, locale: "fr" | "en") {
   if (resource.status !== "APPROVED" && resource.status !== "UNLISTED") return;
   const live = await db.resourceVersion.findUnique({ where: { resourceId_version: { resourceId: resource.id, version: resource.version } } });
-  if (!live) return;
+  // Seulement si le fichier contient du contenu Roblox (l'IA ne peut pas analyser une image ou un son)
+  if (!live || !hasRobloxContent(JSON.parse(live.scanReport) as ScanReport)) return;
   await enqueueAnalysis(live.id, locale);
   kickAiQueue();
 }
@@ -141,29 +143,22 @@ export async function publishVersion(_: EditState, formData: FormData): Promise<
   }
   const notes = String(formData.get("notes") ?? "").trim().slice(0, 1000) || null;
 
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) return { error: t.errors.fileMissing };
-  if (file.size > MAX_FILE_SIZE) return { error: t.errors.fileTooBig };
-  if (!ALLOWED_EXTENSIONS.includes(path.extname(file.name).toLowerCase())) {
-    return { error: t.errors.fileFormat(ALLOWED_EXTENSIONS.join(", ")) };
-  }
-
-  // Scan anti-backdoor, comme à la publication
-  const bytes = new Uint8Array(await file.arrayBuffer());
+  // Le fichier (envoyé directement dans le stockage, voir lib/uploads.ts), puis le scan, comme à la publication
+  const file = await receiveUpload(formData, t);
+  if ("error" in file) return { error: file.error };
   let report;
   try {
-    report = scanFile(bytes, file.name);
+    report = scanUpload(file.bytes, file.fileName);
   } catch (err) {
     return { error: t.errors.fileUnreadable((err as Error).message) };
   }
-  const storedName = await saveUpload(bytes, file.name);
   const fileData = {
     resourceId: resource.id,
     version,
     notes,
-    fileName: file.name,
-    filePath: storedName,
-    fileSize: file.size,
+    fileName: file.fileName,
+    filePath: file.filePath,
+    fileSize: file.fileSize,
     scanVerdict: report.verdict,
     scanScore: report.score,
     scanReport: JSON.stringify(report),
@@ -178,6 +173,19 @@ export async function publishVersion(_: EditState, formData: FormData): Promise<
 
   const live = resource.status === "APPROVED" || resource.status === "UNLISTED";
   const clean = report.verdict === "clean";
+
+  // Propre et sans contenu Roblox (image, son, modèle 3D…) : l'IA ne peut rien analyser, la version passe en ligne
+  if (clean && !hasRobloxContent(report)) {
+    await db.$transaction(async (tx) => {
+      const created = await tx.resourceVersion.create({ data: { ...fileData, status: "ANALYZING" } });
+      await promoteVersion(tx, created.id, live);
+      if (!live) await tx.resource.update({ where: { id: resource.id }, data: { status: "APPROVED", reviewNote: null } });
+    });
+    if (!live) await grantFounderIfEligible(resource.sellerId);
+    refresh(resource);
+    revalidatePath("/admin", "layout");
+    return { ok: t.edit.versionLive(version) };
+  }
 
   const created = await db.$transaction(async (tx) => {
     // Propre : analyse IA d'abord (« ANALYZING »), puis en ligne ou en modération (voir lib/ai/run.ts).
@@ -209,8 +217,10 @@ export async function publishVersion(_: EditState, formData: FormData): Promise<
   });
 
   // Analyse IA dans la file d'attente : le vendeur n'attend pas (sa place s'affiche dans Mon espace)
-  await enqueueAnalysis(created.id, locale);
-  kickAiQueue();
+  if (hasRobloxContent(report)) {
+    await enqueueAnalysis(created.id, locale);
+    kickAiQueue();
+  }
 
   refresh(resource);
   revalidatePath("/admin", "layout");
