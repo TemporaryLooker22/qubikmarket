@@ -10,6 +10,8 @@ import { analyzeExistingResources } from "@/app/resource-actions";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { PageTitle, Panel, Stat } from "@/components/admin/AdminUi";
 import { RevenueBars } from "@/components/admin/RevenueBars";
+import { StripeBalancePanel } from "@/components/admin/StripeBalancePanel";
+import { platformBalance } from "@/lib/platform-balance";
 
 // La file d'analyse IA avance en arrière-plan après la réponse (voir lib/ai/run.ts)
 export const maxDuration = 120;
@@ -55,7 +57,7 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
   const from = days ? new Date(now.getTime() - days * DAY) : null;
   const before = days ? new Date(now.getTime() - 2 * days * DAY) : null;
 
-  const [current, previous, members, previousMembers, totalMembers, activeSellers, counts, oldest, aiQueue, unanalyzed, paidList] = await Promise.all([
+  const [current, previous, members, previousMembers, totalMembers, activeSellers, counts, oldest, aiQueue, unanalyzed, paidList, balance] = await Promise.all([
     money(from, now),
     from ? money(before, from) : null,
     db.user.count({ where: from ? { createdAt: { gte: from } } : {} }),
@@ -75,6 +77,8 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
       where: { status: "PAID", amountCents: { gt: 0 }, ...(from && { paidAt: { gte: from } }) },
       select: { paidAt: true, buyerFeeCents: true, buyerFeeTaxCents: true, earning: { select: { feeCents: true, status: true } } },
     }),
+    // Solde Stripe et part des vendeurs (une panne de Stripe ne doit pas bloquer la page)
+    platformBalance().catch(() => null),
   ]);
   if (aiQueue > 0) kickAiQueue();
 
@@ -146,6 +150,8 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
         <Stat icon={Store} label={t.mod.sellers} value={formatNumber(activeSellers, locale)} note={t.mod.sellersNote} />
         <Stat icon={UserPlus} label={t.mod.members} value={formatNumber(members, locale)} delta={previousMembers !== null ? delta(members, previousMembers, locale) : null} note={t.mod.membersNote(totalMembers)} />
       </div>
+
+      {balance && <StripeBalancePanel data={balance} t={t} locale={locale} />}
 
       <Panel title={days ? t.mod.chartDay : t.mod.chartMonth} aside={<span className="text-xs text-muted">{t.mod.revenueNote}</span>}>
         <RevenueBars bars={bars} />
