@@ -14,6 +14,7 @@ export function SortSelect({ filters, className = "" }: { filters: CatalogFilter
   const labels: Record<Sort, string> = {
     recent: t.catalog.sortRecent,
     popular: t.catalog.sortPopular,
+    "top-rated": t.catalog.sortTopRated,
     "price-asc": t.catalog.sortPriceAsc,
     "price-desc": t.catalog.sortPriceDesc,
   };

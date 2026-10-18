@@ -2,7 +2,7 @@
 // Toute l'info est dans l'adresse, donc une recherche filtrée peut être partagée ou mise en favori.
 import { CATEGORIES } from "./catalog";
 
-export const SORTS = ["recent", "popular", "price-asc", "price-desc"] as const;
+export const SORTS = ["recent", "popular", "top-rated", "price-asc", "price-desc"] as const;
 export type Sort = (typeof SORTS)[number];
 export type PriceType = "" | "free" | "paid";
 

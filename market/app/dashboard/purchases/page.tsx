@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { ArrowRight, Download, ExternalLink, ShoppingBag, Sparkles, Zap } from "lucide-react";
+import { ArrowRight, Download, ExternalLink, ShoppingBag, Sparkles, Star, Zap } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatDate, formatPrice } from "@/lib/i18n/format";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { Thumb } from "@/components/dashboard/Thumb";
+import { Stars } from "@/components/Stars";
 
 export async function generateMetadata() {
   const { t } = await getDictionary();
@@ -18,7 +19,7 @@ export default async function DashboardPurchasesPage() {
   const user = await requireUser("/dashboard/purchases");
   const { locale, t } = await getDictionary();
 
-  const [purchases, isSeller] = await Promise.all([
+  const [purchases, isSeller, myReviews] = await Promise.all([
     db.purchase.findMany({
       where: { userId: user.id, status: "PAID" },
       orderBy: { createdAt: "desc" },
@@ -34,7 +35,9 @@ export default async function DashboardPurchasesPage() {
       },
     }),
     db.resource.count({ where: { sellerId: user.id } }).then((n) => n > 0),
+    db.review.findMany({ where: { userId: user.id }, select: { resourceId: true, rating: true } }),
   ]);
+  const ratingOf = new Map(myReviews.map((r) => [r.resourceId, r.rating]));
 
   return (
     <>
@@ -60,6 +63,7 @@ export default async function DashboardPurchasesPage() {
             // Nouvelle version : le fichier a changé depuis le dernier téléchargement (ou depuis l'achat)
             const seen = lastDownloadedAt ?? paidAt ?? createdAt;
             const updated = r.versionUpdatedAt !== null && r.versionUpdatedAt > seen;
+            const myRating = ratingOf.get(r.id);
             return (
             <li key={id} className="flex flex-col rounded-2xl border border-border bg-card p-2">
               <Thumb image={r.images[0]} category={r.category} className="w-full rounded-xl" />
@@ -76,6 +80,23 @@ export default async function DashboardPurchasesPage() {
                     <Sparkles className="h-3 w-3" aria-hidden="true" />
                     {t.dashboard.newVersionBadge(r.version)}
                   </span>
+                )}
+                {/* Avis : le sien (à modifier), ou « Laisser un avis » une fois la ressource téléchargée */}
+                {myRating ? (
+                  <p className="mt-2 flex items-center gap-1.5 text-xs text-muted">
+                    <Stars rating={myRating} label={t.resource.rating(String(myRating))} className="h-3.5 w-3.5" />
+                    {t.reviews.yours} ·
+                    <Link href={`/resources/${r.slug}#avis`} className="font-semibold text-text underline-offset-2 hover:underline">
+                      {t.reviews.edit}
+                    </Link>
+                  </p>
+                ) : (
+                  lastDownloadedAt && (
+                    <Link href={`/resources/${r.slug}#avis`} className="mt-2 inline-flex items-center gap-1.5 self-start text-xs font-semibold underline-offset-2 hover:underline">
+                      <Star className="h-3.5 w-3.5 text-accent" fill="currentColor" strokeWidth={0} aria-hidden="true" />
+                      {t.reviews.leave}
+                    </Link>
+                  )
                 )}
                 <div className="mt-auto flex gap-1.5 pt-3">
                   <a href={`/api/download/${r.id}`} className="btn flex-1">

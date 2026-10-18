@@ -19,10 +19,13 @@ import { ScanReportView } from "@/components/ScanReportView";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Stars } from "@/components/Stars";
 import { ProductGallery } from "@/components/product/ProductGallery";
+import { ReviewForm } from "@/components/reviews/ReviewForm";
+import { ReviewItem, type ReviewData } from "@/components/reviews/ReviewItem";
+import { canReview, REVIEWS_SHOWN, sellerRating } from "@/lib/reviews";
 import { ShareButton } from "@/components/product/ShareButton";
 
 type Params = Promise<{ slug: string }>;
-type SearchParams = Promise<{ bought?: string; original?: string }>;
+type SearchParams = Promise<{ bought?: string; original?: string; avis?: string }>;
 
 // Tout ce que la page affiche, que la ressource soit réelle ou un exemple de démo
 type Product = {
@@ -48,8 +51,20 @@ type Product = {
   versions?: { version: string; notes: string | null; createdAt: Date }[];
   // Badge « Contenu vérifié » : l'analyse IA confirme que le contenu correspond à la description
   aiVerified?: boolean;
-  // rating = null : pas encore d'avis (le système d'avis n'existe pas encore, seule la démo a des notes)
+  // Avis des acheteurs (absents pour les exemples de démo)
+  rating?: { avg: number; count: number; dist: number[] }; // dist : nombre d'avis à 5, 4, 3, 2 et 1 étoile(s)
+  // rating = null : pas encore d'avis sur les ressources du vendeur
   seller: { username: string; resources: number; sales: number; rating: number | null; reviews: number };
+};
+
+// Avis affichés sous la ressource, et ce que le visiteur peut en faire
+type Reviews = {
+  list: ReviewData[];
+  mine: { rating: number; body: string | null } | null;
+  canReview: "yes" | "download" | "no";
+  isSeller: boolean;
+  isAdmin: boolean;
+  showAll: boolean;
 };
 
 // Ce que le visiteur peut faire sur cette ressource
@@ -64,12 +79,13 @@ export async function generateMetadata({ params }: { params: Params }) {
 }
 
 export default async function ResourcePage({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
-  const [{ slug }, { bought, original }, user, { locale, t }] = await Promise.all([params, searchParams, getCurrentUser(), getDictionary()]);
+  const [{ slug }, { bought, original, avis }, user, { locale, t }] = await Promise.all([params, searchParams, getCurrentUser(), getDictionary()]);
 
   let product: Product;
   let access: Access;
   let report: ScanReport | null = null; // détail du scan : seulement pour le vendeur et les modérateurs
   let similar: React.ComponentProps<typeof ResourceCard>["resource"][];
+  let reviews: Reviews | null = null;
 
   const demo = findDemo(slug);
   if (demo) {
@@ -96,7 +112,7 @@ export default async function ResourcePage({ params, searchParams }: { params: P
     const visible = resource.status === "APPROVED" || isOwner || isAdmin || (resource.status === "UNLISTED" && purchase?.status === "PAID");
     if (!visible) notFound();
 
-    const [sellerResources, sellerSales, similarResources] = await Promise.all([
+    const [sellerResources, sellerSales, similarResources, reviewList, distribution, sellerStars, reviewStatus] = await Promise.all([
       db.resource.count({ where: { sellerId: resource.sellerId, status: "APPROVED" } }),
       db.purchase.count({ where: { status: "PAID", resource: { sellerId: resource.sellerId } } }),
       db.resource.findMany({
@@ -105,7 +121,22 @@ export default async function ResourcePage({ params, searchParams }: { params: P
         take: 4,
         include: { seller: { select: { username: true } } },
       }),
+      // Avis : les plus récents d'abord
+      db.review.findMany({ where: { resourceId: resource.id }, orderBy: { createdAt: "desc" }, include: { user: { select: { username: true } } } }),
+      db.review.groupBy({ by: ["rating"], where: { resourceId: resource.id }, _count: true }),
+      sellerRating(resource.sellerId),
+      user && !isOwner ? canReview(user.id, resource.id) : Promise.resolve("no" as const),
     ]);
+
+    const mine = user ? reviewList.find((r) => r.userId === user.id) : undefined;
+    reviews = {
+      list: reviewList,
+      mine: mine ? { rating: mine.rating, body: mine.body } : null,
+      canReview: reviewStatus,
+      isSeller: isOwner,
+      isAdmin,
+      showAll: avis === "all",
+    };
 
     const scan = JSON.parse(resource.scanReport) as ScanReport;
     if (isOwner || isAdmin) report = scan;
@@ -113,7 +144,12 @@ export default async function ResourcePage({ params, searchParams }: { params: P
       ...resource,
       sales: resource._count.purchases,
       scriptCount: scan.scriptCount,
-      seller: { username: resource.seller.username, resources: sellerResources, sales: sellerSales, rating: null, reviews: 0 },
+      rating: {
+        avg: resource.ratingAvg,
+        count: resource.ratingCount,
+        dist: [5, 4, 3, 2, 1].map((n) => distribution.find((d) => d.rating === n)?._count ?? 0),
+      },
+      seller: { username: resource.seller.username, resources: sellerResources, sales: sellerSales, rating: sellerStars.rating, reviews: sellerStars.reviews },
     };
     access = {
       demo: false,
@@ -285,6 +321,9 @@ export default async function ResourcePage({ params, searchParams }: { params: P
               </div>
             </Card>
           </div>
+
+          {/* Avis des acheteurs */}
+          {reviews && product.rating && <ReviewsSection product={product} reviews={reviews} locale={locale} t={t} />}
         </div>
 
         {/* Encart d'achat (ordinateur) : reste visible en défilant */}
@@ -333,6 +372,14 @@ function BuyBox({ product, access, locale, t, showAction = true }: { product: Pr
       <p className="mt-1.5 text-sm text-muted">
         {t.resource.by(product.seller.username)} · {t.card.sales(product.sales)}
       </p>
+      {/* Note des acheteurs : mène aux avis plus bas */}
+      {product.rating && product.rating.count > 0 && (
+        <a href="#avis" className="mt-1.5 inline-flex items-center gap-1.5 text-sm">
+          <Stars rating={product.rating.avg} label={t.resource.rating(formatRating(product.rating.avg, locale))} className="h-3.5 w-3.5" />
+          <span className="font-semibold">{formatRating(product.rating.avg, locale)}</span>
+          <span className="text-muted underline underline-offset-2">{t.resource.reviews(product.rating.count)}</span>
+        </a>
+      )}
       <p className="mt-3 text-[15px] leading-relaxed text-text/80">{product.summary}</p>
 
       <p className="mt-5 text-3xl font-bold tracking-tight">{formatPrice(product.priceCents, locale)}</p>
@@ -412,6 +459,63 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 }
 
 // 4,8 en français, 4.8 en anglais
+// Avis : note moyenne et répartition, formulaire (acheteur qui a téléchargé), liste des avis
+function ReviewsSection({ product, reviews, locale, t }: { product: Product; reviews: Reviews; locale: Locale; t: Dictionary }) {
+  const { avg, count, dist } = product.rating!;
+  const shown = reviews.showAll ? reviews.list : reviews.list.slice(0, REVIEWS_SHOWN);
+  const hidden = reviews.list.length - shown.length;
+  return (
+    <section id="avis" className="scroll-mt-24 rounded-2xl border border-border bg-card p-5 sm:p-6">
+      <h2 className="font-semibold">{t.reviews.title}</h2>
+
+      {count > 0 ? (
+        <div className="mt-4 grid items-center gap-6 border-b border-border pb-5 sm:grid-cols-[150px_minmax(0,1fr)]">
+          <div>
+            <p className="text-5xl font-extrabold leading-none tracking-tight">{formatRating(avg, locale)}</p>
+            <Stars rating={avg} label={t.resource.rating(formatRating(avg, locale))} className="mt-2 h-4 w-4" />
+            <p className="mt-1 text-xs text-muted">{t.reviews.fromBuyers(count)}</p>
+          </div>
+          <div className="space-y-1.5">
+            {dist.map((n, i) => (
+              <div key={i} className="grid grid-cols-[14px_minmax(0,1fr)_28px] items-center gap-2 text-xs text-muted">
+                <span>{5 - i}</span>
+                <span className="h-1.5 overflow-hidden rounded-full bg-surface">
+                  <span className="block h-full rounded-full bg-accent" style={{ width: `${(n / count) * 100}%` }} />
+                </span>
+                <span className="text-right">{n}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <p className="mt-1 text-sm text-muted">
+          {t.resource.noReviews}. {t.reviews.noneText}
+        </p>
+      )}
+
+      {reviews.canReview === "yes" && (
+        <div className="mt-5">
+          <ReviewForm resourceId={product.id} initial={reviews.mine} />
+        </div>
+      )}
+      {reviews.canReview === "download" && <p className="mt-5 rounded-xl bg-bg px-4 py-3 text-sm">{t.reviews.downloadFirst}</p>}
+
+      {shown.length > 0 && (
+        <ul className="mt-5 divide-y divide-border">
+          {shown.map((r) => (
+            <ReviewItem key={r.id} review={r} sellerName={product.seller.username} canReply={reviews.isSeller} canDelete={reviews.isAdmin} locale={locale} t={t} />
+          ))}
+        </ul>
+      )}
+      {hidden > 0 && (
+        <Link href={`/resources/${product.slug}?avis=all#avis`} scroll={false} className="btn-ghost mt-4">
+          {t.reviews.showAll(hidden)}
+        </Link>
+      )}
+    </section>
+  );
+}
+
 function formatRating(rating: number, locale: Locale) {
   return rating.toLocaleString(locale === "fr" ? "fr-FR" : "en-GB", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }

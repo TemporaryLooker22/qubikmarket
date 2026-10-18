@@ -42,6 +42,8 @@ function buildWhere(f: CatalogFilters): Prisma.ResourceWhereInput {
 const ORDER_BY: Record<CatalogFilters["sort"], Prisma.ResourceOrderByWithRelationInput[]> = {
   recent: [{ createdAt: "desc" }],
   popular: [{ purchases: { _count: "desc" } }, { createdAt: "desc" }],
+  // Moyenne pondérée par le nombre d'avis (voir lib/reviews.ts) : les ressources sans avis à la fin
+  "top-rated": [{ ratingScore: "desc" }, { ratingCount: "desc" }, { createdAt: "desc" }],
   "price-asc": [{ priceCents: "asc" }, { createdAt: "desc" }],
   "price-desc": [{ priceCents: "desc" }, { createdAt: "desc" }],
 };

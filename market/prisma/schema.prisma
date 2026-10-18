@@ -27,6 +27,7 @@ model User {
   resources             Resource[]
   purchases             Purchase[]
   earnings              SellerEarning[]
+  reviews               Review[]
 }
 
 model Resource {
@@ -58,6 +59,12 @@ model Resource {
   versions         ResourceVersion[]
   // Badge « Contenu vérifié » : l'analyse IA de la version en ligne confirme que le contenu correspond à la description
   aiVerified       Boolean           @default(false)
+
+  // Avis des acheteurs : note moyenne et nombre d'avis (recalculés à chaque avis, voir lib/reviews.ts)
+  ratingAvg   Float    @default(0)
+  ratingCount Int      @default(0)
+  ratingScore Float    @default(0) // pour le tri « Mieux notées » (moyenne pondérée par le nombre d'avis)
+  reviews     Review[]
 
   sellerId  String
   seller    User       @relation(fields: [sellerId], references: [id])
@@ -177,4 +184,25 @@ model ResourceVersion {
 model Lease {
   name  String   @id
   until DateTime
+}
+
+// Avis d'un acheteur sur une ressource qu'il a téléchargée : une note de 1 à 5, un commentaire facultatif
+// et une réponse publique facultative du vendeur. Un avis par personne et par ressource (modifiable).
+model Review {
+  id         String    @id @default(cuid())
+  resourceId String
+  userId     String
+  rating     Int // 1 à 5
+  body       String? // commentaire (1000 caractères au plus)
+  version    String // version de la ressource au moment de l'avis
+  reply      String? // réponse du vendeur
+  repliedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  resource Resource @relation(fields: [resourceId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, resourceId])
+  @@index([resourceId, createdAt])
 }

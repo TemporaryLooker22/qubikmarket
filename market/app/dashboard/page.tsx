@@ -8,6 +8,9 @@ import { formatAmount, formatDate, formatNumber } from "@/lib/i18n/format";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { SalesChart, type ChartDay } from "@/components/dashboard/SalesChart";
 import { Thumb } from "@/components/dashboard/Thumb";
+import { ReviewItem } from "@/components/reviews/ReviewItem";
+import { Stars } from "@/components/Stars";
+import { sellerRating } from "@/lib/reviews";
 
 export async function generateMetadata() {
   const { t } = await getDictionary();
@@ -27,7 +30,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const since30 = new Date(`${dayKey(new Date(now - 29 * DAY))}T00:00:00Z`);
   const since60 = new Date(since30.getTime() - 30 * DAY);
 
-  const [resources, recentPurchases, recentSales] = await Promise.all([
+  const [resources, recentPurchases, recentSales, latestReviews, rating] = await Promise.all([
     db.resource.findMany({
       where: { sellerId: user.id },
       orderBy: { createdAt: "desc" },
@@ -58,6 +61,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         purchase: { select: { user: { select: { username: true } }, resource: { select: { title: true, slug: true } } } },
       },
     }),
+    // Derniers avis sur ses ressources (le vendeur peut y répondre)
+    db.review.findMany({
+      where: { resource: { sellerId: user.id } },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      include: { user: { select: { username: true } }, resource: { select: { title: true, slug: true } } },
+    }),
+    sellerRating(user.id),
   ]);
 
   // Pas encore vendeur : « Mon espace » montre directement ses achats
@@ -203,6 +214,29 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           )}
         </section>
       </div>
+
+      {/* Derniers avis des acheteurs, avec un champ pour répondre */}
+      <section className="mt-4 rounded-2xl border border-border bg-card p-5">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-semibold">{t.reviews.latest}</h2>
+          {rating.rating !== null && (
+            <span className="flex items-center gap-1.5 text-sm">
+              <Stars rating={rating.rating} label={t.resource.rating(rating.rating.toFixed(1))} className="h-3.5 w-3.5" />
+              <strong>{rating.rating.toLocaleString(locale === "fr" ? "fr-FR" : "en-GB", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</strong>
+              <span className="text-muted">{t.reviews.average(rating.reviews)}</span>
+            </span>
+          )}
+        </div>
+        {latestReviews.length === 0 ? (
+          <p className="py-2 text-sm text-muted">{t.reviews.noneSeller}</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {latestReviews.map((r) => (
+              <ReviewItem key={r.id} review={r} sellerName={user.username} canReply locale={locale} t={t} />
+            ))}
+          </ul>
+        )}
+      </section>
     </>
   );
 }

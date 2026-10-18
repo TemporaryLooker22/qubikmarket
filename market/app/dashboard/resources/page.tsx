@@ -45,6 +45,8 @@ export default async function DashboardResourcesPage({ searchParams }: { searchP
       status: true,
       images: true,
       reviewNote: true,
+      ratingAvg: true,
+      ratingCount: true,
       purchases: { where: { status: "PAID" }, select: { earning: { select: { amountCents: true } } } },
     },
   });
@@ -150,6 +152,11 @@ export default async function DashboardResourcesPage({ searchParams }: { searchP
                     </Link>
                     <p className="truncate text-xs text-muted">
                       {categoryLabel(r.category)} · {formatPrice(r.priceCents, locale)}
+                      {r.ratingCount > 0 && (
+                        <Link href={`/resources/${r.slug}#avis`} className="ml-1 font-semibold text-text hover:underline">
+                          · ★ {r.ratingAvg.toLocaleString(locale === "fr" ? "fr-FR" : "en-GB", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ({r.ratingCount})
+                        </Link>
+                      )}
                     </p>
                     {/* Sur téléphone, le statut et les chiffres passent sous le titre */}
                     <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted md:hidden">
