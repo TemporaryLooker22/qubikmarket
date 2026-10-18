@@ -14,6 +14,7 @@ export type PlatformBalance = {
     availableCents: number;
     pendingCents: number;
     safeCents: number; // ce que tu peux retirer sans toucher à l'argent des vendeurs
+    upcomingCents: number; // ta part encore en attente chez Stripe : retirable une fois débloquée
     missingCents: number; // > 0 : le solde total ne suffit plus pour payer les vendeurs
     payoutInterval: string | null; // "manual", "daily", "weekly", "monthly" (null : inconnu)
   };
@@ -47,6 +48,7 @@ export async function platformBalance(): Promise<PlatformBalance> {
     availableCents,
     pendingCents,
     safeCents: Math.max(0, availableCents - reservedCents),
+    upcomingCents: Math.max(0, availableCents + pendingCents - reservedCents) - Math.max(0, availableCents - reservedCents),
     missingCents: Math.max(0, reservedCents - availableCents - pendingCents),
     payoutInterval: account?.settings?.payouts?.schedule?.interval ?? null,
   };

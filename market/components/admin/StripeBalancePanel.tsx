@@ -43,7 +43,7 @@ export function StripeBalancePanel({ data, t, locale }: { data: PlatformBalance;
           value={money(data.reservedCents)}
           note={m.stripeReservedNote(data.reservedSellers, data.noAccountCents > 0 ? money(data.noAccountCents) : null)}
         />
-        <Stat dark icon={PiggyBank} label={m.stripeSafe} value={money(s.safeCents)} note={m.stripeSafeNote} />
+        <Stat dark icon={PiggyBank} label={m.stripeSafe} value={money(s.safeCents)} note={s.upcomingCents > 0 ? m.stripeUpcoming(money(s.upcomingCents)) : m.stripeSafeNote} />
       </div>
       <p className={`mt-3 flex items-start gap-2 rounded-xl px-3 py-2.5 text-sm ${alert.bad ? "bg-warn-bg text-warn" : "bg-ok-bg text-ok"}`}>
         {alert.bad ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /> : <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />}
