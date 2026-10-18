@@ -15,6 +15,7 @@ import { CategoryPicker } from "@/components/sell/CategoryPicker";
 import { DescriptionEditor } from "@/components/sell/DescriptionEditor";
 import { ImagePicker, type PickedImage } from "@/components/sell/ImagePicker";
 import { parsePrice, PRICE, PriceField } from "@/components/sell/PriceField";
+import { useFileUpload } from "@/components/sell/useFileUpload";
 
 // Formulaires des onglets Infos, Images, Description et Prix de la page « Modifier une ressource ».
 // Chaque onglet s'enregistre séparément, sans nouveau scan (le fichier ne change pas).
@@ -89,36 +90,45 @@ export function InfoForm({ resourceId, initial }: { resourceId: string; initial:
   );
 }
 
-export function ImagesForm({ resourceId, initial }: { resourceId: string; initial: string[] }) {
+export function ImagesForm({ resourceId, initial, directUpload }: { resourceId: string; initial: string[]; directUpload: boolean }) {
   const { t } = useI18n();
   const { state, pending, submit } = useEditAction(updateResourceImages);
   const [images, setImages] = useState<PickedImage[]>(initial.map((url) => ({ url })));
   const [localError, setLocalError] = useState<string>();
+  const upload = useFileUpload(directUpload);
 
   return (
     <form
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
         setLocalError(undefined);
-        const size = images.reduce((n, i) => n + (i.file?.size ?? 0), 0);
-        if (size > MAX_FORM_SIZE) return setLocalError(t.errors.formTooBig);
-        submit(() => {
-          // Ordre final : adresse d'une image existante, ou « new:N » pour la N-ième nouvelle image
-          const fd = new FormData();
-          fd.set("resourceId", resourceId);
+        const fd = new FormData();
+        fd.set("resourceId", resourceId);
+        // Ordre final : adresse d'une image existante ; nouvelle image : « url:… » après l'envoi direct dans le stockage
+        // (jusqu'à 20 Mo), ou « new:N » pour la N-ième image envoyée avec le formulaire (en local)
+        let order: string[];
+        if (directUpload) {
+          const urls = await upload.uploadImages(images.flatMap((i) => (i.file ? [i.file] : [])));
+          if (!urls) return setLocalError(t.errors.uploadFailed);
           let n = 0;
-          const order = images.map((img) => {
+          order = images.map((img) => (img.file ? `url:${urls[n++]}` : img.url));
+        } else {
+          const size = images.reduce((s, i) => s + (i.file?.size ?? 0), 0);
+          if (size > MAX_FORM_SIZE) return setLocalError(t.errors.formTooBig);
+          let n = 0;
+          order = images.map((img) => {
             if (!img.file) return img.url;
             fd.append("images", img.file);
             return `new:${n++}`;
           });
-          fd.set("order", JSON.stringify(order));
-          return fd;
-        });
+        }
+        fd.set("order", JSON.stringify(order));
+        submit(() => fd);
       }}
     >
-      <ImagePicker images={images} onChange={setImages} />
-      <SaveBar state={state} pending={pending} note={t.edit.instantNote} localError={localError} />
+      <ImagePicker images={images} onChange={setImages} direct={directUpload} />
+      {upload.imageStep && <p className="mt-3 text-sm text-muted">{t.sell.uploadingImages(upload.imageStep.done, upload.imageStep.total)}</p>}
+      <SaveBar state={state} pending={pending || upload.imageStep !== null} note={t.edit.instantNote} localError={localError} />
     </form>
   );
 }

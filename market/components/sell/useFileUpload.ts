@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { MAX_FILE_SIZE, MAX_FILE_SIZE_INLINE } from "@/lib/formats";
-import { uploadResourceFile } from "@/lib/upload-client";
+import { uploadImage, uploadResourceFile } from "@/lib/upload-client";
 
 // Envoi du fichier vendu au moment de publier (mise en vente et nouvelle version).
 // directUpload (Vercel Blob disponible) : le fichier part directement dans le stockage (50 Mo max), avec sa progression,
@@ -36,5 +36,30 @@ export function useFileUpload(directUpload: boolean) {
     }
   };
 
-  return { progress, attach, maxSize, maxMb: Math.round(maxSize / 1024 / 1024) };
+  // Captures d'écran : envoyées directement elles aussi (jusqu'à 20 Mo chacune) ; le formulaire reçoit leurs adresses.
+  // Renvoie les adresses dans l'ordre des fichiers, ou null si un envoi a échoué.
+  const [imageStep, setImageStep] = useState<{ done: number; total: number } | null>(null);
+  const sentImages = useRef(new Map<File, string>());
+  const uploadImages = async (files: File[]) => {
+    try {
+      const urls: string[] = [];
+      setImageStep({ done: 0, total: files.length });
+      for (const [i, file] of files.entries()) {
+        let url = sentImages.current.get(file);
+        if (!url) {
+          url = await uploadImage(file);
+          sentImages.current.set(file, url);
+        }
+        urls.push(url);
+        setImageStep({ done: i + 1, total: files.length });
+      }
+      return urls;
+    } catch {
+      return null;
+    } finally {
+      setImageStep(null);
+    }
+  };
+
+  return { progress, attach, maxSize, maxMb: Math.round(maxSize / 1024 / 1024), imageStep, uploadImages };
 }

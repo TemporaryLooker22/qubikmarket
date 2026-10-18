@@ -10,7 +10,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { createSession, destroySession, getCurrentUser, requireAdmin, requireUser } from "@/lib/auth";
 import { hasRobloxContent, scanUpload } from "@/lib/scan";
-import { receiveUpload } from "@/lib/uploads";
+import { isUploadedImage, receiveUpload } from "@/lib/uploads";
 import { detectImage, saveImage } from "@/lib/storage";
 import { CATEGORIES, MAX_IMAGE_SIZE, MAX_IMAGES, slugify } from "@/lib/catalog";
 import { createCheckoutSession, isDemoMode } from "@/lib/payments";
@@ -145,7 +145,10 @@ export async function publishResource(_: FormState, formData: FormData): Promise
 
   // Captures d'écran (facultatives) : on vérifie que ce sont de vraies images avant de les garder
   const imageFiles = formData.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
-  if (imageFiles.length > MAX_IMAGES) return { error: t.errors.tooManyImages(MAX_IMAGES) };
+  // Images déjà envoyées directement dans le stockage (jusqu'à 20 Mo chacune) : on vérifie que ce sont bien les nôtres
+  const directImages = formData.getAll("imageUrls").filter((u): u is string => typeof u === "string" && u.length > 0);
+  if (imageFiles.length + directImages.length > MAX_IMAGES) return { error: t.errors.tooManyImages(MAX_IMAGES) };
+  for (const url of directImages) if (!(await isUploadedImage(url))) return { error: t.errors.imageTooBig };
   const images: { bytes: Uint8Array; ext: NonNullable<ReturnType<typeof detectImage>> }[] = [];
   for (const img of imageFiles) {
     if (img.size > MAX_IMAGE_SIZE) return { error: t.errors.imageTooBig };
@@ -178,7 +181,7 @@ export async function publishResource(_: FormState, formData: FormData): Promise
   const reviewNote = report.verdict === "dangerous" ? t.errors.autoReject : null;
 
   // 4) Enregistrement
-  const imageUrls = await Promise.all(images.map((img) => saveImage(img.bytes, img.ext)));
+  const imageUrls = [...(await Promise.all(images.map((img) => saveImage(img.bytes, img.ext)))), ...directImages];
   const baseSlug = slugify(data.title) || "ressource";
   const slug = (await db.resource.findUnique({ where: { slug: baseSlug } }))
     ? `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`

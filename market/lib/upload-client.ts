@@ -14,3 +14,10 @@ export async function uploadResourceFile(file: File, onProgress: (percent: numbe
   });
   return blob.url;
 }
+
+// Capture d'écran (déjà préparée par ImagePicker), envoyée directement dans Vercel Blob
+export async function uploadImage(file: File) {
+  const ext = file.type === "image/png" ? ".png" : file.type === "image/jpeg" ? ".jpg" : ".webp";
+  const blob = await upload(`images/${crypto.randomUUID()}${ext}`, file, { access: "public", handleUploadUrl: "/api/upload", contentType: file.type || "image/webp" });
+  return blob.url;
+}

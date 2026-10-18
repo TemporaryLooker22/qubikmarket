@@ -3,28 +3,38 @@
 import { useRef, useState } from "react";
 import { ArrowLeft, GripVertical, ImagePlus, Loader2, X } from "lucide-react";
 import { MAX_IMAGES } from "@/lib/catalog";
+import { IMAGE_CONTENT_TYPES, MAX_IMAGE_SIDE, MAX_IMAGE_SIZE_DIRECT } from "@/lib/formats";
 import { useI18n } from "@/lib/i18n/client";
 
-// Une image : soit déjà enregistrée (adresse seulement), soit nouvelle (fichier compressé + aperçu local)
+// Une image : soit déjà enregistrée (adresse seulement), soit nouvelle (fichier préparé + aperçu local)
 export type PickedImage = { url: string; file?: File };
 
-// Réduit une image (1600 px de large maximum) et la convertit en WebP, pour tenir dans la limite d'envoi de Vercel
-async function compressImage(file: File): Promise<File> {
+// Prépare une image avant l'envoi.
+// direct (envoi direct dans le stockage) : jusqu'à 4K et 20 Mo ; une image déjà dans ces limites est gardée telle quelle
+// (aucune perte de qualité), sinon elle est réduite à 4K et convertie en WebP de haute qualité.
+// Sinon (en local, envoi avec le formulaire) : 1600 px de large et WebP compressé, pour tenir dans la limite de Vercel.
+async function prepareImage(file: File, direct: boolean): Promise<File> {
   const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, 1600 / bitmap.width);
+  const maxSide = direct ? MAX_IMAGE_SIDE : 1600;
+  const longest = direct ? Math.max(bitmap.width, bitmap.height) : bitmap.width;
+  if (direct && longest <= maxSide && file.size <= MAX_IMAGE_SIZE_DIRECT && IMAGE_CONTENT_TYPES.includes(file.type)) {
+    bitmap.close();
+    return file;
+  }
+  const scale = Math.min(1, maxSide / longest);
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(bitmap.width * scale);
   canvas.height = Math.round(bitmap.height * scale);
   canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   bitmap.close();
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.82));
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", direct ? 0.92 : 0.82));
   if (!blob) return file;
   return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".webp", { type: "image/webp" });
 }
 
-// Captures d'écran : compressées dans le navigateur, réordonnables par glisser-déposer.
+// Captures d'écran : préparées dans le navigateur, réordonnables par glisser-déposer.
 // La première sert de miniature dans le catalogue.
-export function ImagePicker({ images, onChange }: { images: PickedImage[]; onChange: (images: PickedImage[]) => void }) {
+export function ImagePicker({ images, onChange, direct = false }: { images: PickedImage[]; onChange: (images: PickedImage[]) => void; direct?: boolean }) {
   const { t } = useI18n();
   const [compressing, setCompressing] = useState(false);
   const [dragOver, setDragOver] = useState<number | null>(null);
@@ -34,7 +44,7 @@ export function ImagePicker({ images, onChange }: { images: PickedImage[]; onCha
     if (!files?.length) return;
     setCompressing(true);
     const picked = [...files].filter((f) => f.type.startsWith("image/")).slice(0, MAX_IMAGES - images.length);
-    const compressed = await Promise.all(picked.map((f) => compressImage(f).catch(() => f)));
+    const compressed = await Promise.all(picked.map((f) => prepareImage(f, direct).catch(() => f)));
     onChange([...images, ...compressed.map((file) => ({ file, url: URL.createObjectURL(file) }))]);
     setCompressing(false);
   };

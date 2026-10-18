@@ -125,7 +125,7 @@ export default async function EditResourcePage({ params, searchParams }: { param
       )}
       {tab === "images" && (
         <Card title={t.sell.imagesTitle} text={t.sell.imagesText(MAX_IMAGES)}>
-          <ImagesForm resourceId={resource.id} initial={resource.images} />
+          <ImagesForm resourceId={resource.id} initial={resource.images} directUpload={directUploads} />
         </Card>
       )}
       {tab === "description" && (

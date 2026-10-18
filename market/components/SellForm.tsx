@@ -87,12 +87,21 @@ export function SellForm({ feePercent, username, directUpload }: { feePercent: n
     if (!file) return setLocalError(t.errors.fileMissing);
     if (!category) return setLocalError(t.errors.category);
     if (!priceOk) return setLocalError(priceCents > PRICE.max * 100 ? t.errors.priceMax : t.errors.priceMin);
-    const total = (directUpload ? 0 : file.size) + images.reduce((n, i) => n + (i.file?.size ?? 0), 0);
+    // En local (sans envoi direct), fichier et images partent avec le formulaire : limite de Vercel
+    const total = directUpload ? 0 : file.size + images.reduce((n, i) => n + (i.file?.size ?? 0), 0);
     if (total > MAX_FORM_SIZE) return setLocalError(t.errors.formTooBig);
 
     const formData = new FormData(e.currentTarget);
     formData.set("price", paid ? price : "0");
-    images.forEach((i) => i.file && formData.append("images", i.file));
+    // Images : envoyées directement dans le stockage (jusqu'à 20 Mo chacune), ou avec le formulaire en local
+    const newImages = images.flatMap((i) => (i.file ? [i.file] : []));
+    if (directUpload) {
+      const urls = await upload.uploadImages(newImages);
+      if (!urls) return setLocalError(t.errors.uploadFailed);
+      urls.forEach((url) => formData.append("imageUrls", url));
+    } else {
+      newImages.forEach((f) => formData.append("images", f));
+    }
     if (!(await upload.attach(file, formData))) return setLocalError(t.errors.uploadFailed);
     startTransition(() => formAction(formData));
   };
@@ -142,7 +151,7 @@ export function SellForm({ feePercent, username, directUpload }: { feePercent: n
 
         {/* 3. Images */}
         <Section n={3} done={ready.image} title={t.sell.imagesTitle} text={t.sell.imagesText(MAX_IMAGES)}>
-          <ImagePicker images={images} onChange={setImages} />
+          <ImagePicker images={images} onChange={setImages} direct={directUpload} />
         </Section>
 
         {/* 4. Description */}
@@ -165,11 +174,17 @@ export function SellForm({ feePercent, username, directUpload }: { feePercent: n
           <div className="flex flex-wrap items-center gap-4">
             <button
               type="submit"
-              disabled={pending || upload.progress !== null}
+              disabled={pending || upload.progress !== null || upload.imageStep !== null}
               className="flex h-12 items-center justify-center gap-2 rounded-xl bg-accent px-7 text-[15px] font-semibold text-text transition hover:-translate-y-px hover:bg-accent-hover disabled:translate-y-0 disabled:opacity-60"
             >
-              {pending || upload.progress !== null ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Rocket className="h-4 w-4" aria-hidden="true" />}
-              {upload.progress !== null ? t.sell.uploading(upload.progress) : pending ? t.sell.submitting : t.sell.submit}
+              {pending || upload.progress !== null || upload.imageStep !== null ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Rocket className="h-4 w-4" aria-hidden="true" />}
+              {upload.imageStep
+                ? t.sell.uploadingImages(upload.imageStep.done, upload.imageStep.total)
+                : upload.progress !== null
+                  ? t.sell.uploading(upload.progress)
+                  : pending
+                    ? t.sell.submitting
+                    : t.sell.submit}
             </button>
             <p className="min-w-56 flex-1 text-xs text-muted">
               {t.sell.legalStart}

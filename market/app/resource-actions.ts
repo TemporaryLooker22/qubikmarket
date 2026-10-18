@@ -8,7 +8,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireAdmin, requireUser } from "@/lib/auth";
 import { hasRobloxContent, scanUpload, type ScanReport } from "@/lib/scan";
-import { receiveUpload } from "@/lib/uploads";
+import { isUploadedImage, receiveUpload } from "@/lib/uploads";
 import { grantFounderIfEligible } from "@/lib/sellers";
 import { detectImage, saveImage } from "@/lib/storage";
 import { CATEGORIES, MAX_IMAGE_SIZE, MAX_IMAGES } from "@/lib/catalog";
@@ -119,6 +119,11 @@ export async function updateResourceImages(_: EditState, formData: FormData): Pr
       const ext = detectImage(bytes);
       if (!ext) return { error: t.errors.imageFormat };
       urls.push(await saveImage(bytes, ext));
+    } else if (entry.startsWith("url:")) {
+      // Image envoyée directement dans le stockage (jusqu'à 20 Mo)
+      const url = entry.slice(4);
+      if (!(await isUploadedImage(url))) return { error: t.errors.imageTooBig };
+      urls.push(url);
     } else if (resource.images.includes(entry)) {
       // Seulement des images qui appartiennent déjà à cette ressource
       urls.push(entry);

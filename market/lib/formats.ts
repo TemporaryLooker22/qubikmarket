@@ -43,3 +43,12 @@ export function kindOf(name: string, inArchive = false): FormatKind | "doc" | "d
   if (DANGEROUS_EXTENSIONS.includes(ext)) return "dangerous";
   return null;
 }
+
+// ---------- Captures d'écran (images de la page de la ressource) ----------
+// Envoyées directement dans Vercel Blob comme le fichier vendu : jusqu'à 4K et 20 Mo par image.
+// Une image déjà dans ces limites est gardée telle quelle (aucune perte de qualité) ; sinon elle est réduite en WebP.
+// L'optimiseur d'images de Next.js accepte jusqu'à 50 Mo : le site affiche toujours une version allégée.
+export const IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".webp"];
+export const IMAGE_CONTENT_TYPES = ["image/png", "image/jpeg", "image/webp"];
+export const MAX_IMAGE_SIZE_DIRECT = 20 * 1024 * 1024; // 20 Mo par image
+export const MAX_IMAGE_SIDE = 3840; // 4K : plus grand côté de l'image, en pixels

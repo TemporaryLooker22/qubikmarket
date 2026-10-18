@@ -1,7 +1,7 @@
 import "server-only";
 import { head } from "@vercel/blob";
-import { ALLOWED_EXTENSIONS, extOf, MAX_FILE_SIZE, MAX_FILE_SIZE_INLINE } from "./formats";
-import { directUploads, readUpload, saveUpload } from "./storage";
+import { ALLOWED_EXTENSIONS, extOf, IMAGE_EXTENSIONS, MAX_FILE_SIZE, MAX_FILE_SIZE_INLINE, MAX_IMAGE_SIZE_DIRECT } from "./formats";
+import { detectImage, directUploads, readUpload, saveUpload } from "./storage";
 import type { Dictionary } from "./i18n/dictionaries";
 
 // Réception du fichier vendu, quand le vendeur publie une ressource ou une nouvelle version.
@@ -51,4 +51,21 @@ export async function receiveUpload(formData: FormData, t: Dictionary): Promise<
   if (!ALLOWED_EXTENSIONS.includes(extOf(fileName))) return { error: formats };
   const bytes = new Uint8Array(await file.arrayBuffer());
   return { bytes, fileName, fileSize: file.size, filePath: await saveUpload(bytes, fileName) };
+}
+
+// Capture d'écran envoyée directement dans Vercel Blob : elle doit être dans le dossier images/ de notre stockage,
+// peser 20 Mo au plus, et être une vraie image (on lit ses premiers octets)
+export async function isUploadedImage(url: string) {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (!directUploads || parsed.protocol !== "https:" || !parsed.hostname.endsWith(".public.blob.vercel-storage.com")) return false;
+  if (!parsed.pathname.startsWith("/images/") || !IMAGE_EXTENSIONS.includes(extOf(parsed.pathname))) return false;
+  const info = await head(url).catch(() => null);
+  if (!info || info.size > MAX_IMAGE_SIZE_DIRECT) return false;
+  const start = await fetch(url, { headers: { Range: "bytes=0-31" }, cache: "no-store" }).then((r) => r.arrayBuffer()).catch(() => null);
+  return start !== null && detectImage(new Uint8Array(start)) !== null;
 }
