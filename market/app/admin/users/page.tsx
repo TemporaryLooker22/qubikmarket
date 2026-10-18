@@ -118,7 +118,12 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
 
             {member.resources.length > 0 && (
               <div className="mt-4 rounded-xl bg-bg p-4">
-                <p className="mb-2 text-sm font-semibold">{t.mod.userResources}</p>
+                <p className="mb-2 flex items-center justify-between gap-3 text-sm font-semibold">
+                  {t.mod.userResources}
+                  <Link href={`/admin/resources?seller=${member.id}`} className="text-xs font-semibold text-muted hover:text-text hover:underline">
+                    {t.mod.sellerResources} →
+                  </Link>
+                </p>
                 <ul className="space-y-1.5">
                   {member.resources.map((r) => (
                     <li key={r.id} className="flex items-center justify-between gap-3 text-sm">

@@ -21,10 +21,16 @@ import { logModeration } from "@/lib/moderation";
 export type EditState = { error?: string; ok?: string } | undefined;
 
 // La ressource doit appartenir au vendeur connecté
-async function ownResource(resourceId: string) {
+// … ou un modérateur (Modération → Ressources) : sa modification est notée dans le journal
+async function ownResource(resourceId: string, part: string) {
   const user = await requireUser();
   const resource = await db.resource.findUnique({ where: { id: resourceId } });
-  if (!resource || resource.sellerId !== user.id) return null;
+  if (!resource) return null;
+  if (resource.sellerId !== user.id) {
+    if (user.role !== "ADMIN") return null;
+    await logModeration({ moderatorId: user.id, action: "EDIT", targetType: "resource", targetId: resource.id, label: resource.title, note: part });
+    revalidatePath("/admin", "layout");
+  }
   return resource;
 }
 
@@ -50,7 +56,7 @@ function refresh(resource: { id: string; slug: string }) {
 
 export async function updateResourceInfo(_: EditState, formData: FormData): Promise<EditState> {
   const { locale, t } = await getDictionary();
-  const resource = await ownResource(String(formData.get("resourceId")));
+  const resource = await ownResource(String(formData.get("resourceId")), "infos");
   if (!resource) return { error: t.errors.notFound };
   const parsed = z
     .object({
@@ -69,7 +75,7 @@ export async function updateResourceInfo(_: EditState, formData: FormData): Prom
 
 export async function updateResourceDescription(_: EditState, formData: FormData): Promise<EditState> {
   const { locale, t } = await getDictionary();
-  const resource = await ownResource(String(formData.get("resourceId")));
+  const resource = await ownResource(String(formData.get("resourceId")), "description");
   if (!resource) return { error: t.errors.notFound };
   const description = String(formData.get("description") ?? "").trim();
   if (description.length < 30) return { error: t.errors.descriptionMin };
@@ -82,7 +88,7 @@ export async function updateResourceDescription(_: EditState, formData: FormData
 
 export async function updateResourcePrice(_: EditState, formData: FormData): Promise<EditState> {
   const { t } = await getDictionary();
-  const resource = await ownResource(String(formData.get("resourceId")));
+  const resource = await ownResource(String(formData.get("resourceId")), "prix");
   if (!resource) return { error: t.errors.notFound };
   const price = Number(formData.get("price"));
   if (!Number.isFinite(price) || price < 0) return { error: t.errors.price };
@@ -99,7 +105,7 @@ export async function updateResourcePrice(_: EditState, formData: FormData): Pro
 // pour la N-ième nouvelle image envoyée dans « images »
 export async function updateResourceImages(_: EditState, formData: FormData): Promise<EditState> {
   const { t } = await getDictionary();
-  const resource = await ownResource(String(formData.get("resourceId")));
+  const resource = await ownResource(String(formData.get("resourceId")), "images");
   if (!resource) return { error: t.errors.notFound };
 
   let order: string[];
@@ -138,7 +144,7 @@ export async function updateResourceImages(_: EditState, formData: FormData): Pr
 
 export async function publishVersion(_: EditState, formData: FormData): Promise<EditState> {
   const { locale, t } = await getDictionary();
-  const resource = await ownResource(String(formData.get("resourceId")));
+  const resource = await ownResource(String(formData.get("resourceId")), "version");
   if (!resource) return { error: t.errors.notFound };
 
   const version = String(formData.get("version") ?? "").trim();

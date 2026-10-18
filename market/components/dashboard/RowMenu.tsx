@@ -36,7 +36,12 @@ export function RowMenu({ label, children }: { label: string; children: React.Re
       {open && (
         <div
           role="menu"
-          onClick={(e) => (e.target as HTMLElement).closest("a") && setOpen(false)}
+          // Lien ou bouton d'action (actions de la modération) : on ferme le menu une fois le clic parti
+          onClick={(e) => {
+            const target = e.target as HTMLElement;
+            if (target.closest("a")) setOpen(false);
+            else if (target.closest("button:not([type=button])")) setTimeout(() => setOpen(false));
+          }}
           // Formulaire (retirer de la vente…) : on ferme seulement une fois l'envoi parti
           onSubmit={() => setTimeout(() => setOpen(false))}
           className="animate-pop absolute right-0 top-9 z-20 w-60 rounded-xl border border-border bg-card p-1.5 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.25)]"

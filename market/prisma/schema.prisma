@@ -242,7 +242,7 @@ model ReviewReport {
 model ModerationLog {
   id          String   @id @default(cuid())
   moderatorId String
-  action      String // APPROVE, REJECT, KEEP, UNLIST, REVIEW_DELETE, REPORTS_DISMISS, BAN, UNBAN
+  action      String // APPROVE, REJECT, KEEP, UNLIST, RELIST, EDIT, DELETE, REANALYZE, REVIEW_DELETE, REPORTS_DISMISS, BAN, UNBAN
   targetType  String // resource, version, review ou user
   targetId    String
   label       String // ce qui est concerné, au moment de la décision (titre, pseudo…)

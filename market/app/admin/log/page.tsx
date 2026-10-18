@@ -10,6 +10,10 @@ const TONES: Record<string, "ok" | "warn" | "bad" | "off"> = {
   REJECT: "bad",
   BAN: "bad",
   UNLIST: "warn",
+  RELIST: "ok",
+  EDIT: "off",
+  REANALYZE: "off",
+  DELETE: "bad",
   REVIEW_DELETE: "off",
   REPORTS_DISMISS: "off",
 };

@@ -1,8 +1,8 @@
 import "server-only";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { put } from "@vercel/blob";
+import { del, put } from "@vercel/blob";
 
 // Deux modes de stockage des fichiers des vendeurs :
 // - sur Vercel (BLOB_READ_WRITE_TOKEN défini) : Vercel Blob, avec une adresse impossible à deviner
@@ -68,4 +68,14 @@ export async function readUpload(stored: string) {
   }
   // path.basename empêche de sortir du dossier (ex. "../../.env")
   return readFile(path.join(STORAGE_DIR, path.basename(stored)));
+}
+
+// Efface des fichiers (fichiers vendus et captures d'écran) : dans Vercel Blob ou dans les dossiers locaux
+export async function deleteStored(paths: string[]) {
+  const blobs = paths.filter((p) => p.startsWith("https://"));
+  if (blobs.length) await del(blobs);
+  for (const p of paths.filter((p) => !p.startsWith("https://"))) {
+    const dir = p.startsWith("/uploads/") ? path.join(process.cwd(), "public", "uploads") : STORAGE_DIR;
+    await rm(path.join(dir, path.basename(p)), { force: true });
+  }
 }

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronRight, Download, ExternalLink, FileText, History, Image as ImageIcon, Info, Tag } from "lucide-react";
+import { ChevronRight, Download, ExternalLink, FileText, History, Image as ImageIcon, Info, ShieldCheck, Tag } from "lucide-react";
 import { db } from "@/lib/db";
 import { directUploads } from "@/lib/storage";
 import { requireUser } from "@/lib/auth";
@@ -45,18 +45,18 @@ export default async function EditResourcePage({ params, searchParams }: { param
   const user = await requireUser(`/dashboard/resources/${id}/edit`);
   const { locale, t } = await getDictionary();
 
-  const [resource, seller] = await Promise.all([
-    db.resource.findUnique({
-      where: { id },
-      include: {
-        versions: { orderBy: { createdAt: "desc" } },
-        _count: { select: { purchases: { where: { status: "PAID" } } } },
-      },
-    }),
-    db.user.findUnique({ where: { id: user.id }, select: { founderUntil: true } }),
-  ]);
-  // Seul le vendeur peut modifier sa ressource
-  if (!resource || resource.sellerId !== user.id) notFound();
+  const resource = await db.resource.findUnique({
+    where: { id },
+    include: {
+      versions: { orderBy: { createdAt: "desc" } },
+      _count: { select: { purchases: { where: { status: "PAID" } } } },
+      seller: { select: { username: true, founderUntil: true } },
+    },
+  });
+  // Seul le vendeur peut modifier sa ressource… et les modérateurs (Modération → Ressources)
+  const asModerator = resource !== null && resource.sellerId !== user.id && user.role === "ADMIN";
+  if (!resource || (resource.sellerId !== user.id && !asModerator)) notFound();
+  const seller = resource.seller;
 
   const tab: Tab = TABS.includes(tabParam as Tab) ? (tabParam as Tab) : "info";
   const pendingVersions = resource.versions.filter((v) => v.status === "PENDING").length;
@@ -69,9 +69,16 @@ export default async function EditResourcePage({ params, searchParams }: { param
   return (
     <>
       {spots.size > 0 && <AutoRefresh />}
+      {/* Modérateur sur la ressource d'un autre vendeur : chaque enregistrement est noté dans le journal */}
+      {asModerator && (
+        <p className="mb-4 flex items-center gap-2 rounded-xl bg-accent-soft px-4 py-3 text-sm">
+          <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
+          {t.mod.editingAs(seller.username)}
+        </p>
+      )}
       <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm text-muted">
-        <Link href="/dashboard/resources" className="hover:text-text">
-          {t.dashboard.menu.resources}
+        <Link href={asModerator ? "/admin/resources" : "/dashboard/resources"} className="hover:text-text">
+          {asModerator ? t.mod.menu.resources : t.dashboard.menu.resources}
         </Link>
         <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
         <span aria-current="page">{t.edit.metaTitle}</span>
