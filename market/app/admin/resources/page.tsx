@@ -1,11 +1,11 @@
 import Link from "next/link";
 import type { Prisma } from "@prisma/client";
-import { EyeOff, ExternalLink, Eye, Package, Pencil, RefreshCw, Search, Star, Trash2 } from "lucide-react";
+import { CircleCheck, EyeOff, ExternalLink, Eye, Package, Pencil, RefreshCw, Search, Star, Trash2 } from "lucide-react";
 import { db } from "@/lib/db";
 import { CATEGORIES, categoryLabel } from "@/lib/catalog";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatAmount, formatPrice } from "@/lib/i18n/format";
-import { adminDelete, adminReanalyze, adminRelist, adminUnlist } from "@/app/moderation-actions";
+import { adminApprove, adminDelete, adminReanalyze, adminRelist, adminUnlist } from "@/app/moderation-actions";
 import { StatusBadge } from "@/components/StatusBadge";
 import { RowMenu } from "@/components/dashboard/RowMenu";
 import { Thumb } from "@/components/dashboard/Thumb";
@@ -180,6 +180,12 @@ export default async function AdminResourcesPage({ searchParams }: { searchParam
                       <Pencil className="h-4 w-4 text-muted" aria-hidden="true" />
                       {t.mod.edit}
                     </Link>
+                    {(r.status === "REJECTED" || r.status === "PENDING") && (
+                      <button role="menuitem" formAction={adminApprove.bind(null, r.id)} className={menuItem}>
+                        <CircleCheck className="h-4 w-4 text-ok" aria-hidden="true" />
+                        {t.mod.approveLive}
+                      </button>
+                    )}
                     {r.status === "APPROVED" && (
                       <button role="menuitem" formAction={adminUnlist.bind(null, r.id)} className={menuItem}>
                         <EyeOff className="h-4 w-4 text-muted" aria-hidden="true" />

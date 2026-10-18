@@ -13,6 +13,7 @@ import { getDictionary } from "@/lib/i18n/server";
 import { hasRobloxContent, type ScanReport } from "@/lib/scan";
 import { deleteStored } from "@/lib/storage";
 import { enqueueAnalysis, kickAiQueue } from "@/lib/ai/run";
+import { grantFounderIfEligible } from "@/lib/sellers";
 
 function refreshSite() {
   revalidatePath("/", "layout");
@@ -60,6 +61,27 @@ export async function adminUnlist(target: string | null, formData: FormData) {
   for (const r of resources) {
     await logModeration({ moderatorId: admin.id, action: "UNLIST", targetType: "resource", targetId: r.id, label: r.title });
     await notify(r.sellerId, "RES_UNLISTED", { title: r.title }, links.report(r.id));
+  }
+  refreshResources(resources.map((r) => r.slug));
+}
+
+// Mettre en ligne une ressource refusée ou en vérification (comme « Approuver » dans À vérifier) :
+// sa version actuelle passe en ligne, badge « Contenu vérifié » si l'IA n'a rien signalé, vendeur prévenu
+export async function adminApprove(target: string | null, formData: FormData) {
+  const admin = await requireAdmin();
+  const resources = await db.resource.findMany({
+    where: { id: { in: pickedIds(target, formData) }, status: { in: ["REJECTED", "PENDING"] } },
+    select: { id: true, slug: true, title: true, sellerId: true, version: true },
+  });
+  for (const r of resources) {
+    const live = await db.resourceVersion.findUnique({ where: { resourceId_version: { resourceId: r.id, version: r.version } } });
+    await db.$transaction([
+      db.resource.update({ where: { id: r.id }, data: { status: "APPROVED", reviewNote: null, aiVerified: live?.aiStatus === "DONE" && live.aiFlagged === false } }),
+      ...(live ? [db.resourceVersion.update({ where: { id: live.id }, data: { status: "LIVE", reviewNote: null, aiReviewed: true } })] : []),
+    ]);
+    await grantFounderIfEligible(r.sellerId);
+    await logModeration({ moderatorId: admin.id, action: "APPROVE", targetType: "resource", targetId: r.id, label: r.title });
+    await notify(r.sellerId, "RES_APPROVED", { title: r.title }, links.resource(r.slug));
   }
   refreshResources(resources.map((r) => r.slug));
 }
