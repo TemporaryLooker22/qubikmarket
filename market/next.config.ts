@@ -1,8 +1,15 @@
 import type { NextConfig } from "next";
 
+// En production, les fichiers du site (scripts, polices, images optimisées) sont servis depuis l'adresse Vercel.
+// Si un antivirus ou un filtre bloque qubikmarket.com par erreur (ex. Kaspersky sur un domaine récent), la page
+// reste utilisable : les styles sont dans la page elle-même (inlineCss) et le reste vient d'une autre adresse.
+const ASSETS = process.env.VERCEL_ENV === "production" ? "https://qubikmarket.vercel.app" : undefined;
+
 const nextConfig: NextConfig = {
+  assetPrefix: ASSETS,
   // Captures d'écran des ressources, stockées sur Vercel Blob
   images: {
+    ...(ASSETS && { path: `${ASSETS}/_next/image` }),
     // + miniatures des vidéos YouTube de présentation
     remotePatterns: [
       { protocol: "https", hostname: "*.public.blob.vercel-storage.com" },
@@ -12,15 +19,18 @@ const nextConfig: NextConfig = {
   experimental: {
     // Autorise l'envoi de fichiers jusqu'à 4 Mo dans les formulaires (+ marge pour les autres champs)
     serverActions: { bodySizeLimit: "4.4mb" },
+    // Styles écrits directement dans la page : la mise en page ne dépend pas d'un fichier à télécharger en plus
+    inlineCss: true,
   },
   // Une seule adresse pour le site : qubikmarket.com
   async redirects() {
     return [
       // www.qubikmarket.com → qubikmarket.com
       { source: "/:path*", has: [{ type: "host", value: "www.qubikmarket.com" }], destination: "https://qubikmarket.com/:path*", permanent: true },
-      // Ancienne adresse Vercel → qubikmarket.com, sauf /api : le webhook Stripe y est encore déclaré
+      // Pages de l'ancienne adresse Vercel → qubikmarket.com. Restent sur place : /api (webhook Stripe déclaré
+      // dessus) et les fichiers (avec un point : logo, images…), servis à qubikmarket.com depuis cette adresse.
       {
-        source: "/:path((?!api/).*)",
+        source: "/:path((?!api/)[^.]*)",
         has: [{ type: "host", value: "qubikmarket.vercel.app" }],
         destination: "https://qubikmarket.com/:path",
         permanent: true,
