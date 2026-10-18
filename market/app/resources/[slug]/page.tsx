@@ -6,12 +6,13 @@ import { getCurrentUser } from "@/lib/auth";
 import { categoryLabel } from "@/lib/catalog";
 import { DEMO_RESOURCES, findDemo } from "@/lib/demo";
 import { getDictionary } from "@/lib/i18n/server";
-import { formatDate, formatPrice, formatSize } from "@/lib/i18n/format";
+import { formatAmount, formatDate, formatPrice, formatSize } from "@/lib/i18n/format";
 import type { Dictionary, Locale } from "@/lib/i18n/dictionaries";
 import { isDemoMode } from "@/lib/payments";
 import { translate } from "@/lib/translate";
 import type { ScanReport } from "@/lib/scan";
 import { buyResource } from "@/app/actions";
+import { buyerFeeCents } from "@/lib/buyer-fee";
 import { ResourceCard } from "@/components/ResourceCard";
 import { Markdown } from "@/components/Markdown";
 import { ScanReportView } from "@/components/ScanReportView";
@@ -308,7 +309,10 @@ export default async function ResourcePage({ params, searchParams }: { params: P
       {/* Barre d'achat collée en bas de l'écran (mobile et tablette) */}
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 px-4 py-3 backdrop-blur lg:hidden">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
-          <span className="text-xl font-bold">{formatPrice(product.priceCents, locale)}</span>
+          <span>
+            <span className="block text-xl font-bold">{formatPrice(product.priceCents, locale)}</span>
+            {showFee(product, access) && <span className="block text-xs text-muted">{t.resource.serviceFeeShort(formatAmount(buyerFeeCents(product.priceCents), locale))}</span>}
+          </span>
           <div className="w-48">
             <BuyAction product={product} access={access} t={t} />
           </div>
@@ -332,6 +336,12 @@ function BuyBox({ product, access, locale, t, showAction = true }: { product: Pr
       <p className="mt-3 text-[15px] leading-relaxed text-text/80">{product.summary}</p>
 
       <p className="mt-5 text-3xl font-bold tracking-tight">{formatPrice(product.priceCents, locale)}</p>
+      {/* Frais de service de l'acheteur (affichés avant l'achat, avec le total) */}
+      {showFee(product, access) && (
+        <p className="mt-1 text-sm text-muted" title={t.resource.serviceFeeHelp}>
+          {t.resource.serviceFee(formatAmount(buyerFeeCents(product.priceCents), locale), formatAmount(product.priceCents + buyerFeeCents(product.priceCents), locale))}
+        </p>
+      )}
 
       {access.bought && <p className="mt-3 rounded-lg bg-ok-bg px-3 py-2 text-sm text-ok">{t.resource.bought}</p>}
 
@@ -364,6 +374,9 @@ function BuyBox({ product, access, locale, t, showAction = true }: { product: Pr
     </div>
   );
 }
+
+// Les frais de service s'affichent tant que la ressource payante peut être achetée
+const showFee = (product: Product, access: Access) => !isDemoMode && product.priceCents > 0 && access.canBuy && !access.canDownload && !access.demo;
 
 // Le bouton principal : Télécharger (déjà acheté), Acheter / Obtenir, ou rien (démo, ressource à soi en attente…)
 function BuyAction({ product, access, t }: { product: Product; access: Access; t: Dictionary }) {

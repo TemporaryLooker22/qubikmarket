@@ -25,6 +25,7 @@ Qubik is an independent service. It is not affiliated with, endorsed or sponsore
 ## 2. Buying resources
 
 - Prices are shown in euros, taxes included where applicable. Payments are processed by **Stripe**; Qubik never sees your card details.
+- A **service fee** is added to each paid resource: €0.35 + 2% of the price, taxes included. It is shown on the resource page before you buy and goes to Qubik to cover payment processing. Free resources have no fee.
 - After payment, the resource is available to download immediately from the resource page and from your dashboard.
 - **Right of withdrawal:** resources are digital content supplied immediately. By buying, you ask for immediate access and acknowledge that you lose your 14-day right of withdrawal once the download is available, as allowed by EU consumer law.
 - If a resource does not work as described or does not match its description, contact us at [contact email]. Refunds are handled case by case [to be completed with the final refund policy].
@@ -88,6 +89,7 @@ Qubik est un service indépendant. Il n'est ni affilié, ni approuvé, ni sponso
 ## 2. Acheter des ressources
 
 - Les prix sont affichés en euros, toutes taxes comprises le cas échéant. Les paiements sont traités par **Stripe** ; Qubik ne voit jamais tes coordonnées bancaires.
+- Des **frais de service** s'ajoutent à chaque ressource payante : 0,35 € + 2 % du prix, TVA comprise. Ils sont affichés sur la page de la ressource avant l'achat et reviennent à Qubik pour couvrir les frais de paiement. Les ressources gratuites n'en ont pas.
 - Après le paiement, la ressource est téléchargeable immédiatement depuis sa page et depuis ton espace.
 - **Droit de rétractation :** les ressources sont des contenus numériques fournis immédiatement. En achetant, tu demandes un accès immédiat et tu reconnais perdre ton droit de rétractation de 14 jours dès que le téléchargement est disponible, comme le permet le droit européen de la consommation.
 - Si une ressource ne fonctionne pas comme décrit ou ne correspond pas à sa description, contacte-nous à [email de contact]. Les remboursements sont étudiés au cas par cas [à compléter avec la politique de remboursement définitive].

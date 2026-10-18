@@ -80,6 +80,9 @@ model Purchase {
   stripePaymentIntentId String?   @unique // pour retrouver l'achat lors d'un remboursement ou d'une contestation
   paidAt                DateTime? // moment du paiement (createdAt = début du paiement)
   taxCents              Int       @default(0) // TVA comprise dans amountCents (calculée par Stripe Tax)
+  // Frais de service payés par l'acheteur (compris dans amountCents) et leur TVA (comprise dans taxCents) : pour Qubik
+  buyerFeeCents         Int       @default(0)
+  buyerFeeTaxCents      Int       @default(0)
   lastDownloadedAt      DateTime? // dernier téléchargement (pour le badge « Nouvelle version » de Mes achats)
   createdAt             DateTime  @default(now())
 

@@ -15,10 +15,14 @@ export { PLATFORM_FEE_PERCENT } from "./earnings";
 // « Services fournis par voie électronique » : le régime de TVA européen des produits numériques
 export const TAX_CODE = "txcd_10000000";
 
+const BUYER_FEE_KIND = "buyer_fee";
+
 export async function createCheckoutSession(opts: {
   purchaseId: string;
   title: string;
   priceCents: number;
+  feeCents: number; // frais de service payés par l'acheteur (lib/buyer-fee.ts)
+  feeLabel: string;
   slug: string;
   email: string;
 }) {
@@ -44,6 +48,16 @@ export async function createCheckoutSession(opts: {
           product_data: { name: opts.title, tax_code: TAX_CODE },
         },
       },
+      // Frais de service, sur une ligne à part (reconnue au paiement grâce à metadata.kind)
+      {
+        quantity: 1,
+        price_data: {
+          currency: "eur",
+          unit_amount: opts.feeCents,
+          tax_behavior: "inclusive",
+          product_data: { name: opts.feeLabel, tax_code: TAX_CODE, metadata: { kind: BUYER_FEE_KIND } },
+        },
+      },
     ],
     // TVA calculée par Stripe Tax, à la charge de Qubik (la plateforme vend en son nom)
     automatic_tax: { enabled: true, liability: { type: "self" } },
@@ -64,6 +78,13 @@ export async function fulfillCheckoutSession(session: Stripe.Checkout.Session) {
 
   const paidAt = new Date();
 
+  // Frais de service de l'acheteur et leur TVA (la ligne « frais » du paiement) : ils ne vont pas au vendeur
+  const lines = await stripe!.checkout.sessions.listLineItems(session.id, { expand: ["data.price.product"] });
+  const feeLine = lines.data.find((l) => {
+    const product = l.price?.product;
+    return typeof product === "object" && product !== null && !product.deleted && product.metadata?.kind === BUYER_FEE_KIND;
+  });
+
   await db.$transaction(async (tx) => {
     // Seulement depuis « en attente » : un ancien événement reçu en retard ne doit pas annuler un remboursement
     const { count } = await tx.purchase.updateMany({
@@ -76,6 +97,8 @@ export async function fulfillCheckoutSession(session: Stripe.Checkout.Session) {
         // Montant réellement payé et TVA comprise dedans
         ...(session.amount_total !== null && { amountCents: session.amount_total }),
         taxCents: session.total_details?.amount_tax ?? 0,
+        buyerFeeCents: feeLine?.amount_total ?? 0,
+        buyerFeeTaxCents: feeLine?.amount_tax ?? 0,
       },
     });
     if (count === 1) await recordSaleEarning(tx, purchaseId, paidAt);

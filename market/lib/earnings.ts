@@ -28,21 +28,24 @@ export function splitSale(grossCents: number, taxCents: number, feePercent: numb
 export async function recordSaleEarning(tx: Tx, purchaseId: string, paidAt: Date) {
   const purchase = await tx.purchase.findUnique({
     where: { id: purchaseId },
-    select: { amountCents: true, taxCents: true, earning: { select: { id: true } }, resource: { select: { seller: { select: { id: true, founderUntil: true } } } } },
+    select: { amountCents: true, taxCents: true, buyerFeeCents: true, buyerFeeTaxCents: true, earning: { select: { id: true } }, resource: { select: { seller: { select: { id: true, founderUntil: true } } } } },
   });
   if (!purchase || purchase.amountCents === 0) return;
   // Nouvel achat après un remboursement : l'ancien gain (annulé ou régularisé) reste dans l'historique, détaché de l'achat
   if (purchase.earning) await tx.sellerEarning.update({ where: { id: purchase.earning.id }, data: { purchaseId: null } });
   const seller = purchase.resource.seller;
   const feePercent = feePercentFor(seller, paidAt);
-  const { feeCents, amountCents } = splitSale(purchase.amountCents, purchase.taxCents, feePercent);
+  // Le vendeur est payé sur le prix de sa ressource : les frais de service de l'acheteur (et leur TVA) restent à Qubik
+  const grossCents = purchase.amountCents - purchase.buyerFeeCents;
+  const taxCents = purchase.taxCents - purchase.buyerFeeTaxCents;
+  const { feeCents, amountCents } = splitSale(grossCents, taxCents, feePercent);
   await tx.sellerEarning.create({
     data: {
       sellerId: seller.id,
       purchaseId,
       amountCents,
-      grossCents: purchase.amountCents,
-      taxCents: purchase.taxCents,
+      grossCents,
+      taxCents,
       feeCents,
       feePercent,
       availableAt: new Date(paidAt.getTime() + HOLD_DAYS * DAY),

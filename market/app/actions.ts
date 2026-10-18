@@ -14,6 +14,7 @@ import { scanFile } from "@/lib/scan";
 import { detectImage, saveImage, saveUpload } from "@/lib/storage";
 import { ALLOWED_EXTENSIONS, CATEGORIES, MAX_FILE_SIZE, MAX_IMAGE_SIZE, MAX_IMAGES, slugify } from "@/lib/catalog";
 import { createCheckoutSession, isDemoMode } from "@/lib/payments";
+import { buyerFeeCents } from "@/lib/buyer-fee";
 import { grantFounderIfEligible } from "@/lib/sellers";
 import { enqueueAnalysis, kickAiQueue } from "@/lib/ai/run";
 import { createOnboardingLink, createSellerAccount, PAYOUT_COUNTRIES } from "@/lib/connect";
@@ -292,17 +293,22 @@ export async function buyResource(formData: FormData) {
     redirect(`/resources/${resource.slug}?bought=1`);
   }
 
-  // Ressource payante : paiement via Stripe
+  // Ressource payante : paiement via Stripe (prix + frais de service, voir lib/buyer-fee.ts)
+  const feeCents = buyerFeeCents(resource.priceCents);
+  const amounts = { amountCents: resource.priceCents + feeCents, buyerFeeCents: feeCents };
   const purchase = await db.purchase.upsert({
     where: { userId_resourceId: { userId: user.id, resourceId } },
-    create: { userId: user.id, resourceId, amountCents: resource.priceCents },
+    create: { userId: user.id, resourceId, ...amounts },
     // Nouvel essai (ou nouvel achat après un remboursement) : l'achat repart « en attente »
-    update: { amountCents: resource.priceCents, status: "PENDING" },
+    update: { ...amounts, status: "PENDING" },
   });
+  const { t } = await getDictionary();
   const session = await createCheckoutSession({
     purchaseId: purchase.id,
     title: resource.title,
     priceCents: resource.priceCents,
+    feeCents,
+    feeLabel: t.resource.serviceFeeLine,
     slug: resource.slug,
     email: user.email,
   });
