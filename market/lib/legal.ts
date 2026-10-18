@@ -1,6 +1,6 @@
 // Pages légales : conditions d'utilisation et politique de confidentialité (anglais et français).
 // PREMIER JET à faire relire par un juriste avant le lancement réel.
-// Les éléments entre crochets [ … ] sont à compléter (nom légal, adresse, email, pays).
+// Éditeur : Arthur Van Strydonck (Belgique). Contact : voir CONTACT ci-dessous.
 import type { Locale } from "./i18n/dictionaries";
 
 export const LEGAL_UPDATED = new Date("2026-10-17");
@@ -12,7 +12,7 @@ const TERMS: Record<Locale, LegalDoc> = {
     title: "Terms of Service",
     body: `Welcome to Qubik, a marketplace for Roblox resources (scripts, systems, models, maps, interfaces, effects, sounds and animations). These terms apply to everyone who visits qubikmarket.com or creates an account. By creating an account, you accept them.
 
-Qubik is operated by [Legal name], [address], [country] ("Qubik", "we"). Contact: [contact email].
+Qubik is operated by Arthur Van Strydonck, Belgium ("Qubik", "we"). Contact: arthur.vanstrydonck.mail@gmail.com.
 
 Qubik is an independent service. It is not affiliated with, endorsed or sponsored by Roblox Corporation. "Roblox" is a trademark of Roblox Corporation.
 
@@ -28,7 +28,7 @@ Qubik is an independent service. It is not affiliated with, endorsed or sponsore
 - A **service fee** is added to each paid resource: €0.35 + 2% of the price, taxes included. It is shown on the resource page before you buy and goes to Qubik to cover payment processing. Free resources have no fee.
 - After payment, the resource is available to download immediately from the resource page and from your dashboard.
 - **Right of withdrawal:** resources are digital content supplied immediately. By buying, you ask for immediate access and acknowledge that you lose your 14-day right of withdrawal once the download is available, as allowed by EU consumer law.
-- If a resource does not work as described or does not match its description, contact us at [contact email]. Refunds are handled case by case [to be completed with the final refund policy].
+- If a resource does not work as described or does not match its description, contact us at arthur.vanstrydonck.mail@gmail.com within 14 days of your purchase. If we confirm the problem and the seller doesn't fix it, we refund you. Refunds go back to the payment method used.
 
 ## 3. What you are allowed to do with a resource
 
@@ -41,7 +41,7 @@ You may **not** resell, share, publish or redistribute the resource (as is or mo
 - You may only publish resources that **you created or have the right to sell**. Publishing someone else's work, leaked or stolen content is forbidden.
 - Every file is **automatically scanned** for backdoors and malicious code. Depending on the result, a resource is published immediately, reviewed by a moderator, or rejected. We may remove any resource at any time if it breaks these terms.
 - Forbidden content: malware, backdoors, hidden remote code, obfuscated code meant to hide its behaviour, content that breaks the Roblox Terms of Use or Community Standards, illegal, hateful, sexual or violent content, and content that infringes someone's rights.
-- Qubik keeps a **4% commission** on each sale. Payouts to sellers [to be completed: payment method, schedule and minimum amount]. To receive payouts for paid resources, you must be at least 18 or act through a parent or legal guardian, and complete the identity checks required by our payment provider.
+- Qubik keeps a **4% commission** on each sale. Earnings become available 7 days after each sale (to cover refunds), then are paid out every week through Stripe once they reach €10, and Stripe sends them to your bank account. To receive payouts for paid resources, you must be at least 18 or act through a parent or legal guardian, and complete the identity checks required by our payment provider.
 - You remain the owner of your resources. You grant Qubik a licence to host, display, scan and distribute them to buyers, and to show their images and descriptions to promote the marketplace.
 
 ## 5. Acceptable use
@@ -54,7 +54,7 @@ The scanner greatly reduces the risk of backdoors, but **no automated check is p
 
 ## 7. Intellectual property and reports
 
-If you believe a resource infringes your rights, send us a report at [contact email] with a link to the resource and proof of your rights. We will review it and remove the resource if needed.
+If you believe a resource infringes your rights, send us a report at arthur.vanstrydonck.mail@gmail.com with a link to the resource and proof of your rights. We will review it and remove the resource if needed.
 
 ## 8. Suspension and closing an account
 
@@ -70,13 +70,13 @@ We may update these terms. We will announce important changes on the site or by 
 
 ## 11. Applicable law
 
-These terms are governed by the law of [country]. In case of dispute, we will first try to find an amicable solution. Consumers may also use the European Online Dispute Resolution platform.`,
+These terms are governed by Belgian law. In case of dispute, we will first try to find an amicable solution. Consumers may also use the European Online Dispute Resolution platform.`,
   },
   fr: {
     title: "Conditions d'utilisation",
     body: `Bienvenue sur Qubik, une marketplace de ressources Roblox (scripts, systèmes, modèles, maps, interfaces, effets, sons et animations). Ces conditions s'appliquent à toute personne qui visite qubikmarket.com ou crée un compte. En créant un compte, tu les acceptes.
 
-Qubik est édité par [Nom légal], [adresse], [pays] (« Qubik », « nous »). Contact : [email de contact].
+Qubik est édité par Arthur Van Strydonck, Belgique (« Qubik », « nous »). Contact : arthur.vanstrydonck.mail@gmail.com.
 
 Qubik est un service indépendant. Il n'est ni affilié, ni approuvé, ni sponsorisé par Roblox Corporation. « Roblox » est une marque de Roblox Corporation.
 
@@ -92,7 +92,7 @@ Qubik est un service indépendant. Il n'est ni affilié, ni approuvé, ni sponso
 - Des **frais de service** s'ajoutent à chaque ressource payante : 0,35 € + 2 % du prix, TVA comprise. Ils sont affichés sur la page de la ressource avant l'achat et reviennent à Qubik pour couvrir les frais de paiement. Les ressources gratuites n'en ont pas.
 - Après le paiement, la ressource est téléchargeable immédiatement depuis sa page et depuis ton espace.
 - **Droit de rétractation :** les ressources sont des contenus numériques fournis immédiatement. En achetant, tu demandes un accès immédiat et tu reconnais perdre ton droit de rétractation de 14 jours dès que le téléchargement est disponible, comme le permet le droit européen de la consommation.
-- Si une ressource ne fonctionne pas comme décrit ou ne correspond pas à sa description, contacte-nous à [email de contact]. Les remboursements sont étudiés au cas par cas [à compléter avec la politique de remboursement définitive].
+- Si une ressource ne fonctionne pas comme décrit ou ne correspond pas à sa description, contacte-nous à arthur.vanstrydonck.mail@gmail.com dans les 14 jours suivant ton achat. Si le problème est confirmé et que le vendeur ne le corrige pas, nous te remboursons, sur le moyen de paiement utilisé.
 
 ## 3. Ce que tu peux faire avec une ressource
 
@@ -105,7 +105,7 @@ Tu ne peux **pas** revendre, partager, publier ou redistribuer la ressource (tel
 - Tu ne peux publier que des ressources **que tu as créées ou que tu as le droit de vendre**. Publier le travail de quelqu'un d'autre, du contenu leaké ou volé est interdit.
 - Chaque fichier est **scanné automatiquement** à la recherche de backdoors et de code malveillant. Selon le résultat, la ressource est publiée tout de suite, relue par un modérateur ou refusée. Nous pouvons retirer une ressource à tout moment si elle ne respecte pas ces conditions.
 - Contenus interdits : logiciels malveillants, backdoors, code distant caché, code obfusqué pour cacher son fonctionnement, contenus contraires aux Conditions d'utilisation ou aux Standards de la communauté Roblox, contenus illégaux, haineux, sexuels ou violents, et contenus qui portent atteinte aux droits d'autrui.
-- Qubik garde une **commission de 4 %** sur chaque vente. Paiement des vendeurs : [à compléter : moyen de paiement, fréquence et montant minimum]. Pour recevoir les gains des ressources payantes, tu dois avoir au moins 18 ans ou passer par un parent ou ton représentant légal, et réussir les vérifications d'identité demandées par notre prestataire de paiement.
+- Qubik garde une **commission de 4 %** sur chaque vente. Les gains sont disponibles 7 jours après chaque vente (pour couvrir les remboursements), puis versés chaque semaine via Stripe dès qu'ils atteignent 10 €, et Stripe les vire ensuite sur ton compte bancaire. Pour recevoir les gains des ressources payantes, tu dois avoir au moins 18 ans ou passer par un parent ou ton représentant légal, et réussir les vérifications d'identité demandées par notre prestataire de paiement.
 - Tu restes propriétaire de tes ressources. Tu accordes à Qubik une licence pour les héberger, les afficher, les scanner et les fournir aux acheteurs, et pour montrer leurs images et descriptions afin de promouvoir la marketplace.
 
 ## 5. Bon usage
@@ -118,7 +118,7 @@ Le scanner réduit fortement le risque de backdoors, mais **aucune vérification
 
 ## 7. Propriété intellectuelle et signalements
 
-Si tu penses qu'une ressource porte atteinte à tes droits, envoie-nous un signalement à [email de contact] avec le lien de la ressource et la preuve de tes droits. Nous l'examinerons et retirerons la ressource si nécessaire.
+Si tu penses qu'une ressource porte atteinte à tes droits, envoie-nous un signalement à arthur.vanstrydonck.mail@gmail.com avec le lien de la ressource et la preuve de tes droits. Nous l'examinerons et retirerons la ressource si nécessaire.
 
 ## 8. Suspension et fermeture de compte
 
@@ -134,7 +134,7 @@ Nous pouvons mettre à jour ces conditions. Les changements importants seront an
 
 ## 11. Droit applicable
 
-Ces conditions sont régies par le droit [du pays]. En cas de litige, nous chercherons d'abord une solution amiable. Les consommateurs peuvent aussi utiliser la plateforme européenne de règlement en ligne des litiges.`,
+Ces conditions sont régies par le droit belge. En cas de litige, nous chercherons d'abord une solution amiable. Les consommateurs peuvent aussi utiliser la plateforme européenne de règlement en ligne des litiges.`,
   },
 };
 
@@ -143,7 +143,7 @@ const PRIVACY: Record<Locale, LegalDoc> = {
     title: "Privacy Policy",
     body: `This policy explains what personal data Qubik collects, why, and what your rights are. It follows the EU General Data Protection Regulation (GDPR).
 
-**Data controller:** [Legal name], [address], [country]. Contact for any privacy question: [contact email].
+**Data controller:** Arthur Van Strydonck, Belgium. Contact for any privacy question: arthur.vanstrydonck.mail@gmail.com.
 
 ## 1. Data we collect
 
@@ -185,18 +185,18 @@ We use trusted providers who process data on our behalf:
 ## 5. How long we keep it
 
 - Account data: as long as your account is open, then deleted within 30 days of closure, except what we must keep by law.
-- Purchase and payment records: 10 years (accounting obligations) [adjust to the law of your country].
+- Purchase and payment records: 10 years (Belgian accounting obligations).
 - Server logs: up to 12 months.
 
 ## 6. Your rights
 
-You can ask to **access**, **correct**, **delete** or **export** your data, **object** to or **restrict** its use, by writing to [contact email]. We answer within one month.
+You can ask to **access**, **correct**, **delete** or **export** your data, **object** to or **restrict** its use, by writing to arthur.vanstrydonck.mail@gmail.com. We answer within one month.
 
 You can also file a complaint with your data protection authority (for example the CNIL in France or the Data Protection Authority in Belgium).
 
 ## 7. Young users
 
-Qubik is open from **13 years old**. If you are under the age of digital consent in your country, a parent or legal guardian must agree to your use of Qubik. Parents can contact us at [contact email] to access or delete their child's data.
+Qubik is open from **13 years old**. If you are under the age of digital consent in your country, a parent or legal guardian must agree to your use of Qubik. Parents can contact us at arthur.vanstrydonck.mail@gmail.com to access or delete their child's data.
 
 ## 8. Security
 
@@ -210,7 +210,7 @@ We may update this policy. The date of the latest version is shown at the top of
     title: "Politique de confidentialité",
     body: `Cette politique explique quelles données personnelles Qubik collecte, pourquoi, et quels sont tes droits. Elle suit le Règlement général sur la protection des données (RGPD).
 
-**Responsable du traitement :** [Nom légal], [adresse], [pays]. Contact pour toute question sur tes données : [email de contact].
+**Responsable du traitement :** Arthur Van Strydonck, Belgique. Contact pour toute question sur tes données : arthur.vanstrydonck.mail@gmail.com.
 
 ## 1. Les données collectées
 
@@ -252,18 +252,18 @@ Nous faisons appel à des prestataires de confiance qui traitent les données po
 ## 5. Durée de conservation
 
 - Données du compte : tant que ton compte est ouvert, puis supprimées dans les 30 jours après sa fermeture, sauf ce que la loi nous oblige à garder.
-- Achats et paiements : 10 ans (obligations comptables) [à adapter selon la loi de ton pays].
+- Achats et paiements : 10 ans (obligations comptables belges).
 - Journaux du serveur : 12 mois maximum.
 
 ## 6. Tes droits
 
-Tu peux demander à **accéder**, **corriger**, **supprimer** ou **récupérer** tes données, t'**opposer** à leur utilisation ou la **limiter**, en écrivant à [email de contact]. Nous répondons sous un mois.
+Tu peux demander à **accéder**, **corriger**, **supprimer** ou **récupérer** tes données, t'**opposer** à leur utilisation ou la **limiter**, en écrivant à arthur.vanstrydonck.mail@gmail.com. Nous répondons sous un mois.
 
 Tu peux aussi porter plainte auprès de l'autorité de protection des données (par exemple la CNIL en France ou l'Autorité de protection des données en Belgique).
 
 ## 7. Jeunes utilisateurs
 
-Qubik est ouvert à partir de **13 ans**. Si tu as moins que l'âge de consentement numérique de ton pays, un parent ou ton représentant légal doit accepter que tu utilises Qubik. Les parents peuvent nous écrire à [email de contact] pour consulter ou supprimer les données de leur enfant.
+Qubik est ouvert à partir de **13 ans**. Si tu as moins que l'âge de consentement numérique de ton pays, un parent ou ton représentant légal doit accepter que tu utilises Qubik. Les parents peuvent nous écrire à arthur.vanstrydonck.mail@gmail.com pour consulter ou supprimer les données de leur enfant.
 
 ## 8. Sécurité
 
