@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { ArrowRight, Download, Plus, ScanSearch, Search, ShieldCheck, Store, Upload } from "lucide-react";
+import { ArrowRight, Download, Plus, ScanSearch, Search, Store, Upload, Users } from "lucide-react";
 import { db } from "@/lib/db";
 import { CATEGORIES } from "@/lib/catalog";
 import { getDictionary } from "@/lib/i18n/server";
-import { formatNumber } from "@/lib/i18n/format";
+import { formatAmount, formatNumber } from "@/lib/i18n/format";
 import { DEMO_BEST_SELLERS, DEMO_ENABLED, DEMO_IMAGES, DEMO_LATEST } from "@/lib/demo";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Gallery } from "@/components/Gallery";
@@ -40,7 +40,7 @@ async function getBestSellers(since?: Date) {
 
 export default async function HomePage() {
   const since = new Date(Date.now() - BEST_SELLERS_DAYS * 24 * 3600 * 1000);
-  const [{ locale, t }, recentBestSellers, latest, featured, stats] = await Promise.all([
+  const [{ locale, t }, recentBestSellers, latest, featured, stats, community] = await Promise.all([
     getDictionary(),
     getBestSellers(since),
     db.resource.findMany({
@@ -61,7 +61,14 @@ export default async function HomePage() {
       db.resource.count({ where: { status: "REJECTED" } }),
       db.user.count({ where: { resources: { some: { status: "APPROVED" } } } }),
     ]),
+    // Sous la recherche : membres, vendeurs (au moins une ressource en ligne) et gains des vendeurs (ventes non annulées)
+    Promise.all([
+      db.user.count({ where: { bannedAt: null } }),
+      db.user.count({ where: { bannedAt: null, resources: { some: { status: "APPROVED" } } } }),
+      db.sellerEarning.aggregate({ where: { purchaseId: { not: null }, status: { not: "CANCELED" } }, _sum: { amountCents: true } }),
+    ]),
   ]);
+  const [memberCount, activeSellers, earned] = community;
   // Pas de vente ces 30 derniers jours : on se rabat sur le classement de tous les temps
   const realBestSellers = recentBestSellers.length ? recentBestSellers : await getBestSellers();
 
@@ -97,7 +104,8 @@ export default async function HomePage() {
             </label>
           </form>
           <p className="animate-fade-up mt-4 inline-flex items-center gap-1.5 text-sm text-muted" style={{ animationDelay: "200ms" }}>
-            <ShieldCheck className="h-4 w-4" aria-hidden="true" /> {t.home.scannedNote}
+            <Users className="h-4 w-4" aria-hidden="true" />
+            {t.home.communityNote(memberCount, activeSellers, formatAmount(earned._sum.amountCents ?? 0, locale))}
           </p>
         </section>
 
