@@ -36,6 +36,7 @@ export const en = {
     closeMenu: "Close menu",
     homeAria: "Qubik, home",
     language: "Language",
+    discord: "Join our Discord",
   },
   footer: {
     rights: "Qubik is not affiliated with Roblox Corporation.",
@@ -1030,6 +1031,7 @@ export const fr: Dictionary = {
     closeMenu: "Fermer le menu",
     homeAria: "Qubik, accueil",
     language: "Langue",
+    discord: "Rejoindre le Discord",
   },
   footer: {
     rights: "Qubik n'est pas affilié à Roblox Corporation.",

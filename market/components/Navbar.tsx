@@ -13,6 +13,8 @@ import { Logo } from "./Logo";
 import { NotificationBell } from "./NotificationBell";
 import { MessagesIcon } from "./chat/MessagesIcon";
 import { UserAvatar } from "./UserAvatar";
+import { DiscordIcon } from "./DiscordIcon";
+import { DISCORD_URL } from "@/lib/site";
 
 type Props = {
   user: { username: string; email: string; role: string; isSeller: boolean; avatarUrl: string | null } | null;
@@ -57,6 +59,17 @@ export function Navbar({ user, pendingCount, unreadCount, chatUnread }: Props) {
 
         <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
           <LanguageSwitch className="hidden sm:flex" />
+          {/* Serveur Discord de la communauté */}
+          <a
+            href={DISCORD_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={t.nav.discord}
+            title={t.nav.discord}
+            className="hidden h-10 w-10 items-center justify-center rounded-lg text-text transition hover:bg-bg hover:text-[#5865F2] sm:flex"
+          >
+            <DiscordIcon className="h-[19px] w-[19px]" />
+          </a>
           <Link
             href="/resources"
             aria-label={t.nav.search}
@@ -120,6 +133,13 @@ export function Navbar({ user, pendingCount, unreadCount, chatUnread }: Props) {
                 {"badge" in l && l.badge ? <Badge count={l.badge} /> : null}
               </Link>
             ))}
+          </div>
+          {/* Discord (téléphone : le bouton de la barre est masqué faute de place) */}
+          <div className="border-t border-border p-2 sm:hidden">
+            <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted transition hover:bg-bg hover:text-text">
+              <DiscordIcon className="h-[18px] w-[18px] text-[#5865F2]" />
+              {t.nav.discord}
+            </a>
           </div>
           <div className="border-t border-border p-2">
             <p className="px-3 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">{t.nav.categories}</p>
