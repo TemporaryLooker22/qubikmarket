@@ -34,14 +34,26 @@ async function ownResource(resourceId: string, part: string) {
   return resource;
 }
 
-// Le texte d'une ressource en ligne a changé : l'IA revérifie que le contenu correspond (file d'attente).
-// Le résultat met à jour le badge « Contenu vérifié » ; un signalement apparaît dans la modération.
-async function reanalyzeLiveVersion(resource: { id: string; status: string; version: string }, locale: "fr" | "en") {
-  if (resource.status !== "APPROVED" && resource.status !== "UNLISTED") return;
-  const live = await db.resourceVersion.findUnique({ where: { resourceId_version: { resourceId: resource.id, version: resource.version } } });
+// Le texte d'une ressource a changé : l'IA revérifie le contenu et la description (file d'attente).
+// - en ligne : le résultat met à jour le badge « Contenu vérifié » ; un signalement apparaît dans la modération
+// - en vérification seulement à cause de l'IA (scan propre, ex. description incomplète) : elle repart en analyse,
+//   et passe en ligne toute seule si les notes sont maintenant correctes
+async function reanalyzeLiveVersion(resource: { id: string; status: string; version: string; scanVerdict: string }, locale: "fr" | "en") {
+  const live = resource.status === "APPROVED" || resource.status === "UNLISTED";
+  const waitingForAi = resource.status === "PENDING" && resource.scanVerdict === "clean";
+  if (!live && !waitingForAi) return;
+  const version = await db.resourceVersion.findUnique({ where: { resourceId_version: { resourceId: resource.id, version: resource.version } } });
   // Seulement si le fichier contient du contenu Roblox (l'IA ne peut pas analyser une image ou un son)
-  if (!live || !hasRobloxContent(JSON.parse(live.scanReport) as ScanReport)) return;
-  await enqueueAnalysis(live.id, locale);
+  if (!version || !hasRobloxContent(JSON.parse(version.scanReport) as ScanReport)) return;
+  if (waitingForAi) {
+    if (version.status !== "PENDING") return;
+    await db.$transaction([
+      db.resource.update({ where: { id: resource.id }, data: { status: "ANALYZING" } }),
+      db.resourceVersion.update({ where: { id: version.id }, data: { status: "ANALYZING" } }),
+    ]);
+    revalidatePath("/admin", "layout");
+  }
+  await enqueueAnalysis(version.id, locale);
   kickAiQueue();
 }
 

@@ -54,6 +54,7 @@ export default async function AdminFlagsPage() {
                   <div className="mt-1 flex flex-wrap gap-1">
                     <Badge tone={(v.aiMatch ?? 0) < 50 ? "warn" : "ok"}>{`${t.ai.match} ${v.aiMatch}`}</Badge>
                     <Badge tone={(v.aiQuality ?? 0) < 50 ? "warn" : "ok"}>{`${t.ai.quality} ${v.aiQuality}`}</Badge>
+                    {v.aiDescription != null && <Badge tone={v.aiDescription < 50 ? "warn" : "ok"}>{`${t.ai.description} ${v.aiDescription}`}</Badge>}
                   </div>
                 </div>
               </div>

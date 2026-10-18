@@ -22,7 +22,7 @@ import { AiError, analyzeWithAi, hasAiKey } from "./ovh";
 // - sinon (ressource déjà en ligne, ou scan « à vérifier ») : on enregistre seulement le résultat ;
 //     un signalement d'une ressource en ligne apparaît dans la page de modération
 
-export const AI_THRESHOLD = 50; // sous cette note (correspondance ou qualité), la ressource est signalée
+export const AI_THRESHOLD = 50; // sous cette note (correspondance, qualité ou description), la ressource est signalée
 const KEYLESS_GAP_MS = 31_000; // sans clé : 2 analyses par minute au plus
 const WITH_KEY_SECONDS = 10; // durée moyenne d'une analyse avec clé (pour l'estimation affichée)
 const START_BUDGET_MS = 60_000; // plus de nouvelle analyse après 60 s (une analyse dure 45 s au plus, maxDuration = 120 s)
@@ -148,7 +148,8 @@ export async function processAiQueue() {
 
 // Enregistre le résultat d'une analyse (null = analyse impossible) et décide de la suite
 async function applyResult(versionId: string, result: Awaited<ReturnType<typeof analyzeWithAi>> | null) {
-  const flagged = result ? result.match < AI_THRESHOLD || result.quality < AI_THRESHOLD : null;
+  // Signalée si une des trois notes est sous le seuil (contenu, qualité ou description incomplète)
+  const flagged = result ? result.match < AI_THRESHOLD || result.quality < AI_THRESHOLD || result.description < AI_THRESHOLD : null;
   const report: AiReport | null = result ? { summary: result.summary, findings: result.findings, tips: result.tips } : null;
 
   const version = await db.$transaction(async (tx) => {
@@ -158,6 +159,7 @@ async function applyResult(versionId: string, result: Awaited<ReturnType<typeof 
         aiStatus: result ? "DONE" : "FAILED",
         aiMatch: result?.match ?? null,
         aiQuality: result?.quality ?? null,
+        aiDescription: result?.description ?? null,
         aiFlagged: flagged,
         aiReport: report ? JSON.stringify(report) : null,
         aiAt: new Date(),

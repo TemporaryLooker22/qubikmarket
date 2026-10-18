@@ -2,7 +2,15 @@ import { AlertTriangle, BadgeCheck, Check, Clock, Flag, Loader2, X } from "lucid
 import { getDictionary } from "@/lib/i18n/server";
 import { parseAiReport, queueSpots, type QueueSpot } from "@/lib/ai/run";
 
-type Analysis = { id?: string; aiStatus: string | null; aiMatch: number | null; aiQuality: number | null; aiFlagged: boolean | null; aiReport: string | null };
+type Analysis = {
+  id?: string;
+  aiStatus: string | null;
+  aiMatch: number | null;
+  aiQuality: number | null;
+  aiDescription?: number | null; // absente des analyses faites avant cette note
+  aiFlagged: boolean | null;
+  aiReport: string | null;
+};
 
 const LEVELS = {
   ok: { Icon: Check, style: "bg-ok-bg text-ok" },
@@ -66,9 +74,10 @@ export async function AiReportView({ analysis, showTips = true }: { analysis: An
         )}
       </div>
 
-      <div className="grid gap-2.5 sm:grid-cols-2">
+      <div className={`grid gap-2.5 ${analysis.aiDescription != null ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
         <Score label={t.ai.match} value={analysis.aiMatch ?? 0} />
         <Score label={t.ai.quality} value={analysis.aiQuality ?? 0} />
+        {analysis.aiDescription != null && <Score label={t.ai.description} value={analysis.aiDescription} />}
       </div>
 
       {report?.summary && <p className="mt-3 text-muted">{report.summary}</p>}

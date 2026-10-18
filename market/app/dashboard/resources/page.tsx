@@ -77,7 +77,7 @@ export default async function DashboardResourcesPage({ searchParams }: { searchP
             where: { status: { in: ["LIVE", "ANALYZING", "PENDING"] } },
             orderBy: { createdAt: "desc" },
             take: 1,
-            select: { id: true, aiStatus: true, aiMatch: true, aiQuality: true, aiFlagged: true, aiReport: true },
+            select: { id: true, aiStatus: true, aiMatch: true, aiQuality: true, aiDescription: true, aiFlagged: true, aiReport: true },
           },
         },
       })

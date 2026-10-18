@@ -17,7 +17,7 @@ import { Thumb } from "@/components/dashboard/Thumb";
 import { AiBadge, Badge, PageTitle } from "@/components/admin/AdminUi";
 import { DecisionForm } from "@/components/admin/DecisionForm";
 
-const aiFields = { id: true, aiStatus: true, aiMatch: true, aiQuality: true, aiFlagged: true, aiReport: true } as const;
+const aiFields = { id: true, aiStatus: true, aiMatch: true, aiQuality: true, aiDescription: true, aiFlagged: true, aiReport: true } as const;
 const resourceFields = {
   id: true,
   slug: true,
@@ -125,7 +125,7 @@ export default async function AdminQueuePage({ searchParams }: { searchParams: P
                       </p>
                       <div className="mt-1 flex flex-wrap gap-1">
                         <ScanBadge verdict={x.scanVerdict} />
-                        {x.ai && <AiBadge status={x.ai.aiStatus} match={x.ai.aiMatch} quality={x.ai.aiQuality} flagged={x.ai.aiFlagged} failedLabel={t.ai.failed} />}
+                        {x.ai && <AiBadge status={x.ai.aiStatus} match={x.ai.aiMatch} quality={x.ai.aiQuality} description={x.ai.aiDescription} flagged={x.ai.aiFlagged} failedLabel={t.ai.failed} />}
                       </div>
                     </div>
                   </Link>

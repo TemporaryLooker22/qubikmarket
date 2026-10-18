@@ -67,10 +67,25 @@ export function Badge({ tone, children }: { tone: "ok" | "warn" | "bad" | "off" 
 }
 
 // Note IA en une pastille : vert si rien n'est signalé, orange/rouge sinon
-export function AiBadge({ status, match, quality, flagged, failedLabel }: { status: string | null; match: number | null; quality: number | null; flagged: boolean | null; failedLabel: string }) {
+export function AiBadge({
+  status,
+  match,
+  quality,
+  description,
+  flagged,
+  failedLabel,
+}: {
+  status: string | null;
+  match: number | null;
+  quality: number | null;
+  description?: number | null;
+  flagged: boolean | null;
+  failedLabel: string;
+}) {
   if (!status) return null; // pas d'analyse (fichier sans contenu Roblox : image, son, 3D…)
   if (status === "FAILED") return <Badge tone="off">{failedLabel}</Badge>;
   if (status !== "DONE") return <Badge tone="off">IA…</Badge>;
-  const low = Math.min(match ?? 0, quality ?? 0);
-  return <Badge tone={!flagged ? "ok" : low < 25 ? "bad" : "warn"}>{`IA ${match}/${quality}`}</Badge>;
+  const low = Math.min(match ?? 0, quality ?? 0, description ?? 100);
+  // Correspondance / qualité / description (la 3e note n'existe que pour les analyses récentes)
+  return <Badge tone={!flagged ? "ok" : low < 25 ? "bad" : "warn"}>{`IA ${match}/${quality}${description != null ? `/${description}` : ""}`}</Badge>;
 }

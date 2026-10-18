@@ -180,6 +180,7 @@ model ResourceVersion {
   aiStatus   String? // QUEUED (dans la file d'attente), PENDING (en cours), DONE ou FAILED (analyse impossible)
   aiMatch    Int? // correspondance avec la description
   aiQuality  Int? // qualité du contenu
+  aiDescription Int? // description complète et utile pour l'acheteur (0 à 100)
   aiFlagged  Boolean? // une des deux notes sous le seuil
   aiReport   String? // { summary, findings: [{ level, text }], tips: [] }
   aiAt       DateTime? // entrée dans la file, puis fin de l'analyse

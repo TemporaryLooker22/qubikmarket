@@ -51,7 +51,7 @@ export default async function AdminResourcesPage({ searchParams }: { searchParam
         db.purchase.groupBy({ by: ["resourceId"], where: { resourceId: { in: ids }, status: { not: "PENDING" } }, _count: true }),
         db.resourceVersion.findMany({
           where: { OR: resources.map((r) => ({ resourceId: r.id, version: r.version })) },
-          select: { resourceId: true, aiStatus: true, aiMatch: true, aiQuality: true, aiFlagged: true },
+          select: { resourceId: true, aiStatus: true, aiMatch: true, aiQuality: true, aiDescription: true, aiFlagged: true },
         }),
       ])
     : [[], [], []];
@@ -168,7 +168,7 @@ export default async function AdminResourcesPage({ searchParams }: { searchParam
                     )}
                   </p>
                   <div className="hidden lg:block">
-                    {ai ? <AiBadge status={ai.aiStatus} match={ai.aiMatch} quality={ai.aiQuality} flagged={ai.aiFlagged} failedLabel={t.ai.failed} /> : null}
+                    {ai ? <AiBadge status={ai.aiStatus} match={ai.aiMatch} quality={ai.aiQuality} description={ai.aiDescription} flagged={ai.aiFlagged} failedLabel={t.ai.failed} /> : null}
                   </div>
 
                   <RowMenu label={`${t.dashboard.actions} : ${r.title}`}>
