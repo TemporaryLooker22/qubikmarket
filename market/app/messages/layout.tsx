@@ -19,7 +19,7 @@ export default async function MessagesLayout({ children }: { children: React.Rea
     where: mine(user.id),
     orderBy: { lastMessageAt: "desc" },
     take: 100,
-    include: { userA: { select: { username: true, lastSeenAt: true } }, userB: { select: { username: true, lastSeenAt: true } } },
+    include: { userA: { select: { username: true, lastSeenAt: true, avatarUrl: true } }, userB: { select: { username: true, lastSeenAt: true, avatarUrl: true } } },
   });
   const items: ConversationItem[] = conversations.map((c) => {
     const other = c.userAId === user.id ? c.userB : c.userA;
@@ -27,6 +27,7 @@ export default async function MessagesLayout({ children }: { children: React.Rea
     return {
       id: c.id,
       username: other.username,
+      avatarUrl: other.avatarUrl,
       online: isOnline(other.lastSeenAt),
       preview: c.lastPreview,
       fromMe: c.lastSenderId === user.id,

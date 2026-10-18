@@ -31,6 +31,11 @@ export type NotificationType =
   | "REVIEW_NEW" // nouvel avis sur sa ressource
   | "REVIEW_REPLY" // le vendeur a répondu à son avis
   | "REVIEW_REMOVED" // son avis a été supprimé par la modération
+  // Avis entre membres (profils)
+  | "SELLER_REVIEW" // un acheteur a noté le vendeur
+  | "BUYER_REVIEW" // un vendeur a noté le client
+  | "MEMBER_REVIEW_REPLY" // le membre noté a répondu à son avis
+  | "MEMBER_REVIEW_REMOVED" // son avis sur un membre a été supprimé par la modération
   // Acheteur
   | "NEW_VERSION" // nouvelle version d'une ressource achetée
   // Modérateurs
@@ -92,5 +97,6 @@ export const links = {
   report: (id: string) => `/dashboard/resources?report=${id}#${id}`,
   versions: (id: string) => `/dashboard/resources/${id}/edit?tab=versions`,
   chat: (id: string) => `/messages/${id}`,
+  profile: (username: string, role?: "SELLER" | "BUYER") => `/u/${encodeURIComponent(username)}${role ? `?tab=${role === "SELLER" ? "seller" : "buyer"}#avis` : ""}`,
   adminChat: (id: string) => `/admin/messages/${id}`,
 };

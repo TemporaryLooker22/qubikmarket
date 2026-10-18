@@ -24,6 +24,9 @@ import { ReviewItem, type ReviewData } from "@/components/reviews/ReviewItem";
 import { canReview, REVIEWS_SHOWN, sellerRating, VISIBLE_REVIEW } from "@/lib/reviews";
 import { ShareButton } from "@/components/product/ShareButton";
 import { responseTime } from "@/lib/chat";
+import { memberRating } from "@/lib/member-reviews";
+import { links } from "@/lib/notifications";
+import { UserAvatar } from "@/components/UserAvatar";
 import type { ResponseBucket } from "@/lib/chat-text";
 
 type Params = Promise<{ slug: string }>;
@@ -57,7 +60,7 @@ type Product = {
   // Avis des acheteurs (absents pour les exemples de démo)
   rating?: { avg: number; count: number; dist: number[] }; // dist : nombre d'avis à 5, 4, 3, 2 et 1 étoile(s)
   // rating = null : pas encore d'avis sur les ressources du vendeur
-  seller: { username: string; resources: number; sales: number; rating: number | null; reviews: number };
+  seller: { username: string; resources: number; sales: number; rating: number | null; reviews: number; avatarUrl?: string | null; profile?: boolean; member?: { rating: number | null; count: number } };
 };
 
 // Avis affichés sous la ressource, et ce que le visiteur peut en faire
@@ -102,7 +105,7 @@ export default async function ResourcePage({ params, searchParams }: { params: P
     const resource = await db.resource.findUnique({
       where: { slug },
       include: {
-        seller: { select: { id: true, username: true } },
+        seller: { select: { id: true, username: true, avatarUrl: true } },
         _count: { select: { purchases: { where: { status: "PAID" } } } },
         versions: { where: { status: { in: ["LIVE", "OLD"] } }, orderBy: { createdAt: "desc" }, select: { version: true, notes: true, createdAt: true } },
       },
@@ -117,7 +120,7 @@ export default async function ResourcePage({ params, searchParams }: { params: P
     const visible = resource.status === "APPROVED" || isOwner || isAdmin || (resource.status === "UNLISTED" && purchase?.status === "PAID");
     if (!visible) notFound();
 
-    const [sellerResources, sellerSales, similarResources, reviewList, distribution, sellerStars, reviewStatus, sellerResponse] = await Promise.all([
+    const [sellerResources, sellerSales, similarResources, reviewList, distribution, sellerStars, reviewStatus, sellerResponse, sellerMember] = await Promise.all([
       db.resource.count({ where: { sellerId: resource.sellerId, status: "APPROVED" } }),
       db.purchase.count({ where: { status: "PAID", resource: { sellerId: resource.sellerId } } }),
       db.resource.findMany({
@@ -127,12 +130,14 @@ export default async function ResourcePage({ params, searchParams }: { params: P
         include: { seller: { select: { username: true } } },
       }),
       // Avis : les plus récents d'abord
-      db.review.findMany({ where: { resourceId: resource.id, ...VISIBLE_REVIEW }, orderBy: { createdAt: "desc" }, include: { user: { select: { username: true } } } }),
+      db.review.findMany({ where: { resourceId: resource.id, ...VISIBLE_REVIEW }, orderBy: { createdAt: "desc" }, include: { user: { select: { username: true, avatarUrl: true } } } }),
       db.review.groupBy({ by: ["rating"], where: { resourceId: resource.id, ...VISIBLE_REVIEW }, _count: true }),
       sellerRating(resource.sellerId),
       user && !isOwner ? canReview(user.id, resource.id) : Promise.resolve("no" as const),
       // Temps de réponse habituel du vendeur dans la messagerie
       isOwner ? Promise.resolve(null) : responseTime(resource.sellerId),
+      // Avis laissés sur le vendeur lui-même (profil)
+      memberRating(resource.sellerId, "SELLER"),
     ]);
 
     const mine = user ? reviewList.find((r) => r.userId === user.id) : undefined;
@@ -157,7 +162,16 @@ export default async function ResourcePage({ params, searchParams }: { params: P
         count: resource.ratingCount,
         dist: [5, 4, 3, 2, 1].map((n) => distribution.find((d) => d.rating === n)?._count ?? 0),
       },
-      seller: { username: resource.seller.username, resources: sellerResources, sales: sellerSales, rating: sellerStars.rating, reviews: sellerStars.reviews },
+      seller: {
+        username: resource.seller.username,
+        resources: sellerResources,
+        sales: sellerSales,
+        rating: sellerStars.rating,
+        reviews: sellerStars.reviews,
+        avatarUrl: resource.seller.avatarUrl,
+        profile: true,
+        member: sellerMember,
+      },
     };
     access = {
       demo: false,
@@ -303,17 +317,29 @@ export default async function ResourcePage({ params, searchParams }: { params: P
             </Card>
             <Card title={t.resource.seller}>
               <div className="flex items-center gap-3">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-text text-base font-semibold uppercase text-bg">
-                  {product.seller.username.slice(0, 1)}
-                </span>
+                <UserAvatar name={product.seller.username} src={product.seller.avatarUrl} size={44} />
                 <div className="min-w-0">
-                  <p className="truncate font-semibold">{product.seller.username}</p>
+                  {product.seller.profile ? (
+                    <Link href={links.profile(product.seller.username)} className="block truncate font-semibold hover:underline">
+                      {product.seller.username}
+                    </Link>
+                  ) : (
+                    <p className="truncate font-semibold">{product.seller.username}</p>
+                  )}
                   <p className="text-sm text-muted">{t.resource.sellerStats(product.seller.resources, product.seller.sales)}</p>
                 </div>
               </div>
-              {/* Note moyenne des avis sur le vendeur */}
-              <div className="mt-4 flex items-center gap-3 border-t border-border pt-4">
-                {product.seller.rating !== null ? (
+              {/* Note du vendeur : avis laissés sur lui (profil), sinon la moyenne des avis de ses ressources */}
+              <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border pt-4">
+                {product.seller.member?.rating != null ? (
+                  <>
+                    <span className="text-2xl font-bold tracking-tight">{formatRating(product.seller.member.rating, locale)}</span>
+                    <div>
+                      <Stars rating={product.seller.member.rating} label={t.resource.rating(formatRating(product.seller.member.rating, locale))} />
+                      <p className="text-xs text-muted">{t.profile.statSeller(product.seller.member.count)}</p>
+                    </div>
+                  </>
+                ) : product.seller.rating !== null ? (
                   <>
                     <span className="text-2xl font-bold tracking-tight">{formatRating(product.seller.rating, locale)}</span>
                     <div>
@@ -326,6 +352,11 @@ export default async function ResourcePage({ params, searchParams }: { params: P
                     <Stars rating={0} label={t.resource.noReviews} />
                     <span className="text-sm text-muted">{t.resource.noReviews}</span>
                   </>
+                )}
+                {product.seller.profile && (
+                  <Link href={links.profile(product.seller.username)} className="btn-ghost ml-auto px-3 py-1.5 text-xs">
+                    {t.profile.viewProfile} →
+                  </Link>
                 )}
               </div>
             </Card>
@@ -379,7 +410,17 @@ function BuyBox({ product, access, locale, t, showAction = true }: { product: Pr
         {product.title}
       </p>
       <p className="mt-1.5 text-sm text-muted">
-        {t.resource.by(product.seller.username)} · {t.card.sales(product.sales)}
+        {product.seller.profile ? (
+          <>
+            {t.resource.by("")}
+            <Link href={links.profile(product.seller.username)} className="font-semibold text-text underline-offset-2 hover:underline">
+              {product.seller.username}
+            </Link>
+          </>
+        ) : (
+          t.resource.by(product.seller.username)
+        )}{" "}
+        · {t.card.sales(product.sales)}
       </p>
       {/* Note des acheteurs : mène aux avis plus bas */}
       {product.rating && product.rating.count > 0 && (

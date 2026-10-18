@@ -4,6 +4,8 @@ import { deleteReview } from "@/app/review-actions";
 import type { Dictionary, Locale } from "@/lib/i18n/dictionaries";
 import { formatDate } from "@/lib/i18n/format";
 import { Stars } from "@/components/Stars";
+import { UserAvatar } from "@/components/UserAvatar";
+import { links } from "@/lib/notifications";
 import { ReplyForm } from "./ReplyForm";
 import { ReportButton } from "./ReportButton";
 
@@ -15,7 +17,7 @@ export type ReviewData = {
   version: string;
   reply: string | null;
   createdAt: Date;
-  user: { username: string };
+  user: { username: string; avatarUrl?: string | null };
   resource?: { title: string; slug: string }; // Mon espace : la ressource concernée
 };
 
@@ -42,10 +44,14 @@ export function ReviewItem({
   return (
     <li className="py-4 first:pt-0 last:pb-0">
       <div className="flex items-start gap-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-text text-[13px] font-bold uppercase text-bg">{review.user.username.slice(0, 1)}</span>
+        <Link href={links.profile(review.user.username)} className="shrink-0">
+          <UserAvatar name={review.user.username} src={review.user.avatarUrl} size={32} />
+        </Link>
         <div className="min-w-0 flex-1">
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="font-semibold">{review.user.username}</span>
+            <Link href={links.profile(review.user.username)} className="font-semibold hover:underline">
+              {review.user.username}
+            </Link>
             {review.resource ? (
               <span className="text-sm text-muted">
                 {t.reviews.on}{" "}

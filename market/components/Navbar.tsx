@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Home, LayoutDashboard, LayoutGrid, LogIn, LogOut, Menu, Search, ShieldCheck, ShoppingBag, Store, Upload, UserPlus, X, Zap, type LucideIcon } from "lucide-react";
+import { ChevronDown, Home, LayoutDashboard, LayoutGrid, LogIn, LogOut, Menu, Search, ShieldCheck, ShoppingBag, Store, Upload, UserPlus, UserRound, X, Zap, type LucideIcon } from "lucide-react";
 import { logout, setLocale } from "@/app/actions";
 import { CATEGORIES } from "@/lib/catalog";
 import { LOCALES } from "@/lib/i18n/dictionaries";
@@ -12,9 +12,10 @@ import { CategoryIcon } from "./CategoryIcon";
 import { Logo } from "./Logo";
 import { NotificationBell } from "./NotificationBell";
 import { MessagesIcon } from "./chat/MessagesIcon";
+import { UserAvatar } from "./UserAvatar";
 
 type Props = {
-  user: { username: string; email: string; role: string; isSeller: boolean } | null;
+  user: { username: string; email: string; role: string; isSeller: boolean; avatarUrl: string | null } | null;
   pendingCount: number; // ressources en attente de modération (affiché aux admins)
   unreadCount: number; // notifications non lues (cloche)
   chatUnread: number; // conversations non lues (icône Messages)
@@ -220,9 +221,7 @@ function AccountHeader({ user }: { user: NonNullable<Props["user"]> }) {
   const { t } = useI18n();
   return (
     <div className="flex items-center gap-3 border-b border-border bg-bg/60 px-4 py-3.5">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-text text-sm font-semibold uppercase text-bg">
-        {user.username.slice(0, 1)}
-      </span>
+      <UserAvatar name={user.username} src={user.avatarUrl} size={40} />
       <div className="min-w-0">
         <p className="flex items-center gap-2 truncate font-semibold">
           {user.username}
@@ -258,6 +257,7 @@ function AccountMenu({ user, pendingCount }: { user: NonNullable<Props["user"]>;
 
   const items: { href: string; label: string; icon: LucideIcon; badge?: number }[] = [
     { href: "/dashboard", label: t.nav.dashboard, icon: LayoutDashboard },
+    { href: `/u/${encodeURIComponent(user.username)}`, label: t.nav.myProfile, icon: UserRound },
     { href: "/sell", label: t.nav.sellResource, icon: Upload },
     { href: "/dashboard/purchases", label: t.nav.myPurchases, icon: ShoppingBag },
     ...(!user.isSeller ? [{ href: "/become-seller", label: t.nav.becomeSeller, icon: Store }] : []),
@@ -274,9 +274,7 @@ function AccountMenu({ user, pendingCount }: { user: NonNullable<Props["user"]>;
         aria-label={t.nav.account}
         className={`flex h-10 items-center gap-1 rounded-full p-0.5 pr-1.5 transition hover:bg-bg ${open ? "bg-bg" : ""}`}
       >
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-text text-sm font-semibold uppercase text-bg">
-          {user.username.slice(0, 1)}
-        </span>
+        <UserAvatar name={user.username} src={user.avatarUrl} size={36} />
         <ChevronDown className={`h-4 w-4 text-muted transition duration-200 ${open ? "rotate-180" : ""}`} aria-hidden="true" />
       </button>
       {open && (

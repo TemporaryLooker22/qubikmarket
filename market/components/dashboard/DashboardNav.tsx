@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BadgeCheck, LayoutDashboard, Package, Receipt, ShoppingBag, type LucideIcon } from "lucide-react";
+import { BadgeCheck, LayoutDashboard, Package, Receipt, Settings, ShoppingBag, type LucideIcon } from "lucide-react";
+import { UserAvatar } from "@/components/UserAvatar";
 import { useI18n } from "@/lib/i18n/client";
 
-type Props = { username: string; isSeller: boolean; counts: { resources: number; purchases: number } };
+type Props = { username: string; avatarUrl: string | null; isSeller: boolean; counts: { resources: number; purchases: number } };
 
 // Menu de « Mon espace » : colonne à gauche sur ordinateur, rangée d'onglets qui défile sur téléphone
-export function DashboardNav({ username, isSeller, counts }: Props) {
+export function DashboardNav({ username, avatarUrl, isSeller, counts }: Props) {
   const { t } = useI18n();
   const pathname = usePathname();
 
@@ -18,6 +19,7 @@ export function DashboardNav({ username, isSeller, counts }: Props) {
     { href: "/dashboard/sales", label: t.dashboard.menu.sales, icon: Receipt },
   ];
   const purchases = { href: "/dashboard/purchases", label: t.dashboard.menu.purchases, icon: ShoppingBag, count: counts.purchases };
+  const settings = { href: "/dashboard/settings", label: t.dashboard.menu.settings, icon: Settings };
 
   const item = ({ href, label, icon: Icon, count }: (typeof seller)[number]) => {
     const active = pathname === href;
@@ -42,7 +44,7 @@ export function DashboardNav({ username, isSeller, counts }: Props) {
   return (
     <aside className="lg:sticky lg:top-24">
       <div className="hidden items-center gap-2.5 px-1.5 pb-4 lg:flex">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-text font-semibold uppercase text-bg">{username.slice(0, 1)}</span>
+        <UserAvatar name={username} src={avatarUrl} size={40} />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{username}</p>
           {isSeller && (
@@ -57,6 +59,7 @@ export function DashboardNav({ username, isSeller, counts }: Props) {
         {isSeller && seller.map(item)}
         {isSeller && <hr className="mx-2 my-2 hidden border-border lg:block" />}
         {item(purchases)}
+        {item(settings)}
       </nav>
     </aside>
   );

@@ -4,6 +4,9 @@ import { db } from "@/lib/db";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatAmount, formatDate } from "@/lib/i18n/format";
 import { banMember, unbanMember } from "@/app/moderation-actions";
+import { adminRemoveAvatar } from "@/app/member-actions";
+import { links } from "@/lib/notifications";
+import { UserAvatar } from "@/components/UserAvatar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Badge, PageTitle, Stat } from "@/components/admin/AdminUi";
 
@@ -16,7 +19,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
     where: query ? { OR: [{ username: { contains: query, mode: "insensitive" } }, { email: { contains: query, mode: "insensitive" } }] } : {},
     orderBy: { createdAt: "desc" },
     take: 20,
-    select: { id: true, username: true, email: true, role: true, bannedAt: true, _count: { select: { resources: true } } },
+    select: { id: true, username: true, email: true, role: true, bannedAt: true, avatarUrl: true, _count: { select: { resources: true } } },
   });
 
   const member = id
@@ -62,7 +65,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
                     scroll={false}
                     className={`flex items-center gap-2.5 rounded-xl p-2 transition ${u.id === member?.id ? "bg-accent-soft" : "hover:bg-bg"}`}
                   >
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-text text-[13px] font-bold uppercase text-bg">{u.username.slice(0, 1)}</span>
+                    <UserAvatar name={u.username} src={u.avatarUrl} size={32} />
                     <div className="min-w-0 flex-1">
                       <p className="flex items-center gap-1.5 truncate text-sm font-semibold">
                         <span className="truncate">{u.username}</span>
@@ -85,14 +88,23 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
         {member && stats ? (
           <div className="min-w-0 rounded-2xl border border-border bg-card p-5">
             <div className="flex items-center gap-3">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-text text-lg font-bold uppercase text-bg">{member.username.slice(0, 1)}</span>
+              <UserAvatar name={member.username} src={member.avatarUrl} size={48} />
               <div className="min-w-0">
                 <p className="flex flex-wrap items-center gap-1.5 text-lg font-semibold">
-                  {member.username}
+                  <Link href={links.profile(member.username)} className="hover:underline">
+                    {member.username}
+                  </Link>
                   {member.bannedAt ? <Badge tone="bad">{t.mod.banned}</Badge> : <Badge tone="ok">{t.mod.active}</Badge>}
                   {member.role === "ADMIN" && <Badge tone="accent">{t.mod.admin}</Badge>}
                   {member.founderUntil && member.founderUntil > new Date() && <Badge tone="accent">{t.mod.founder}</Badge>}
                 </p>
+                {/* Photo inappropriée : la modération peut la retirer */}
+                {member.avatarUrl && (
+                  <form action={adminRemoveAvatar} className="mb-0.5">
+                    <input type="hidden" name="userId" value={member.id} />
+                    <button className="text-xs font-semibold text-bad hover:underline">{t.mod.removeAvatar}</button>
+                  </form>
+                )}
                 <p className="text-sm text-muted">
                   {t.mod.memberSince(member.email, formatDate(member.createdAt, locale))}
                   {member.resources.length > 0 && ` · ${member.stripeTransfersActive ? t.mod.payoutsOn : t.mod.payoutsOff}`}

@@ -152,6 +152,7 @@ const PRIVACY: Record<Locale, LegalDoc> = {
 - **Payments:** handled by Stripe. We receive the payment status and amount, never your card details.
 - **Technical data:** IP address and server logs (security and troubleshooting), and two cookies described below.
 - **How you found Qubik:** when you create your account, we save the site or campaign link that brought you (for example discord.com or a ?ref= link), the first page you saw and your country (worked out from your IP address, which we don't keep). It helps us know which links bring new members.
+- **Public profile:** your username, profile photo (if you add one), member since date, the resources you sell and the reviews you receive as a seller or as a customer are shown on your profile page. What you buy is never shown.
 - **Private messages:** messages and images you send to other members. They are private: the moderators can only read a conversation if one of its members reports it. A message that talks about paying outside Qubik (PayPal, Discord…) shows a safety warning; nothing is blocked or read by a person.
 - **Showcase videos:** some resources show a YouTube video. The YouTube player only loads when you click play; YouTube (Google) may then set its own cookies.
 - **Visit statistics:** anonymous and without cookies (Vercel Web Analytics): pages viewed, site of origin, country and type of device, counted together. They can't be used to identify you.
@@ -221,6 +222,7 @@ We may update this policy. The date of the latest version is shown at the top of
 - **Paiements :** gérés par Stripe. Nous recevons le statut et le montant du paiement, jamais tes coordonnées bancaires.
 - **Données techniques :** adresse IP et journaux du serveur (sécurité et résolution de problèmes), et deux cookies décrits plus bas.
 - **Comment tu as connu Qubik :** à la création de ton compte, nous gardons le site ou le lien de campagne qui t'a amené (par exemple discord.com ou un lien ?ref=), la première page vue et ton pays (déduit de ton adresse IP, que nous ne gardons pas). Ça nous aide à savoir quels liens amènent de nouveaux membres.
+- **Profil public :** ton pseudo, ta photo de profil (si tu en ajoutes une), ta date d'inscription, les ressources que tu vends et les avis reçus en tant que vendeur ou client sont affichés sur ta page de profil. Ce que tu achètes n'est jamais affiché.
 - **Messages privés :** les messages et images que tu envoies aux autres membres. Ils sont privés : les modérateurs ne peuvent lire une conversation que si l'un de ses membres la signale. Un message qui parle de payer hors de Qubik (PayPal, Discord…) affiche une alerte de sécurité ; rien n'est bloqué ni lu par une personne.
 - **Vidéos de présentation :** certaines ressources montrent une vidéo YouTube. Le lecteur YouTube ne se charge que si tu lances la vidéo ; YouTube (Google) peut alors déposer ses propres cookies.
 - **Statistiques de visite :** anonymes et sans cookie (Vercel Web Analytics) : pages vues, site d'origine, pays et type d'appareil, comptés ensemble. Elles ne permettent pas de t'identifier.

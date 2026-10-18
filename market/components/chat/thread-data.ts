@@ -7,11 +7,11 @@ import type { AboutResource } from "./Thread";
 
 export async function otherMember(id: string) {
   const [user, resources, response] = await Promise.all([
-    db.user.findUnique({ where: { id }, select: { id: true, username: true, lastSeenAt: true } }),
+    db.user.findUnique({ where: { id }, select: { id: true, username: true, lastSeenAt: true, avatarUrl: true } }),
     db.resource.count({ where: { sellerId: id, status: "APPROVED" } }),
     responseTime(id),
   ]);
-  return user ? { id: user.id, username: user.username, online: isOnline(user.lastSeenAt), response, resources } : null;
+  return user ? { id: user.id, username: user.username, avatarUrl: user.avatarUrl, online: isOnline(user.lastSeenAt), response, resources } : null;
 }
 
 // Ressource en ligne de l'un des deux membres (sinon on n'affiche pas de carte « À propos de »)

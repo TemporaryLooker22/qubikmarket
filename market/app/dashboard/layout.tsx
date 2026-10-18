@@ -13,7 +13,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="full-bleed">
       <div className="container-q grid items-start gap-5 pt-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-8 lg:pt-8">
-        <DashboardNav username={user.username} isSeller={resources > 0} counts={{ resources, purchases }} />
+        <DashboardNav username={user.username} avatarUrl={user.avatarUrl} isSeller={resources > 0} counts={{ resources, purchases }} />
         <div className="min-w-0">{children}</div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Download, ExternalLink, ShoppingBag, Sparkles, Star, Zap } from "lucide-react";
 import { db } from "@/lib/db";
+import { links } from "@/lib/notifications";
 import { requireUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatDate, formatPrice } from "@/lib/i18n/format";
@@ -30,7 +31,7 @@ export default async function DashboardPurchasesPage() {
         paidAt: true,
         lastDownloadedAt: true,
         resource: {
-          select: { id: true, slug: true, title: true, category: true, images: true, status: true, version: true, versionUpdatedAt: true, seller: { select: { username: true } } },
+          select: { id: true, slug: true, title: true, category: true, images: true, status: true, version: true, versionUpdatedAt: true, seller: { select: { id: true, username: true } } },
         },
       },
     }),
@@ -38,6 +39,10 @@ export default async function DashboardPurchasesPage() {
     db.review.findMany({ where: { userId: user.id }, select: { resourceId: true, rating: true } }),
   ]);
   const ratingOf = new Map(myReviews.map((r) => [r.resourceId, r.rating]));
+  // Vendeurs déjà notés (avis sur le vendeur, profil)
+  const ratedSellers = new Set(
+    (await db.memberReview.findMany({ where: { authorId: user.id, role: "SELLER" }, select: { targetId: true } })).map((r) => r.targetId),
+  );
 
   return (
     <>
@@ -70,7 +75,11 @@ export default async function DashboardPurchasesPage() {
               <div className="flex flex-1 flex-col px-1.5 pb-1.5 pt-3">
                 <p className="truncate font-semibold">{r.title}</p>
                 <p className="mt-0.5 truncate text-xs text-muted">
-                  {t.card.by(r.seller.username)} · {formatPrice(amountCents, locale)} · {formatDate(createdAt, locale)}
+                  {t.card.by("")}
+                  <Link href={links.profile(r.seller.username)} className="font-semibold text-text hover:underline">
+                    {r.seller.username}
+                  </Link>{" "}
+                  · {formatPrice(amountCents, locale)} · {formatDate(createdAt, locale)}
                 </p>
                 {r.status === "UNLISTED" && (
                   <span className="mt-2 self-start rounded-full bg-surface px-2 py-0.5 text-[11px] font-semibold text-muted">{t.dashboard.unlisted}</span>
@@ -97,6 +106,13 @@ export default async function DashboardPurchasesPage() {
                       {t.reviews.leave}
                     </Link>
                   )
+                )}
+                {/* Avis sur le vendeur (profil), une fois la ressource téléchargée */}
+                {lastDownloadedAt && (
+                  <Link href={links.profile(r.seller.username, "SELLER")} className="mt-1.5 inline-flex items-center gap-1.5 self-start text-xs font-semibold underline-offset-2 hover:underline">
+                    <Star className="h-3.5 w-3.5 text-accent" fill="currentColor" strokeWidth={0} aria-hidden="true" />
+                    {ratedSellers.has(r.seller.id) ? `${t.profile.rateSeller} · ${t.profile.editRating}` : t.profile.rateSeller}
+                  </Link>
                 )}
                 <div className="mt-auto flex gap-1.5 pt-3">
                   <a href={`/api/download/${r.id}`} className="btn flex-1">

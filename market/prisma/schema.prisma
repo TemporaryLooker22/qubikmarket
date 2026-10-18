@@ -48,6 +48,11 @@ model User {
   blocks                Block[]              @relation("Blocker")
   blockedBy             Block[]              @relation("Blocked")
   conversationReports   ConversationReport[]
+  // Profil public (/u/pseudo) : photo recadrée (Vercel Blob) et avis entre membres (voir lib/member-reviews.ts)
+  avatarUrl             String?
+  memberReviewsWritten  MemberReview[]       @relation("MemberReviewAuthor")
+  memberReviewsReceived MemberReview[]       @relation("MemberReviewTarget")
+  memberReviewReports   MemberReviewReport[]
 }
 
 model Resource {
@@ -357,4 +362,43 @@ model ConversationReport {
 
   @@unique([conversationId, userId])
   @@index([dismissedAt])
+}
+
+// Avis entre membres, affichés sur le profil de celui qui est noté :
+// - role SELLER : un acheteur note un vendeur chez qui il a acheté et téléchargé
+// - role BUYER : un vendeur note un client qui a téléchargé une de ses ressources
+// Un seul avis par auteur, membre noté et rôle (modifiable). Celui qui est noté peut répondre publiquement.
+model MemberReview {
+  id        String    @id @default(cuid())
+  authorId  String
+  targetId  String
+  role      String // SELLER ou BUYER : le rôle du membre noté
+  rating    Int // 1 à 5
+  body      String?
+  reply     String? // réponse du membre noté
+  repliedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  author  User                 @relation("MemberReviewAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  target  User                 @relation("MemberReviewTarget", fields: [targetId], references: [id], onDelete: Cascade)
+  reports MemberReviewReport[]
+
+  @@unique([authorId, targetId, role])
+  @@index([targetId, role, createdAt])
+}
+
+// Signalement d'un avis sur un membre (comme ReviewReport pour les avis de ressources)
+model MemberReviewReport {
+  id          String    @id @default(cuid())
+  reviewId    String
+  userId      String
+  reason      String?
+  createdAt   DateTime  @default(now())
+  dismissedAt DateTime?
+
+  review MemberReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewId, userId])
 }

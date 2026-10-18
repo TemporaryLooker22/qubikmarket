@@ -2,16 +2,32 @@
 
 import { useActionState, useState } from "react";
 import { Check, Loader2, Star } from "lucide-react";
-import { submitReview } from "@/app/review-actions";
+import { submitReview, type ReviewState } from "@/app/review-actions";
 import { useI18n } from "@/lib/i18n/client";
 
 const MAX = 1000; // même limite que lib/reviews.ts
 
 // Formulaire « Ton avis » de la page d'une ressource : étoiles à cliquer et commentaire facultatif.
-// Sert aussi à modifier son avis (déjà rempli).
-export function ReviewForm({ resourceId, initial }: { resourceId: string; initial: { rating: number; body: string | null } | null }) {
+// Sert aussi à modifier son avis (déjà rempli), et aux avis sur un membre (profil) : action, champs cachés et textes en paramètres.
+export function ReviewForm({
+  resourceId,
+  initial,
+  action = submitReview,
+  fields,
+  title,
+  placeholder,
+  note,
+}: {
+  resourceId?: string;
+  initial: { rating: number; body: string | null } | null;
+  action?: (state: ReviewState, formData: FormData) => Promise<ReviewState>;
+  fields?: Record<string, string>;
+  title?: string;
+  placeholder?: string;
+  note?: string;
+}) {
   const { t } = useI18n();
-  const [state, formAction, pending] = useActionState(submitReview, undefined);
+  const [state, formAction, pending] = useActionState(action, undefined);
   const [rating, setRating] = useState(initial?.rating ?? 0);
   const [hover, setHover] = useState(0);
   const [body, setBody] = useState(initial?.body ?? "");
@@ -19,12 +35,15 @@ export function ReviewForm({ resourceId, initial }: { resourceId: string; initia
 
   return (
     <form action={formAction} className="rounded-xl bg-accent-soft p-4">
-      <input type="hidden" name="resourceId" value={resourceId} />
+      {resourceId && <input type="hidden" name="resourceId" value={resourceId} />}
+      {Object.entries(fields ?? {}).map(([name, value]) => (
+        <input key={name} type="hidden" name={name} value={value} />
+      ))}
       <input type="hidden" name="rating" value={rating} />
-      <p className="font-semibold">{t.reviews.formTitle}</p>
+      <p className="font-semibold">{title ?? t.reviews.formTitle}</p>
 
       {/* Étoiles : un clic choisit la note */}
-      <div className="mb-3 mt-2 flex gap-1" role="radiogroup" aria-label={t.reviews.formTitle} onMouseLeave={() => setHover(0)}>
+      <div className="mb-3 mt-2 flex gap-1" role="radiogroup" aria-label={title ?? t.reviews.formTitle} onMouseLeave={() => setHover(0)}>
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}
@@ -47,7 +66,7 @@ export function ReviewForm({ resourceId, initial }: { resourceId: string; initia
         onChange={(e) => setBody(e.target.value)}
         maxLength={MAX}
         rows={3}
-        placeholder={t.reviews.placeholder}
+        placeholder={placeholder ?? t.reviews.placeholder}
         className="w-full resize-y rounded-lg border border-border bg-card px-3.5 py-2.5 text-[15px] outline-none transition placeholder:text-muted focus:border-text focus:ring-4 focus:ring-accent/30"
       />
 
@@ -62,7 +81,7 @@ export function ReviewForm({ resourceId, initial }: { resourceId: string; initia
             {state.ok}
           </p>
         ) : (
-          <p className="text-xs text-muted">{t.reviews.formNote}</p>
+          <p className="text-xs text-muted">{note ?? t.reviews.formNote}</p>
         )}
         <button type="submit" disabled={pending || rating === 0} className="btn-accent rounded-xl px-5 py-2.5 disabled:opacity-60">
           {pending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}

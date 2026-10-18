@@ -44,7 +44,7 @@ export async function getCurrentUser() {
     // Un compte banni n'est plus connecté (voir lib/moderation.ts)
     return await db.user.findUnique({
       where: { id: payload.sub, bannedAt: null },
-      select: { id: true, username: true, email: true, role: true },
+      select: { id: true, username: true, email: true, role: true, avatarUrl: true },
     });
   } catch {
     return null;

@@ -6,6 +6,9 @@ import { formatDate } from "@/lib/i18n/format";
 import type { Dictionary, Locale } from "@/lib/i18n/dictionaries";
 import { REPORTED_REVIEWS } from "@/lib/moderation";
 import { deleteReview, dismissReviewReports } from "@/app/review-actions";
+import { deleteMemberReview, dismissMemberReviewReports } from "@/app/member-actions";
+import { REPORTED_MEMBER_REVIEWS } from "@/lib/member-reviews";
+import { links } from "@/lib/notifications";
 import { Stars } from "@/components/Stars";
 import { Badge, PageTitle, Panel } from "@/components/admin/AdminUi";
 
@@ -17,13 +20,23 @@ const reviewInclude = {
 // Modération → Avis : les avis signalés (avec qui les a signalés et pourquoi), puis les derniers avis du site
 export default async function AdminReviewsPage() {
   const { locale, t } = await getDictionary();
-  const [reported, latest] = await Promise.all([
+  const [reported, latest, memberReported] = await Promise.all([
     db.review.findMany({
       where: REPORTED_REVIEWS,
       orderBy: { createdAt: "desc" },
       include: { ...reviewInclude, reports: { where: { dismissedAt: null }, orderBy: { createdAt: "asc" }, include: { user: { select: { id: true, username: true } } } } },
     }),
     db.review.findMany({ orderBy: { createdAt: "desc" }, take: 30, include: reviewInclude }),
+    // Avis sur des membres (profils) signalés
+    db.memberReview.findMany({
+      where: REPORTED_MEMBER_REVIEWS,
+      orderBy: { createdAt: "desc" },
+      include: {
+        author: { select: { id: true, username: true } },
+        target: { select: { username: true } },
+        reports: { where: { dismissedAt: null }, orderBy: { createdAt: "asc" }, include: { user: { select: { username: true } } } },
+      },
+    }),
   ]);
 
   return (
@@ -55,6 +68,44 @@ export default async function AdminReviewsPage() {
           </ul>
         )}
       </Panel>
+
+      {memberReported.length > 0 && (
+        <Panel title={t.mod.memberReported} aside={<Badge tone="bad">{memberReported.length}</Badge>} className="mb-4">
+          <ul className="divide-y divide-border">
+            {memberReported.map((r) => (
+              <li key={r.id} className="py-3 first:pt-0 last:pb-0">
+                <p className="text-sm">
+                  <Link href={links.profile(r.target.username, r.role as "SELLER" | "BUYER")} className="font-semibold hover:underline">
+                    {t.mod.memberReviewOn(r.author.username, r.target.username, r.role)}
+                  </Link>{" "}
+                  <span className="text-muted">· {formatDate(r.createdAt, locale)}</span>
+                </p>
+                <Stars rating={r.rating} label={t.resource.rating(String(r.rating))} className="mt-0.5 h-3.5 w-3.5" />
+                {r.body && <p className="mt-1 whitespace-pre-line text-sm">{r.body}</p>}
+                {r.reports.map((rep) => (
+                  <p key={rep.id} className="mt-2 rounded-lg bg-warn-bg px-3 py-2 text-xs text-warn">
+                    <strong>{rep.user.username}</strong>
+                    {rep.reason && <> : « {rep.reason} »</>}
+                  </p>
+                ))}
+                <div className="mt-2 flex flex-wrap justify-end gap-2">
+                  <form action={dismissMemberReviewReports}>
+                    <input type="hidden" name="reviewId" value={r.id} />
+                    <button className="btn-ghost px-3 py-1.5 text-xs">{t.mod.ignore}</button>
+                  </form>
+                  <form action={deleteMemberReview}>
+                    <input type="hidden" name="reviewId" value={r.id} />
+                    <button className="inline-flex items-center gap-1 rounded-lg bg-bad px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90">
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      {t.mod.deleteReview}
+                    </button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      )}
 
       <Panel title={t.mod.latestReviews}>
         {latest.length === 0 ? (

@@ -60,6 +60,10 @@ const ICONS: Record<string, { Icon: LucideIcon; tone: string }> = {
   MOD_REPORT: { Icon: MessageSquareWarning, tone: "bg-bad-bg text-bad" },
   MOD_CHAT: { Icon: MessageSquareWarning, tone: "bg-bad-bg text-bad" },
   MESSAGE: { Icon: MessageCircle, tone: "bg-accent-soft text-text" },
+  SELLER_REVIEW: { Icon: Star, tone: "bg-accent-soft text-text" },
+  BUYER_REVIEW: { Icon: Star, tone: "bg-accent-soft text-text" },
+  MEMBER_REVIEW_REPLY: { Icon: CornerDownRight, tone: "bg-surface text-text" },
+  MEMBER_REVIEW_REMOVED: { Icon: Trash2, tone: "bg-surface text-muted" },
 };
 
 // Cloche de la barre de navigation : pastille des notifications non lues, et la liste au clic.

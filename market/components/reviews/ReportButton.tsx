@@ -2,13 +2,14 @@
 
 import { useActionState, useState } from "react";
 import { Check, Flag } from "lucide-react";
-import { reportReview } from "@/app/review-actions";
+import { reportReview, type ReviewState } from "@/app/review-actions";
 import { useI18n } from "@/lib/i18n/client";
 
 // Petit lien « Signaler » sous un avis : ouvre un champ pour la raison (facultative), puis envoie aux modérateurs
-export function ReportButton({ reviewId }: { reviewId: string }) {
+// action : signalement d'un avis sur un membre (profil) au lieu d'un avis de ressource
+export function ReportButton({ reviewId, action = reportReview }: { reviewId: string; action?: (state: ReviewState, formData: FormData) => Promise<ReviewState> }) {
   const { t } = useI18n();
-  const [state, formAction, pending] = useActionState(reportReview, undefined);
+  const [state, formAction, pending] = useActionState(action, undefined);
   const [open, setOpen] = useState(false);
 
   if (state?.ok) {

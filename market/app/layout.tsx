@@ -42,7 +42,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang={locale} className={jakarta.variable}>
       <body className="flex min-h-screen flex-col font-sans antialiased">
         <LocaleProvider locale={locale}>
-          <Navbar user={user ? { username: user.username, email: user.email, role: user.role, isSeller } : null} pendingCount={pendingCount} unreadCount={unreadCount} chatUnread={chatUnread} />
+          <Navbar user={user ? { username: user.username, email: user.email, role: user.role, isSeller, avatarUrl: user.avatarUrl } : null} pendingCount={pendingCount} unreadCount={unreadCount} chatUnread={chatUnread} />
 
           <main className="flex-1 pb-16">{children}</main>
 

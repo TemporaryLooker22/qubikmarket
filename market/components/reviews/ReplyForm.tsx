@@ -2,14 +2,23 @@
 
 import { useActionState, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
-import { replyToReview } from "@/app/review-actions";
+import { replyToReview, type ReviewState } from "@/app/review-actions";
 import { useI18n } from "@/lib/i18n/client";
 
 // Réponse publique du vendeur à un avis (page de la ressource et Mon espace).
 // Déjà répondu : un bouton « Modifier la réponse » rouvre le champ (vider le champ retire la réponse).
-export function ReplyForm({ reviewId, initial }: { reviewId: string; initial: string | null }) {
+// action : réponse à un avis sur un membre (profil) au lieu d'un avis de ressource
+export function ReplyForm({
+  reviewId,
+  initial,
+  action = replyToReview,
+}: {
+  reviewId: string;
+  initial: string | null;
+  action?: (state: ReviewState, formData: FormData) => Promise<ReviewState>;
+}) {
   const { t } = useI18n();
-  const [state, formAction, pending] = useActionState(replyToReview, undefined);
+  const [state, formAction, pending] = useActionState(action, undefined);
   const [open, setOpen] = useState(!initial);
   const [reply, setReply] = useState(initial ?? "");
 

@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BadgeCheck, CheckCircle2, Crown, ExternalLink, Hourglass, Landmark, Receipt, Wallet } from "lucide-react";
+import { BadgeCheck, CheckCircle2, Crown, ExternalLink, Hourglass, Landmark, Receipt, Star, Wallet } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
+import { links } from "@/lib/notifications";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatAmount, formatDate } from "@/lib/i18n/format";
 import { HOLD_DAYS } from "@/lib/earnings";
@@ -23,6 +24,10 @@ const LIMIT = 100; // lignes affichées dans le tableau
 // Ventes : soldes (en attente, disponible, déjà versé) et détail de chaque gain (registre SellerEarning)
 export default async function DashboardSalesPage() {
   const user = await requireUser("/dashboard/sales");
+  // Acheteurs déjà notés (avis sur le client, profil)
+  const ratedBuyers = new Set(
+    (await db.memberReview.findMany({ where: { authorId: user.id, role: "BUYER" }, select: { targetId: true } })).map((r) => r.targetId),
+  );
   const { locale, t } = await getDictionary();
 
   const [resourceCount, seller, earnings, totals] = await Promise.all([
@@ -43,7 +48,7 @@ export default async function DashboardSalesPage() {
         availableAt: true,
         reversesId: true,
         createdAt: true,
-        purchase: { select: { status: true, user: { select: { username: true } }, resource: { select: { title: true, slug: true } } } },
+        purchase: { select: { status: true, lastDownloadedAt: true, user: { select: { id: true, username: true } }, resource: { select: { title: true, slug: true } } } },
         reverses: { select: { purchase: { select: { resource: { select: { title: true, slug: true } } } } } },
       },
     }),
@@ -205,7 +210,24 @@ export default async function DashboardSalesPage() {
                         )}
                         {e.reversesId && <span className="block text-xs text-bad">{t.dashboard.adjustment}</span>}
                       </td>
-                      <td className="hidden px-2 py-3 xl:table-cell">{e.purchase?.user.username ?? "—"}</td>
+                      <td className="hidden px-2 py-3 xl:table-cell">
+                        {e.purchase ? (
+                          <>
+                            <Link href={links.profile(e.purchase.user.username)} className="font-semibold hover:underline">
+                              {e.purchase.user.username}
+                            </Link>
+                            {/* Avis sur l'acheteur (profil), une fois qu'il a téléchargé */}
+                            {e.purchase.lastDownloadedAt && (
+                              <Link href={links.profile(e.purchase.user.username, "BUYER")} className="mt-0.5 flex items-center gap-1 text-xs text-muted hover:text-text">
+                                <Star className="h-3 w-3 text-accent" fill="currentColor" strokeWidth={0} aria-hidden="true" />
+                                {ratedBuyers.has(e.purchase.user.id) ? t.profile.editRating : t.profile.rateBuyer}
+                              </Link>
+                            )}
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
                       <td className="hidden whitespace-nowrap px-2 py-3 text-right md:table-cell">{e.grossCents ? formatAmount(e.grossCents, locale) : "—"}</td>
                       <td className="hidden whitespace-nowrap px-2 py-3 text-right text-muted xl:table-cell">{e.grossCents ? formatAmount(e.taxCents, locale) : "—"}</td>
                       <td className="hidden whitespace-nowrap px-2 py-3 text-right text-muted xl:table-cell">

@@ -1,10 +1,11 @@
 import "server-only";
 import { db } from "./db";
+import { REPORTED_MEMBER_REVIEWS } from "./member-reviews";
 import { refreshRating } from "./reviews";
 
 // Modération : journal des décisions et bannissement des membres.
 
-export type ModerationAction = "APPROVE" | "REJECT" | "KEEP" | "UNLIST" | "RELIST" | "EDIT" | "DELETE" | "REANALYZE" | "REVIEW_DELETE" | "REPORTS_DISMISS" | "BAN" | "UNBAN" | "CHAT_DISMISS" | "CHAT_MESSAGE_DELETE";
+export type ModerationAction = "APPROVE" | "REJECT" | "KEEP" | "UNLIST" | "RELIST" | "EDIT" | "DELETE" | "REANALYZE" | "REVIEW_DELETE" | "REPORTS_DISMISS" | "BAN" | "UNBAN" | "CHAT_DISMISS" | "CHAT_MESSAGE_DELETE" | "MEMBER_REVIEW_DELETE" | "AVATAR_REMOVE";
 
 // Garde une trace de chaque décision (page Modération → Journal)
 export async function logModeration(entry: {
@@ -57,7 +58,8 @@ export async function moderationCounts() {
     db.resource.count({ where: QUEUE_RESOURCES }),
     db.resourceVersion.count({ where: QUEUE_VERSIONS }),
     db.resourceVersion.count({ where: AI_FLAGS }),
-    db.review.count({ where: REPORTED_REVIEWS }),
+    // Avis signalés : sur les ressources et sur les membres
+    Promise.all([db.review.count({ where: REPORTED_REVIEWS }), db.memberReview.count({ where: REPORTED_MEMBER_REVIEWS })]).then(([a, b]) => a + b),
     // Conversations avec au moins un signalement en attente
     db.conversation.count({ where: { reports: { some: { dismissedAt: null } } } }),
   ]);

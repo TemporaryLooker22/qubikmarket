@@ -18,7 +18,7 @@ export type AboutResource = { id: string; slug: string; title: string; image: st
 type Props = {
   meId: string;
   conversationId: string | null; // null : première prise de contact (la conversation est créée au premier message)
-  other: { id: string; username: string; online: boolean; response: string | null; resources: number };
+  other: { id: string; username: string; avatarUrl: string | null; online: boolean; response: string | null; resources: number };
   initial: ChatMessage[];
   otherRead: string | null;
   blocked: SendBlock | null;
@@ -197,9 +197,13 @@ export function Thread({ meId, conversationId: initialId, other, initial, otherR
         <Link href="/messages" aria-label={t.chat.back} className="flex h-9 w-9 items-center justify-center rounded-lg transition hover:bg-bg md:hidden">
           <ArrowLeft className="h-5 w-5" aria-hidden="true" />
         </Link>
-        <Avatar name={other.username} online={online} />
+        <Link href={`/u/${encodeURIComponent(other.username)}`} className="shrink-0">
+          <Avatar name={other.username} src={other.avatarUrl} online={online} />
+        </Link>
         <div className="min-w-0 flex-1">
-          <p className="truncate font-semibold">{other.username}</p>
+          <Link href={`/u/${encodeURIComponent(other.username)}`} className="block truncate font-semibold hover:underline">
+            {other.username}
+          </Link>
           <p className="flex items-center gap-1.5 truncate text-xs text-muted">
             {online ? <span className="font-semibold text-ok">{t.chat.online}</span> : other.response && <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />}
             {!online && other.response && <span className="truncate">{t.chat.response[other.response]}</span>}

@@ -6,10 +6,12 @@ import { useEffect, useMemo, useState } from "react";
 import { MessageCircle, Search } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { CHAT_COUNT_POLL_MS } from "@/lib/chat-text";
+import { UserAvatar } from "@/components/UserAvatar";
 
 export type ConversationItem = {
   id: string;
   username: string;
+  avatarUrl: string | null;
   online: boolean;
   preview: string;
   fromMe: boolean;
@@ -91,7 +93,7 @@ function ConversationList({ items }: { items: ConversationItem[] }) {
                     aria-current={active ? "page" : undefined}
                     className={`flex items-center gap-3 border-l-[3px] px-3.5 py-2.5 transition hover:bg-bg ${active ? "border-accent bg-bg" : "border-transparent"}`}
                   >
-                    <Avatar name={c.username} online={c.online} />
+                    <Avatar name={c.username} src={c.avatarUrl} online={c.online} />
                     <span className="min-w-0 flex-1">
                       <span className="flex items-baseline justify-between gap-2">
                         <span className="truncate font-semibold">{c.username}</span>
@@ -115,11 +117,11 @@ function ConversationList({ items }: { items: ConversationItem[] }) {
 }
 
 // Avatar rond avec l'initiale, et le point vert « en ligne »
-export function Avatar({ name, online, small }: { name: string; online?: boolean; small?: boolean }) {
+export function Avatar({ name, src, online, small }: { name: string; src?: string | null; online?: boolean; small?: boolean }) {
   const { t } = useI18n();
   return (
-    <span className={`relative flex shrink-0 items-center justify-center rounded-full bg-text font-semibold uppercase text-bg ${small ? "h-8 w-8 text-xs" : "h-10 w-10 text-sm"}`}>
-      {name.slice(0, 1)}
+    <span className="relative shrink-0">
+      <UserAvatar name={name} src={src} size={small ? 32 : 40} />
       {online && <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-[#22a559]" aria-label={t.chat.online} />}
     </span>
   );
