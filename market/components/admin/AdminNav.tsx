@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Flag, LayoutDashboard, MessagesSquare, Package, ScrollText, ShieldCheck, Star, Users, type LucideIcon } from "lucide-react";
+import { ChartLine, Flag, LayoutDashboard, MessagesSquare, Package, ScrollText, ShieldCheck, Star, Users, type LucideIcon } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 
 type Props = { username: string; counts: { queue: number; flags: number; reports: number; chats: number } };
@@ -13,6 +13,7 @@ export function AdminNav({ username, counts }: Props) {
   const pathname = usePathname();
   const items: { href: string; label: string; icon: LucideIcon; count?: number }[] = [
     { href: "/admin", label: t.mod.menu.overview, icon: LayoutDashboard },
+    { href: "/admin/stats", label: t.mod.menu.stats, icon: ChartLine },
     { href: "/admin/queue", label: t.mod.menu.queue, icon: ShieldCheck, count: counts.queue },
     { href: "/admin/flags", label: t.mod.menu.flags, icon: Flag, count: counts.flags },
     { href: "/admin/reviews", label: t.mod.menu.reviews, icon: Star, count: counts.reports },

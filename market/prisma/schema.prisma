@@ -402,3 +402,37 @@ model MemberReviewReport {
 
   @@unique([reviewId, userId])
 }
+
+// Statistiques de visite (Modération → Statistiques), mesurées sans cookie : une ligne par page vue.
+// visitor : empreinte anonyme recalculée chaque jour (adresse IP + navigateur + secret du jour, puis hachée) ;
+// l'adresse IP n'est jamais enregistrée. Les vues des admins ne sont pas enregistrées, celles des robots
+// le sont à part (bot rempli). Données gardées 13 mois (nettoyage quotidien, voir app/api/cron/ai-queue).
+model PageView {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  visitor   String
+  path      String // page sans paramètres (sauf ?category= du catalogue)
+  source    String   @default("direct") // provenance de la visite, comme User.signupSource
+  referrer  String? // site d'origine (domaine)
+  campaign  String? // ?utm_source= ou ?ref=
+  country   String?
+  device    String   @default("desktop") // mobile, tablet ou desktop
+  browser   String?
+  os        String?
+  locale    String?
+  bot       String? // nom du robot (Googlebot…) : vue comptée à part
+
+  @@index([createdAt])
+  @@index([visitor, createdAt])
+}
+
+// Recherches tapées dans le catalogue, avec le nombre de résultats (0 = idée de ressource qui manque)
+model SearchLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  visitor   String
+  term      String
+  results   Int
+
+  @@index([createdAt])
+}

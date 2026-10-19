@@ -11,6 +11,9 @@ import type { Locale } from "@/lib/i18n/dictionaries";
 import { ResourceCard } from "@/components/ResourceCard";
 import { CatalogSidebar } from "@/components/catalog/CatalogSidebar";
 import { SortSelect } from "@/components/catalog/SortSelect";
+import { after } from "next/server";
+import { headers } from "next/headers";
+import { botName, recordSearch } from "@/lib/analytics";
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const [{ t }, filters] = await Promise.all([getDictionary(), searchParams.then(parseFilters)]);
@@ -84,6 +87,11 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
   const demoList = demo ? filterDemo(filters) : [];
   const resources = demo ? demoList.slice(0, filters.limit) : realResources;
   const total = demo ? demoList.length : realTotal;
+  // Statistiques : ce que les gens cherchent, et combien de résultats ils trouvent (robots exclus)
+  if (filters.q && !demo) {
+    const requestHeaders = new Headers(await headers());
+    if (!botName(requestHeaders.get("user-agent") ?? "")) after(() => recordSearch(requestHeaders, filters.q, total).catch(() => {}));
+  }
 
   const heading = filters.category ? categoryLabel(filters.category) : t.catalog.title;
   const filterCount = activeFilterCount(filters);

@@ -82,21 +82,7 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
   ]);
   if (aiQueue > 0) kickAiQueue();
 
-  // Provenance des membres inscrits sur la période (voir components/SourceTracker.tsx)
-  const signupWhere = from ? { createdAt: { gte: from } } : {};
-  const [bySource, byCountry] = await Promise.all([
-    db.user.groupBy({ by: ["signupSource"], where: signupWhere, _count: true }),
-    db.user.groupBy({ by: ["signupCountry"], where: signupWhere, _count: true }),
-  ]);
-  const countryName = new Intl.DisplayNames([locale === "fr" ? "fr-FR" : "en-GB"], { type: "region" });
-  const sources = bySource
-    .map((g) => ({ label: g.signupSource === null ? t.mod.originUnknown : g.signupSource === "direct" ? t.mod.originDirect : g.signupSource, n: g._count }))
-    .sort((a, b) => b.n - a.n)
-    .slice(0, 8);
-  const countries = byCountry
-    .map((g) => ({ label: g.signupCountry ? (countryName.of(g.signupCountry) ?? g.signupCountry) : t.mod.originUnknown, n: g._count }))
-    .sort((a, b) => b.n - a.n)
-    .slice(0, 8);
+
 
   // Barres : une par jour (7 et 30 jours), ou une par mois (tout)
   const intl = locale === "fr" ? "fr-FR" : "en-GB";
@@ -191,40 +177,12 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
         </Panel>
       </div>
 
-      <Panel title={t.mod.originTitle} className="mt-4" aside={<span className="text-xs text-muted">{t.mod.periods[period]}</span>}>
-        {members === 0 ? (
-          <p className="py-2 text-sm text-muted">{t.mod.originNone}</p>
-        ) : (
-          <div className="grid gap-6 sm:grid-cols-2">
-            <OriginList title={t.mod.originSources} items={sources} total={members} />
-            <OriginList title={t.mod.originCountries} items={countries} total={members} />
-          </div>
-        )}
-        <p className="mt-4 text-xs text-muted">{t.mod.originNote}</p>
-      </Panel>
+      {/* Visites, provenance et inscriptions en détail : Modération → Statistiques */}
+      <Link href="/admin/stats" className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-5 py-4 text-sm font-semibold transition hover:border-border-strong">
+        {t.stats.intro}
+        <span className="shrink-0">{t.mod.menu.stats} →</span>
+      </Link>
     </>
-  );
-}
-
-// Liste avec une barre proportionnelle (provenance ou pays des nouveaux membres)
-function OriginList({ title, items, total }: { title: string; items: { label: string; n: number }[]; total: number }) {
-  return (
-    <div>
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">{title}</p>
-      <ul className="space-y-2">
-        {items.map((item) => (
-          <li key={item.label} className="text-sm">
-            <div className="flex justify-between gap-3">
-              <span className="truncate">{item.label}</span>
-              <span className="shrink-0 font-semibold">{item.n}</span>
-            </div>
-            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface">
-              <div className="h-full rounded-full bg-accent" style={{ width: `${(item.n / total) * 100}%` }} />
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
 

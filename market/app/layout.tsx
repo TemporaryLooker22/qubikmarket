@@ -9,6 +9,10 @@ import { LocaleProvider } from "@/lib/i18n/client";
 import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import { SourceTracker } from "@/components/SourceTracker";
+import { Suspense } from "react";
+import { after } from "next/server";
+import { headers } from "next/headers";
+import { botName, recordBotView } from "@/lib/analytics";
 import { Analytics } from "@vercel/analytics/next";
 import { DEMO_ENABLED } from "@/lib/demo";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
@@ -32,7 +36,13 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [user, { locale, t }] = await Promise.all([getCurrentUser(), getDictionary()]);
+  const [user, { locale, t }, requestHeaders] = await Promise.all([getCurrentUser(), getDictionary(), headers()]);
+  // Statistiques : les robots (Google…) n'exécutent pas toujours la page, on les compte ici, côté serveur
+  const bot = botName(requestHeaders.get("user-agent") ?? "");
+  if (bot) {
+    const copy = new Headers(requestHeaders);
+    after(() => recordBotView(bot, copy).catch(() => {}));
+  }
   // Pastille « Modération » : seulement calculée pour les admins
   // (éléments à vérifier + signalements de l'IA + avis signalés, voir lib/moderation.ts)
   const pendingCount = user?.role === "ADMIN" ? await moderationCounts().then((c) => c.queue + c.flags + c.reports + c.chats) : 0;
@@ -71,7 +81,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </LocaleProvider>
         {/* Statistiques de visite sans cookie (Vercel Web Analytics) et provenance des inscriptions */}
         <Analytics />
-        <SourceTracker />
+        <Suspense fallback={null}>
+          <SourceTracker />
+        </Suspense>
       </body>
     </html>
   );

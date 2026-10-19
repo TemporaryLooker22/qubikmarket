@@ -155,7 +155,7 @@ const PRIVACY: Record<Locale, LegalDoc> = {
 - **Public profile:** your username, profile photo (if you add one), member since date, the resources you sell and the reviews you receive as a seller or as a customer are shown on your profile page. What you buy is never shown.
 - **Private messages:** messages and images you send to other members. They are private: the moderators can only read a conversation if one of its members reports it. A message that talks about paying outside Qubik (PayPal, Discord…) shows a safety warning; nothing is blocked or read by a person.
 - **Showcase videos:** some resources show a YouTube video. The YouTube player only loads when you click play; YouTube (Google) may then set its own cookies.
-- **Visit statistics:** anonymous and without cookies (Vercel Web Analytics): pages viewed, site of origin, country and type of device, counted together. They can't be used to identify you.
+- **Visit statistics:** anonymous and without cookies, measured by Qubik and by Vercel Web Analytics: page viewed, site of origin, campaign link, country, type of device, browser and site language, plus the searches typed in the catalog. A visitor is only an anonymous fingerprint, recalculated every day from the IP address and browser (the IP address itself is never stored), so you can't be identified or followed from one day to the next. Kept 13 months. Moderators only see totals.
 
 We do not sell your data and we do not use advertising trackers.
 
@@ -225,7 +225,7 @@ We may update this policy. The date of the latest version is shown at the top of
 - **Profil public :** ton pseudo, ta photo de profil (si tu en ajoutes une), ta date d'inscription, les ressources que tu vends et les avis reçus en tant que vendeur ou client sont affichés sur ta page de profil. Ce que tu achètes n'est jamais affiché.
 - **Messages privés :** les messages et images que tu envoies aux autres membres. Ils sont privés : les modérateurs ne peuvent lire une conversation que si l'un de ses membres la signale. Un message qui parle de payer hors de Qubik (PayPal, Discord…) affiche une alerte de sécurité ; rien n'est bloqué ni lu par une personne.
 - **Vidéos de présentation :** certaines ressources montrent une vidéo YouTube. Le lecteur YouTube ne se charge que si tu lances la vidéo ; YouTube (Google) peut alors déposer ses propres cookies.
-- **Statistiques de visite :** anonymes et sans cookie (Vercel Web Analytics) : pages vues, site d'origine, pays et type d'appareil, comptés ensemble. Elles ne permettent pas de t'identifier.
+- **Statistiques de visite :** anonymes et sans cookie, mesurées par Qubik et par Vercel Web Analytics : page vue, site d'origine, lien de campagne, pays, type d'appareil, navigateur et langue du site, ainsi que les recherches tapées dans le catalogue. Un visiteur n'est qu'une empreinte anonyme recalculée chaque jour à partir de l'adresse IP et du navigateur (l'adresse IP elle-même n'est jamais enregistrée) : on ne peut ni t'identifier ni te suivre d'un jour à l'autre. Gardées 13 mois. Les modérateurs ne voient que des totaux.
 
 Nous ne vendons pas tes données et n'utilisons aucun traceur publicitaire.
 
