@@ -141,3 +141,33 @@ export async function markConversationRead(conversationId: string, meId: string)
   }
   await db.notification.updateMany({ where: { userId: meId, type: "MESSAGE", link: links.chat(conversationId), readAt: null }, data: { readAt: new Date() } });
 }
+
+// Message non lu d'un modérateur : affiché dans une fenêtre dès que le membre arrive sur le site
+// (components/chat/ModeratorNotice.tsx). Une seule conversation à la fois, la plus récente.
+export async function pendingModeratorMessage(userId: string) {
+  const admins = (await db.user.findMany({ where: { role: "ADMIN" }, select: { id: true } })).map((u) => u.id);
+  if (admins.length === 0 || admins.includes(userId)) return null;
+  // Conversations dont le dernier message vient d'un admin, puis la plus récente pas encore lue
+  const candidates = await db.conversation.findMany({
+    where: { OR: [{ userAId: userId }, { userBId: userId }], lastSenderId: { in: admins } },
+    orderBy: { lastMessageAt: "desc" },
+    take: 5,
+    select: { id: true, userAId: true, userBId: true, readA: true, readB: true, lastMessageAt: true, lastSenderId: true },
+  });
+  const conversation = candidates.find((c) => {
+    const r = myReadOf(c, userId);
+    return !r || r < c.lastMessageAt;
+  });
+  if (!conversation?.lastSenderId) return null;
+  const read = myReadOf(conversation, userId);
+  const moderator = await db.user.findFirst({ where: { id: conversation.lastSenderId, role: "ADMIN" }, select: { username: true, avatarUrl: true } });
+  if (!moderator) return null;
+  const messages = await db.message.findMany({
+    where: { conversationId: conversation.id, senderId: conversation.lastSenderId, kind: "TEXT", deletedAt: null, ...(read && { createdAt: { gt: read } }) },
+    orderBy: { createdAt: "asc" },
+    take: 5,
+    select: { id: true, body: true, images: true, createdAt: true },
+  });
+  if (messages.length === 0) return null;
+  return { conversationId: conversation.id, moderator, messages: messages.map((m) => ({ ...m, createdAt: m.createdAt.toISOString() })) };
+}

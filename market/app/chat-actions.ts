@@ -10,7 +10,7 @@ import { isUploadedImage } from "@/lib/uploads";
 import { links, notify, notifyAdmins } from "@/lib/notifications";
 import { logModeration } from "@/lib/moderation";
 import { MESSAGE_MAX_IMAGES, MESSAGE_MAX_LENGTH, mentionsOffPlatform, REPORT_REASONS, type ReportReason } from "@/lib/chat-text";
-import { MESSAGE_SELECT, otherIdOf, pairOf, rateLimited, sendBlock, toChatMessages, touchLastSeen, type ChatMessage, type SendBlock } from "@/lib/chat";
+import { markConversationRead, MESSAGE_SELECT, otherIdOf, pairOf, rateLimited, sendBlock, toChatMessages, touchLastSeen, type ChatMessage, type SendBlock } from "@/lib/chat";
 
 export type SendError = "login" | "empty" | "tooLong" | "images" | "minute" | "day" | "notFound" | SendBlock;
 export type SendResult = { ok: true; conversationId: string; messages: ChatMessage[] } | { ok: false; error: SendError };
@@ -155,3 +155,11 @@ export async function deleteChatMessage(messageId: string) {
   revalidatePath(`/admin/messages/${message.conversationId}`);
 }
 
+
+// Fenêtre « Message de la modération » : « J'ai compris » marque la conversation comme lue
+export async function acknowledgeModeratorMessage(conversationId: string) {
+  const me = await getCurrentUser();
+  if (!me) return;
+  await markConversationRead(String(conversationId), me.id);
+  revalidatePath("/", "layout");
+}

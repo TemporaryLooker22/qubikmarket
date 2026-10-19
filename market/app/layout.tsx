@@ -3,7 +3,8 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { moderationCounts } from "@/lib/moderation";
-import { unreadConversations } from "@/lib/chat";
+import { pendingModeratorMessage, unreadConversations } from "@/lib/chat";
+import { ModeratorNotice } from "@/components/chat/ModeratorNotice";
 import { getDictionary } from "@/lib/i18n/server";
 import { LocaleProvider } from "@/lib/i18n/client";
 import Link from "next/link";
@@ -52,6 +53,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const chatUnread = user ? await unreadConversations(user.id) : 0;
   // Le menu du compte propose « Devenir vendeur » à ceux qui n'ont encore rien publié
   const isSeller = user ? (await db.resource.count({ where: { sellerId: user.id } })) > 0 : false;
+  // Message d'un modérateur pas encore lu : affiché dans une fenêtre dès l'arrivée sur le site
+  const moderatorNotice = user && user.role !== "ADMIN" ? await pendingModeratorMessage(user.id) : null;
 
   return (
     <html lang={locale} className={jakarta.variable}>
@@ -81,6 +84,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </LocaleProvider>
         {/* Statistiques de visite sans cookie (Vercel Web Analytics) et provenance des inscriptions */}
         <Analytics />
+        <ModeratorNotice notice={moderatorNotice} />
         <Suspense fallback={null}>
           <SourceTracker />
         </Suspense>

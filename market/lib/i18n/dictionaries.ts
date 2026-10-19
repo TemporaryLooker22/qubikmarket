@@ -614,6 +614,12 @@ export const en = {
       viewProfile: "View my public profile",
     },
   },
+  modNotice: {
+    title: "Message from the moderation team",
+    from: (name: string) => `Sent by ${name}, Qubik moderator`,
+    ok: "Got it",
+    reply: "Reply",
+  },
   promo: {
     title: "Promotion",
     help: (base: number, max: number) => `Leave Qubik a bigger share of your sales (from ${base}% up to ${max}%) and your resource is shown in the Sponsored spots: home page, top of the catalog and search, and similar resources. The higher the percentage, the more often it appears, and in a better spot.`,
@@ -1769,6 +1775,12 @@ export const fr: Dictionary = {
       locked: "Non modifiable",
       viewProfile: "Voir mon profil public",
     },
+  },
+  modNotice: {
+    title: "Message de la modération",
+    from: (name) => `Envoyé par ${name}, modérateur de Qubik`,
+    ok: "J'ai compris",
+    reply: "Répondre",
   },
   promo: {
     title: "Mise en avant",
