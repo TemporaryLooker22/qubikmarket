@@ -6,6 +6,7 @@ import { getDictionary } from "@/lib/i18n/server";
 import { formatAmount, formatNumber } from "@/lib/i18n/format";
 import { DEMO_BEST_SELLERS, DEMO_ENABLED, DEMO_LATEST } from "@/lib/demo";
 import { getShowcaseImages } from "@/lib/showcase";
+import { pickPromoted } from "@/lib/promotion";
 import { DISCORD_URL, SITE_NAME, SITE_URL } from "@/lib/site";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Gallery } from "@/components/Gallery";
@@ -101,7 +102,8 @@ export default async function HomePage() {
   const [mainSetup, ...otherSetups] = featured;
 
   // Fond animé du haut de page : miniatures des ressources en ligne (ou de la démo)
-  const heroImages = await getShowcaseImages();
+  // Mises en avant payées : tirage pondéré par la commission choisie, à chaque affichage
+  const [heroImages, promoted] = await Promise.all([getShowcaseImages(), pickPromoted({ count: 8 })]);
 
   return (
     <div className="full-bleed">
@@ -153,6 +155,18 @@ export default async function HomePage() {
           </div>
         </section>
       </div>
+
+      {/* Mis en avant : ressources sponsorisées (cachée s'il n'y en a aucune) */}
+      {promoted.length > 0 && (
+        <section className="reveal container-q mt-4">
+          <SectionTitle title={t.promo.homeTitle} subtitle={t.promo.homeSub} href="/resources" seeAll={t.home.seeAll} />
+          <Gallery>
+            {promoted.map((r) => (
+              <ResourceCard key={r.id} resource={r} locale={locale} sponsored />
+            ))}
+          </Gallery>
+        </section>
+      )}
 
       {/* 3. Les plus vendues en ce moment (cachée tant qu'il n'y a aucune vente) */}
       {bestSellers.length > 0 && (

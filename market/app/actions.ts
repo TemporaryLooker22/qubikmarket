@@ -26,6 +26,8 @@ import { isLocale, type Dictionary } from "@/lib/i18n/dictionaries";
 import { getDictionary, LOCALE_COOKIE } from "@/lib/i18n/server";
 import { randomBytes } from "node:crypto";
 import { PENDING_COOKIE, verify, type OAuthProfile } from "@/lib/oauth";
+import { promoToStore } from "@/lib/promotion";
+import { feePercentFor } from "@/lib/earnings";
 
 export type FormState = { error?: string } | undefined;
 
@@ -271,6 +273,10 @@ export async function publishResource(_: FormState, formData: FormData): Promise
     ? `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`
     : baseSlug;
 
+  // Mise en avant choisie dans le formulaire (commission au-dessus de la commission normale du vendeur)
+  const sellerFee = await db.user.findUnique({ where: { id: user.id }, select: { founderUntil: true } });
+  const promoPercent = promoToStore(formData.get("promo"), feePercentFor({ founderUntil: sellerFee?.founderUntil ?? null }, new Date()), priceCents);
+
   const created = await db.resource.create({
     data: {
       slug,
@@ -279,6 +285,7 @@ export async function publishResource(_: FormState, formData: FormData): Promise
       description: data.description,
       category: data.category,
       priceCents,
+      promoPercent,
       status,
       reviewNote,
       scanVerdict: report.verdict,

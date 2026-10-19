@@ -148,7 +148,7 @@ export default async function EditResourcePage({ params, searchParams }: { param
       )}
       {tab === "price" && (
         <Card title={t.sell.priceTitle} text={t.edit.priceText}>
-          <PriceForm resourceId={resource.id} initialCents={resource.priceCents} feePercent={feePercent} />
+          <PriceForm resourceId={resource.id} initialCents={resource.priceCents} feePercent={feePercent} initialPromo={resource.promoPercent} />
         </Card>
       )}
 

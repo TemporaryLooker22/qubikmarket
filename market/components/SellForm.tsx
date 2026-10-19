@@ -41,6 +41,8 @@ export function SellForm({ feePercent, username, directUpload }: { feePercent: n
   const [video, setVideo] = useState("");
   const [paid, setPaid] = useState(true);
   const [price, setPrice] = useState("");
+  // Mise en avant : commission choisie (sa commission normale = pas de mise en avant)
+  const [promo, setPromo] = useState(feePercent);
   const [localError, setLocalError] = useState<string>();
 
   // Libère les aperçus des images quand on quitte la page
@@ -166,7 +168,7 @@ export function SellForm({ feePercent, username, directUpload }: { feePercent: n
 
         {/* 5. Prix */}
         <Section n={5} done={priceOk && (!paid || price !== "")} title={t.sell.priceTitle} text={t.sell.priceText}>
-          <PriceField paid={paid} onPaidChange={setPaid} price={price} onPriceChange={setPrice} feePercent={feePercent} inputClass={inputClass} />
+          <PriceField paid={paid} onPaidChange={setPaid} price={price} onPriceChange={setPrice} feePercent={feePercent} promo={promo} onPromoChange={setPromo} inputClass={inputClass} />
         </Section>
 
         {/* Publication */}

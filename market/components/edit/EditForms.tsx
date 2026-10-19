@@ -159,11 +159,12 @@ export function DescriptionForm({ resourceId, initial }: { resourceId: string; i
   );
 }
 
-export function PriceForm({ resourceId, initialCents, feePercent }: { resourceId: string; initialCents: number; feePercent: number }) {
+export function PriceForm({ resourceId, initialCents, feePercent, initialPromo }: { resourceId: string; initialCents: number; feePercent: number; initialPromo: number | null }) {
   const { t } = useI18n();
   const { state, pending, submit } = useEditAction(updateResourcePrice);
   const [paid, setPaid] = useState(initialCents > 0);
   const [price, setPrice] = useState(initialCents > 0 ? (initialCents / 100).toFixed(2) : "");
+  const [promo, setPromo] = useState(Math.max(feePercent, initialPromo ?? feePercent));
   const [localError, setLocalError] = useState<string>();
   const { priceCents, priceOk } = parsePrice(paid, price);
 
@@ -177,11 +178,12 @@ export function PriceForm({ resourceId, initialCents, feePercent }: { resourceId
           const fd = new FormData();
           fd.set("resourceId", resourceId);
           fd.set("price", paid ? price : "0");
+          fd.set("promo", String(promo));
           return fd;
         });
       }}
     >
-      <PriceField paid={paid} onPaidChange={setPaid} price={price} onPriceChange={setPrice} feePercent={feePercent} inputClass={inputClass} />
+      <PriceField paid={paid} onPaidChange={setPaid} price={price} onPriceChange={setPrice} feePercent={feePercent} promo={promo} onPromoChange={setPromo} inputClass={inputClass} />
       <SaveBar state={state} pending={pending} note={t.edit.priceText} localError={localError} />
     </form>
   );

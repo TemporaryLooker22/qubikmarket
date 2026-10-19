@@ -25,6 +25,7 @@ import { canReview, REVIEWS_SHOWN, sellerRating, VISIBLE_REVIEW } from "@/lib/re
 import { ShareButton } from "@/components/product/ShareButton";
 import { responseTime } from "@/lib/chat";
 import { memberRating } from "@/lib/member-reviews";
+import { pickPromoted } from "@/lib/promotion";
 import { SITE_URL } from "@/lib/site";
 import { links } from "@/lib/notifications";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -101,7 +102,8 @@ export default async function ResourcePage({ params, searchParams }: { params: P
   let product: Product;
   let access: Access;
   let report: ScanReport | null = null; // détail du scan : seulement pour le vendeur et les modérateurs
-  let similar: React.ComponentProps<typeof ResourceCard>["resource"][];
+  let similar: (React.ComponentProps<typeof ResourceCard>["resource"] & { id: string })[];
+  let sponsoredIds = new Set<string>();
   let reviews: Reviews | null = null;
 
   const demo = findDemo(slug);
@@ -190,7 +192,10 @@ export default async function ResourcePage({ params, searchParams }: { params: P
       bought: Boolean(bought),
       contact: isOwner ? null : { href: `/messages/new?to=${encodeURIComponent(resource.seller.username)}&r=${resource.id}`, response: sellerResponse },
     };
-    similar = similarResources;
+    // Jusqu'à 2 ressources sponsorisées de la même catégorie, en premier
+    const promotedSimilar = await pickPromoted({ count: 2, category: resource.category, excludeIds: [resource.id] });
+    sponsoredIds = new Set(promotedSimilar.map((r) => r.id));
+    similar = [...promotedSimilar, ...similarResources.filter((r) => !sponsoredIds.has(r.id))].slice(0, 4);
   }
 
   const label = categoryLabel(product.category);
@@ -414,7 +419,7 @@ export default async function ResourcePage({ params, searchParams }: { params: P
           <h2 className="mb-4 text-xl font-semibold tracking-tight sm:text-2xl">{t.resource.similar}</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {similar.map((r) => (
-              <ResourceCard key={r.slug} resource={r} locale={locale} />
+              <ResourceCard key={r.slug} resource={r} locale={locale} sponsored={sponsoredIds.has(r.id)} />
             ))}
           </div>
         </section>

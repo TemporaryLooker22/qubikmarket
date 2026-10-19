@@ -24,13 +24,14 @@ type Props = {
   size?: "normal" | "large" | "compact";
   rank?: number; // position dans le classement des ventes (#1, #2…)
   sales?: number; // nombre de ventes à afficher
+  sponsored?: boolean; // mise en avant payée (lib/promotion.ts) : badge « Sponsorisé »
 };
 
 const formatRating = (n: number, locale: Locale) => n.toLocaleString(locale === "fr" ? "fr-FR" : "en-GB", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 const THUMB_SIZES = { normal: "aspect-video", large: "min-h-48 flex-1", compact: "h-28" };
 
-export function ResourceCard({ resource, locale, href, size = "normal", rank, sales }: Props) {
+export function ResourceCard({ resource, locale, href, size = "normal", rank, sales, sponsored }: Props) {
   const t = dictionaries[locale];
   const large = size === "large";
   const free = resource.priceCents === 0;
@@ -55,6 +56,11 @@ export function ResourceCard({ resource, locale, href, size = "normal", rank, sa
             category={resource.category}
             className={`transition duration-500 group-hover:-rotate-6 group-hover:scale-110 group-hover:text-text ${large ? "h-12 w-12" : "h-9 w-9"}`}
           />
+        )}
+        {sponsored && !rank && (
+          <span className="absolute left-2 top-2 rounded-full bg-text/85 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-bg shadow-sm backdrop-blur">
+            {t.card.sponsored}
+          </span>
         )}
         {rank && (
           <span className="absolute left-2 top-2 flex h-7 min-w-7 shadow-sm items-center justify-center rounded-full bg-text px-2 text-xs font-bold text-bg">

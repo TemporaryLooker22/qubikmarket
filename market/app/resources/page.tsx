@@ -14,6 +14,7 @@ import { SortSelect } from "@/components/catalog/SortSelect";
 import { after } from "next/server";
 import { headers } from "next/headers";
 import { botName, recordSearch } from "@/lib/analytics";
+import { pickPromoted } from "@/lib/promotion";
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const [{ t }, filters] = await Promise.all([getDictionary(), searchParams.then(parseFilters)]);
@@ -87,6 +88,8 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
   const demoList = demo ? filterDemo(filters) : [];
   const resources = demo ? demoList.slice(0, filters.limit) : realResources;
   const total = demo ? demoList.length : realTotal;
+  // Sponsorisés en tête : même catégorie, et qui correspondent à la recherche s'il y en a une
+  const sponsored = demo ? [] : await pickPromoted({ count: filters.q ? 1 : 3, category: filters.category || undefined, query: filters.q || undefined });
   // Statistiques : ce que les gens cherchent, et combien de résultats ils trouvent (robots exclus)
   if (filters.q && !demo) {
     const requestHeaders = new Headers(await headers());
@@ -154,6 +157,18 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
 
           {/* Filtres actifs, retirables d'un clic */}
           <ActiveFilters filters={filters} locale={locale} t={t} />
+
+          {/* Sponsorisés (mise en avant payée par les vendeurs), signalés comme tels */}
+          {sponsored.length > 0 && (
+            <div className="mt-5">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted">{t.promo.catalogLabel}</p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {sponsored.map((r) => (
+                  <ResourceCard key={r.id} resource={r} locale={locale} sponsored />
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Résultats */}
           {resources.length > 0 ? (

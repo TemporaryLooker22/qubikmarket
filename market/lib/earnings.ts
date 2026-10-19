@@ -1,6 +1,7 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { FOUNDER_FEE_PERCENT } from "./sellers";
+import { PROMO_MAX } from "./promotion-shared";
 
 // Registre des gains des vendeurs (table SellerEarning).
 // Une vente payée crée un gain « PENDING », versable après le délai de sécurité.
@@ -28,13 +29,14 @@ export function splitSale(grossCents: number, taxCents: number, feePercent: numb
 export async function recordSaleEarning(tx: Tx, purchaseId: string, paidAt: Date) {
   const purchase = await tx.purchase.findUnique({
     where: { id: purchaseId },
-    select: { amountCents: true, taxCents: true, buyerFeeCents: true, buyerFeeTaxCents: true, earning: { select: { id: true } }, resource: { select: { seller: { select: { id: true, founderUntil: true } } } } },
+    select: { amountCents: true, taxCents: true, buyerFeeCents: true, buyerFeeTaxCents: true, earning: { select: { id: true } }, resource: { select: { promoPercent: true, seller: { select: { id: true, founderUntil: true } } } } },
   });
   if (!purchase || purchase.amountCents === 0) return;
   // Nouvel achat après un remboursement : l'ancien gain (annulé ou régularisé) reste dans l'historique, détaché de l'achat
   if (purchase.earning) await tx.sellerEarning.update({ where: { id: purchase.earning.id }, data: { purchaseId: null } });
   const seller = purchase.resource.seller;
-  const feePercent = feePercentFor(seller, paidAt);
+  // Commission normale, ou celle choisie pour la mise en avant si elle est plus haute (lib/promotion.ts)
+  const feePercent = Math.min(PROMO_MAX, Math.max(feePercentFor(seller, paidAt), purchase.resource.promoPercent ?? 0));
   // Le vendeur est payé sur le prix de sa ressource : les frais de service de l'acheteur (et leur TVA) restent à Qubik
   const grossCents = purchase.amountCents - purchase.buyerFeeCents;
   const taxCents = purchase.taxCents - purchase.buyerFeeTaxCents;

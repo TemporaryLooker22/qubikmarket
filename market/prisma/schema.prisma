@@ -59,15 +59,18 @@ model User {
 }
 
 model Resource {
-  id          String  @id @default(cuid())
-  slug        String  @unique
-  title       String
-  summary     String
-  description String
-  category    String
-  priceCents  Int // 0 = gratuit
-  status      String  @default("PENDING") // ANALYZING (analyse IA en cours), PENDING, APPROVED, REJECTED ou UNLISTED (retirée de la vente)
-  reviewNote  String? // message du modérateur au vendeur
+  id           String  @id @default(cuid())
+  slug         String  @unique
+  title        String
+  summary      String
+  description  String
+  category     String
+  priceCents   Int // 0 = gratuit
+  // Mise en avant : commission choisie par le vendeur (de sa commission normale à 15 %). Au-dessus de sa
+  // commission normale, la ressource est mise en avant (accueil, catalogue, recherche, similaires). Vide = normale.
+  promoPercent Int?
+  status       String  @default("PENDING") // ANALYZING (analyse IA en cours), PENDING, APPROVED, REJECTED ou UNLISTED (retirée de la vente)
+  reviewNote   String? // message du modérateur au vendeur
 
   // Résultat du scanner anti-backdoor
   scanVerdict String // clean, suspicious ou dangerous

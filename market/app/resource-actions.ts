@@ -6,6 +6,8 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { feePercentFor } from "@/lib/earnings";
+import { promoToStore } from "@/lib/promotion";
 import { requireAdmin, requireUser } from "@/lib/auth";
 import { hasRobloxContent, scanUpload, type ScanReport } from "@/lib/scan";
 import { isUploadedImage, receiveUpload } from "@/lib/uploads";
@@ -123,8 +125,11 @@ export async function updateResourcePrice(_: EditState, formData: FormData): Pro
   if (price > 500) return { error: t.errors.priceMax };
   const priceCents = Math.round(price * 100);
   if (priceCents > 0 && priceCents < 100) return { error: t.errors.priceMin };
+  // Mise en avant : commission choisie au-dessus de la commission normale du vendeur (lib/promotion.ts)
+  const seller = await db.user.findUnique({ where: { id: resource.sellerId }, select: { founderUntil: true } });
+  const promoPercent = promoToStore(formData.get("promo"), feePercentFor({ founderUntil: seller?.founderUntil ?? null }, new Date()), priceCents);
   // Le nouveau prix ne s'applique qu'aux prochains achats : les acheteurs gardent leur accès
-  await db.resource.update({ where: { id: resource.id }, data: { priceCents } });
+  await db.resource.update({ where: { id: resource.id }, data: { priceCents, promoPercent } });
   refresh(resource);
   return { ok: t.edit.saved };
 }
