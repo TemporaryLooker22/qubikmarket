@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { BadgeCheck, ChartLine, LayoutDashboard, Package, Receipt, Settings, ShoppingBag, type LucideIcon } from "lucide-react";
 import { UserAvatar } from "@/components/UserAvatar";
 import { useI18n } from "@/lib/i18n/client";
+import { useActiveTabScroll } from "@/components/useActiveTabScroll";
 
 type Props = { username: string; avatarUrl: string | null; isSeller: boolean; counts: { resources: number; purchases: number } };
 
@@ -12,6 +13,7 @@ type Props = { username: string; avatarUrl: string | null; isSeller: boolean; co
 export function DashboardNav({ username, avatarUrl, isSeller, counts }: Props) {
   const { t } = useI18n();
   const pathname = usePathname();
+  const navRef = useActiveTabScroll<HTMLElement>(pathname);
 
   const seller: { href: string; label: string; icon: LucideIcon; count?: number }[] = [
     { href: "/dashboard", label: t.dashboard.menu.overview, icon: LayoutDashboard },
@@ -43,7 +45,7 @@ export function DashboardNav({ username, avatarUrl, isSeller, counts }: Props) {
   };
 
   return (
-    <aside className="lg:sticky lg:top-24">
+    <aside className="min-w-0 lg:sticky lg:top-24">
       <div className="hidden items-center gap-2.5 px-1.5 pb-4 lg:flex">
         <UserAvatar name={username} src={avatarUrl} size={40} />
         <div className="min-w-0">
@@ -56,7 +58,7 @@ export function DashboardNav({ username, avatarUrl, isSeller, counts }: Props) {
           )}
         </div>
       </div>
-      <nav aria-label={t.dashboard.title} className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0">
+      <nav ref={navRef} aria-label={t.dashboard.title} className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0">
         {isSeller && seller.map(item)}
         {isSeller && <hr className="mx-2 my-2 hidden border-border lg:block" />}
         {item(purchases)}

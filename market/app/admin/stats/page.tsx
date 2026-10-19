@@ -137,7 +137,7 @@ export default async function AdminStatsPage({ searchParams }: { searchParams: P
         <Kpi icon={ShoppingCart} label={s.kpiSales} value={num(current.sales)} change={change(current, previous, "sales", locale)} />
       </div>
 
-      <div className="mb-4 grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="mb-4 grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Panel title={s.chartTitle[range.unit]} aside={<Legend t={t} />}>
           <VisitsChart buckets={buckets} label={bucketLabel} tooltip={bucketTip} />
           <p className="mt-2 text-xs text-muted">{s.chartNote}</p>
@@ -145,7 +145,7 @@ export default async function AdminStatsPage({ searchParams }: { searchParams: P
         <LiveCard initial={liveNow} />
       </div>
 
-      <div className="mb-4 grid gap-4 lg:grid-cols-2">
+      <div className="mb-4 grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
         <StatsTabs
           title={s.pagesTitle}
           tabs={[
@@ -174,7 +174,7 @@ export default async function AdminStatsPage({ searchParams }: { searchParams: P
         />
       </div>
 
-      <div className="mb-4 grid gap-4 lg:grid-cols-3">
+      <div className="mb-4 grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-3">
         <StatsTabs title={s.countriesTitle} tabs={[{ label: "", content: <BarList rows={dimRows(dims.country, (v) => `${v ? flag(v) : "🌐"} ${countryName(v)}`)} empty={s.empty} format={num} /> }]} />
         <StatsTabs
           title={s.devicesTitle}
@@ -195,7 +195,7 @@ export default async function AdminStatsPage({ searchParams }: { searchParams: P
         </section>
       </div>
 
-      <div className="mb-4 grid gap-4 2xl:grid-cols-2">
+      <div className="mb-4 grid grid-cols-[minmax(0,1fr)] gap-4 2xl:grid-cols-2">
         <Panel title={s.funnelTitle}>
           <div className="space-y-2.5">
             {[
@@ -280,7 +280,7 @@ export default async function AdminStatsPage({ searchParams }: { searchParams: P
         </Panel>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
         <Panel title={s.searchesTitle}>
           {searchList.length === 0 ? (
             <p className="text-sm text-muted">{s.searchesEmpty}</p>

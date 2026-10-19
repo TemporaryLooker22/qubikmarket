@@ -48,7 +48,7 @@ export default async function AdminChatPage({ params }: { params: Promise<{ id: 
       </Link>
       <PageTitle title={`${conversation.userA.username} ↔ ${conversation.userB.username}`} />
 
-      <div className="mb-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="mb-4 grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <Panel title={t.mod.chatReports}>
           <ul className="space-y-2">
             {conversation.reports.map((r) => (

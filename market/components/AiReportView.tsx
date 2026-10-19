@@ -74,7 +74,7 @@ export async function AiReportView({ analysis, showTips = true }: { analysis: An
         )}
       </div>
 
-      <div className={`grid gap-2.5 ${analysis.aiDescription != null ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+      <div className={`grid grid-cols-[minmax(0,1fr)] gap-2.5 ${analysis.aiDescription != null ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
         <Score label={t.ai.match} value={analysis.aiMatch ?? 0} />
         <Score label={t.ai.quality} value={analysis.aiQuality ?? 0} />
         {analysis.aiDescription != null && <Score label={t.ai.description} value={analysis.aiDescription} />}

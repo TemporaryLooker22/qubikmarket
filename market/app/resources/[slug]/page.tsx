@@ -269,7 +269,7 @@ export default async function ResourcePage({ params, searchParams }: { params: P
         </div>
       )}
 
-      <div className="mt-4 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0 space-y-6">
           <div className="animate-fade-up">
             <ProductGallery images={product.images} category={product.category} title={product.title} videoId={product.videoId} />
@@ -344,7 +344,7 @@ export default async function ResourcePage({ params, searchParams }: { params: P
             </Card>
           )}
 
-          <div className="grid gap-6 sm:grid-cols-2">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-6 sm:grid-cols-2">
             <Card title={t.resource.details}>
               <dl className="space-y-2 text-sm">
                 {product.version && <Detail label={t.resource.versionsTitle} value={`v${product.version}`} />}
@@ -576,7 +576,7 @@ function ReviewsSection({ product, reviews, locale, t }: { product: Product; rev
       <h2 className="font-semibold">{t.reviews.title}</h2>
 
       {count > 0 ? (
-        <div className="mt-4 grid items-center gap-6 border-b border-border pb-5 sm:grid-cols-[150px_minmax(0,1fr)]">
+        <div className="mt-4 grid grid-cols-[minmax(0,1fr)] items-center gap-6 border-b border-border pb-5 sm:grid-cols-[150px_minmax(0,1fr)]">
           <div>
             <p className="text-5xl font-extrabold leading-none tracking-tight">{formatRating(avg, locale)}</p>
             <Stars rating={avg} label={t.resource.rating(formatRating(avg, locale))} className="mt-2 h-4 w-4" />

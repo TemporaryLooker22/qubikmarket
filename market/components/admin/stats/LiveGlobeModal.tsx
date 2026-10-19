@@ -158,7 +158,7 @@ export function LiveGlobeModal({ onClose }: { onClose: () => void }) {
             <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />
           </p>
         ) : (
-          <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             {/* Globe et pays */}
             <div className="flex flex-col items-center">
               <Globe countries={d.countries} />
@@ -218,7 +218,7 @@ export function LiveGlobeModal({ onClose }: { onClose: () => void }) {
                 </div>
               )}
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
                 <Mini title={s.devicesTitle} rows={d.devices.map((r) => ({ label: s.devices[r.value] ?? r.value, n: r.visitors }))} total={data.visitors} />
                 <Mini title={s.sourcesTitle} rows={d.sources.map((r) => ({ label: r.value || s.direct, n: r.visitors }))} total={data.visitors} />
                 <Mini title={s.localeTitle} rows={d.locales.map((r) => ({ label: s.locales[r.value] ?? (r.value || s.unknown), n: r.visitors }))} total={data.visitors} />

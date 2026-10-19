@@ -63,7 +63,7 @@ export default async function DashboardPurchasesPage() {
           </Link>
         </div>
       ) : (
-        <ul className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
+        <ul className="grid grid-cols-[minmax(0,1fr)] gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
           {purchases.map(({ id, amountCents, createdAt, paidAt, lastDownloadedAt, resource: r }) => {
             // Nouvelle version : le fichier a changé depuis le dernier téléchargement (ou depuis l'achat)
             const seen = lastDownloadedAt ?? paidAt ?? createdAt;

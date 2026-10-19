@@ -143,7 +143,7 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
         <RevenueBars bars={bars} />
       </Panel>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+      <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-2">
         <Panel title={t.mod.todo}>
           {counts.queue + counts.flags + counts.reports + counts.chats === 0 ? (
             <p className="py-2 text-sm text-muted">{t.mod.todoNone}</p>

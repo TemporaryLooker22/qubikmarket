@@ -7,7 +7,7 @@ export async function AuthLayout({ title, subtitle, t, children }: { title: stri
   const images = await getShowcaseImages();
   return (
     <div className="full-bleed container-q py-6">
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
         <div className="flex items-center justify-center py-6 lg:py-10">
           <div className="animate-fade-up w-full max-w-md">
             <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>

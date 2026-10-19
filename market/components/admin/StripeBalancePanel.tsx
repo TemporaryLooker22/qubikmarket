@@ -35,7 +35,7 @@ export function StripeBalancePanel({ data, t, locale }: { data: PlatformBalance;
 
   return (
     <Panel title={m.stripeTitle} className="mb-4" aside={settings}>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-3">
         <Stat icon={Landmark} label={m.stripeBalance} value={money(s.availableCents + s.pendingCents)} note={m.stripeBalanceNote(money(s.availableCents), money(s.pendingCents))} />
         <Stat
           icon={Store}

@@ -50,7 +50,7 @@ export default async function BecomeSellerPage() {
       )}
 
       {/* Hero */}
-      <section className="container-q grid items-center gap-10 pb-12 pt-12 lg:grid-cols-[1.1fr_1fr] lg:pt-16">
+      <section className="container-q grid grid-cols-[minmax(0,1fr)] items-center gap-10 pb-12 pt-12 lg:grid-cols-[1.1fr_1fr] lg:pt-16">
         <div className="animate-fade-up">
           <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted">{t.seller.eyebrow}</p>
           <h1 className="mt-3 text-4xl font-semibold leading-[1.08] tracking-tight sm:text-6xl">
@@ -73,7 +73,7 @@ export default async function BecomeSellerPage() {
       {/* Pourquoi Qubik */}
       <section className="reveal container-q mt-4">
         <h2 className="mb-6 text-2xl font-semibold tracking-tight sm:text-3xl">{t.seller.whyTitle}</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {t.seller.why.map((item, i) => {
             const Icon = WHY_ICONS[i];
             return (
@@ -93,7 +93,7 @@ export default async function BecomeSellerPage() {
       <section className="mt-16 bg-surface py-14">
         <div className="reveal container-q">
           <h2 className="mb-8 text-2xl font-semibold tracking-tight sm:text-3xl">{t.seller.howTitle}</h2>
-          <ol className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <ol className="grid grid-cols-[minmax(0,1fr)] gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {t.seller.steps.map((step, i) => (
               <li key={step.title} className="relative">
                 <span className="flex h-10 w-10 items-center justify-center rounded-full bg-text text-sm font-bold text-bg">{i + 1}</span>

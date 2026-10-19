@@ -113,7 +113,7 @@ export function SellForm({ feePercent, username, directUpload }: { feePercent: n
   const error = localError ?? state?.error;
 
   return (
-    <form onSubmit={submit} className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <form onSubmit={submit} className="mt-8 grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
       <div className="min-w-0 space-y-4">
         {/* 1. Fichier */}
         <Section n={1} done={ready.file} title={t.sell.fileTitle} text={t.sell.fileText}>

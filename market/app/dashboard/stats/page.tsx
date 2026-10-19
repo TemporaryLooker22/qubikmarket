@@ -178,7 +178,7 @@ export default async function SellerStatsPage({ searchParams }: { searchParams: 
         <p className="mt-2 text-xs text-muted">{s.tableNote}</p>
       </Panel>
 
-      <div className="mb-4 grid gap-4 lg:grid-cols-2">
+      <div className="mb-4 grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
         <Panel title={s.sourcesTitle}>
           <BarList
             rows={sources.map((x) => ({ key: x.key, label: sourceLabel(x.key), value: x.views, extra: rate(x.views, totalSourceViews) }))}

@@ -208,6 +208,11 @@ body {
   font-size: 0.9375rem;
   line-height: 1.7;
   color: color-mix(in srgb, var(--color-text) 88%, transparent);
+  /* Un long lien ou un mot sans espace passe à la ligne au lieu d'élargir la page sur téléphone */
+  overflow-wrap: anywhere;
+}
+.markdown pre code {
+  overflow-wrap: normal;
 }
 .markdown > * + * {
   margin-top: 0.85em;

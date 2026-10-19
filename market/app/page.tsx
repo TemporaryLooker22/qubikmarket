@@ -203,7 +203,7 @@ export default async function HomePage() {
         <section className="reveal mt-12 bg-surface py-12">
           <div className="container-q">
             <SectionTitle title={t.home.setupsTitle} subtitle={t.home.setupsSub} href="/resources?category=game-setups" seeAll={t.home.seeAll} />
-            <div className={`grid gap-4 ${otherSetups.length ? "md:grid-cols-[2fr_1fr]" : ""}`}>
+            <div className={`grid grid-cols-[minmax(0,1fr)] gap-4 ${otherSetups.length ? "md:grid-cols-[2fr_1fr]" : ""}`}>
               <ResourceCard resource={mainSetup} locale={locale} size="large" />
               {otherSetups.length > 0 && (
                 <div className="grid gap-4">
@@ -221,7 +221,7 @@ export default async function HomePage() {
       <section className="mt-12 bg-surface py-12">
         <div className="reveal container-q">
           <SectionTitle title={t.home.howTitle} />
-          <ol className="grid gap-8 sm:grid-cols-3">
+          <ol className="grid grid-cols-[minmax(0,1fr)] gap-8 sm:grid-cols-3">
             {[Upload, ScanSearch, Download].map((Icon, i) => (
               <li key={i}>
                 <div className="flex items-center gap-3">
@@ -241,7 +241,7 @@ export default async function HomePage() {
       {/* 7. Chiffres clés (cachés au lancement, voir SHOW_STATS_FROM) */}
       {scannedCount >= SHOW_STATS_FROM && (
         <section className="reveal container-q mt-16">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-3">
             <Stat label={t.home.stats.scanned} value={formatNumber(scannedCount, locale)} />
             <Stat label={t.home.stats.blocked} value={formatNumber(blockedCount, locale)} />
             <Stat label={t.home.stats.sellers} value={formatNumber(sellerCount, locale)} />

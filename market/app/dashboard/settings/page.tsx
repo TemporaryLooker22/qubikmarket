@@ -20,7 +20,7 @@ export default async function SettingsPage() {
   return (
     <>
       <DashboardHeader title={s.title} intro={s.intro} />
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <section className="rounded-2xl border border-border bg-card p-5 sm:p-6">
           <h2 className="font-semibold">{s.photo}</h2>
           <p className="mb-5 mt-1 text-sm text-muted">{s.photoHint}</p>

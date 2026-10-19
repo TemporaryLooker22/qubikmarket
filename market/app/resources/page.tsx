@@ -101,7 +101,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
 
   return (
     <div className="full-bleed container-q pt-8">
-      <div className="grid gap-8 md:grid-cols-[220px_minmax(0,1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-8 md:grid-cols-[220px_minmax(0,1fr)]">
         {/* Filtres (ordinateur) */}
         <aside className="hidden md:block">
           <div className="sticky top-24">

@@ -32,7 +32,7 @@ export default async function DevResourcesPage() {
       <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">{s.title}</h1>
       <p className="mt-2 max-w-2xl text-[15px] text-muted">{s.intro}</p>
 
-      <ul className="mt-8 grid gap-4 md:grid-cols-2">
+      <ul className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2">
         {DEV_RESOURCES.map((r) => (
           <li key={r.url} className="flex flex-col rounded-2xl border border-border bg-card p-5 transition hover:border-border-strong">
             <div className="flex items-start gap-3">

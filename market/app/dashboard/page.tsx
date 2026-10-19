@@ -154,7 +154,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       <SalesChart days={days} />
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+      <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-2">
         <section className="rounded-2xl border border-border bg-card p-5">
           <div className="mb-2 flex items-center justify-between gap-3">
             <h2 className="font-semibold">{t.dashboard.recentSales}</h2>

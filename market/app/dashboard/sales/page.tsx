@@ -139,7 +139,7 @@ export default async function DashboardSalesPage() {
         </section>
       )}
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
+      <div className="mb-4 grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-3">
         <Balance icon={Hourglass} label={t.dashboard.balancePending} value={formatAmount(held, locale)} help={t.dashboard.balancePendingHelp(HOLD_DAYS)} />
         <Balance icon={Wallet} label={t.dashboard.balanceAvailable} value={formatAmount(available, locale)} help={t.dashboard.balanceAvailableHelp} dark />
         <Balance icon={CheckCircle2} label={t.dashboard.balancePaid} value={formatAmount(paid, locale)} help={t.dashboard.balancePaidHelp} />

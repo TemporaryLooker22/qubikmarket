@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChartLine, Flag, LayoutDashboard, MessagesSquare, Package, ScrollText, ShieldCheck, Star, Users, type LucideIcon } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
+import { useActiveTabScroll } from "@/components/useActiveTabScroll";
 
 type Props = { username: string; counts: { queue: number; flags: number; reports: number; chats: number } };
 
@@ -11,6 +12,7 @@ type Props = { username: string; counts: { queue: number; flags: number; reports
 export function AdminNav({ username, counts }: Props) {
   const { t } = useI18n();
   const pathname = usePathname();
+  const navRef = useActiveTabScroll<HTMLElement>(pathname);
   const items: { href: string; label: string; icon: LucideIcon; count?: number }[] = [
     { href: "/admin", label: t.mod.menu.overview, icon: LayoutDashboard },
     { href: "/admin/stats", label: t.mod.menu.stats, icon: ChartLine },
@@ -32,7 +34,7 @@ export function AdminNav({ username, counts }: Props) {
           <p className="text-xs text-muted">{t.mod.role}</p>
         </div>
       </div>
-      <nav aria-label={t.admin.title} className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0">
+      <nav ref={navRef} aria-label={t.admin.title} className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0">
         {items.map(({ href, label, icon: Icon, count }) => {
           const active = href === "/admin" ? pathname === href : pathname.startsWith(href);
           return (

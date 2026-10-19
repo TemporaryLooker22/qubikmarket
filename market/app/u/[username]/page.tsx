@@ -77,11 +77,12 @@ export default async function ProfilePage({ params, searchParams }: { params: Pa
   return (
     <div className="container-q pt-6 sm:pt-8">
       <section className="rounded-2xl border border-border bg-card p-5 sm:p-7">
-        <div className="flex flex-wrap items-center gap-5">
-          <UserAvatar name={member.username} src={member.avatarUrl} size={96} className="text-4xl" />
+        {/* Sur téléphone : photo plus petite, nom qui passe à la ligne et bouton sur toute la largeur en dessous */}
+        <div className="flex flex-wrap items-center gap-4 sm:gap-5">
+          <UserAvatar name={member.username} src={member.avatarUrl} size={96} className="!h-[72px] !w-[72px] !text-[28px] sm:!h-24 sm:!w-24 sm:!text-4xl" />
           <div className="min-w-0 flex-1">
-            <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold tracking-tight sm:text-3xl">
-              <span className="truncate">{member.username}</span>
+            <h1 className="flex flex-wrap items-center gap-2 text-xl font-semibold tracking-tight sm:text-3xl">
+              <span className="min-w-0 [overflow-wrap:anywhere]">{member.username}</span>
               {founder && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2.5 py-0.5 text-[11px] font-bold text-text">
                   <Crown className="h-3 w-3" aria-hidden="true" /> {t.profile.founder}
@@ -110,11 +111,11 @@ export default async function ProfilePage({ params, searchParams }: { params: Pa
             </p>
           </div>
           {isMe ? (
-            <Link href="/dashboard/settings" className="btn-ghost px-4 py-2.5 text-sm">
+            <Link href="/dashboard/settings" className="btn-ghost w-full justify-center px-4 py-2.5 text-sm sm:w-auto">
               <Settings className="h-4 w-4" aria-hidden="true" /> {t.profile.settings.title}
             </Link>
           ) : (
-            <Link href={`/messages/new?to=${encodeURIComponent(member.username)}`} prefetch={false} className="btn-accent rounded-xl px-5 py-2.5 text-sm">
+            <Link href={`/messages/new?to=${encodeURIComponent(member.username)}`} prefetch={false} className="btn-accent w-full justify-center rounded-xl px-5 py-2.5 text-sm sm:w-auto">
               <MessageCircle className="h-4 w-4" aria-hidden="true" /> {t.profile.contact}
             </Link>
           )}

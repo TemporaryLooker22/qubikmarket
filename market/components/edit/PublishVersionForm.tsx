@@ -83,7 +83,7 @@ export function PublishVersionForm({
       <FileDrop file={file} scan={scan} error={fileError} onFile={chooseFile} maxMb={upload.maxMb} />
       {outcome && <p className="mt-2 text-sm text-muted">{outcome}</p>}
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-[180px_minmax(0,1fr)]">
+      <div className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-[180px_minmax(0,1fr)]">
         <div>
           <label htmlFor="version" className="mb-1.5 block text-sm font-semibold">
             {t.edit.versionNumber}
