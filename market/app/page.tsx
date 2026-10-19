@@ -6,6 +6,7 @@ import { getDictionary } from "@/lib/i18n/server";
 import { formatAmount, formatNumber } from "@/lib/i18n/format";
 import { DEMO_BEST_SELLERS, DEMO_ENABLED, DEMO_LATEST } from "@/lib/demo";
 import { getShowcaseImages } from "@/lib/showcase";
+import { DISCORD_URL, SITE_NAME, SITE_URL } from "@/lib/site";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Gallery } from "@/components/Gallery";
 import { HeroBackdrop } from "@/components/HeroBackdrop";
@@ -13,6 +14,22 @@ import { ResourceCard } from "@/components/ResourceCard";
 
 // Adresse de référence de l'accueil pour Google
 export const metadata = { alternates: { canonical: "/" } };
+
+// Données pour Google : l'organisation (nom, logo affiché dans les résultats), le site et sa recherche
+const SITE_JSON_LD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    { "@type": "Organization", "@id": `${SITE_URL}/#organization`, name: SITE_NAME, url: SITE_URL, logo: { "@type": "ImageObject", url: `${SITE_URL}/logo-512.png`, width: 512, height: 512 }, sameAs: [DISCORD_URL] },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      name: SITE_NAME,
+      url: SITE_URL,
+      publisher: { "@id": `${SITE_URL}/#organization` },
+      potentialAction: { "@type": "SearchAction", target: { "@type": "EntryPoint", urlTemplate: `${SITE_URL}/resources?q={search_term_string}` }, "query-input": "required name=search_term_string" },
+    },
+  ],
+};
 
 export const dynamic = "force-dynamic";
 
@@ -88,6 +105,8 @@ export default async function HomePage() {
 
   return (
     <div className="full-bleed">
+      {/* Pour Google : nom et logo du site, et la recherche du catalogue */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(SITE_JSON_LD) }} />
       {/* 1. Recherche et catégories, devant les miniatures qui défilent */}
       <div className="relative isolate">
         {/* Miniatures : celles des exemples en mode démo (pas encore d'images pour les vraies ressources) */}
