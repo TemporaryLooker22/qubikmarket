@@ -16,24 +16,44 @@ export const THUMB_MODELS: Record<ThumbModelId, { id: string; name: string; perD
 
 export const hasThumbKeys = () => Boolean(process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_AI_TOKEN);
 
+// Guide de style tiré de l'observation des miniatures et icônes des jeux Roblox les plus joués (octobre 2026,
+// listes Top Trending / Top Playing Now). Seules les tendances générales sont gardées, aucune image n'est copiée :
+// - un seul héros très grand au premier plan (souvent un avatar en blocs à l'expression exagérée : sourire
+//   déterminé, choc, rire), vu de près en contre-plongée, en pleine action figée (traits de vitesse, débris, étincelles)
+// - l'objet convoité bien visible à côté du héros (œuf brillant, coffre, gemmes, voiture, animal rare), souvent lumineux
+// - rendu 3D type Blender : lumière douce, contour lumineux sur les bords, arrière-plan légèrement flou
+// - couleurs très saturées et contrastées : ciel bleu vif et herbe verte pour les jeux joyeux, violet et orange
+//   pour Halloween, sombre avec une seule source de lumière pour l'horreur
+// - le texte (1 à 4 mots, police épaisse à gros contour, chiffres énormes, « UPDATE », rareté) est ajouté
+//   par-dessus par le site, jamais par l'IA
+// - icône carrée : un seul sujet cadré serré qui remplit l'image, lisible en tout petit, fond simple et coloré
+
 // Styles proposés : ajoutés à la description de la scène
 export const THUMB_STYLES = {
-  simulator: "bright colorful simulator game, cheerful, glowing coins and gems flying around",
-  tycoon: "tycoon game, big factory and conveyor belts, money everywhere, sunny day",
-  obby: "obstacle course in the sky, floating platforms, lava below, dynamic action",
-  horror: "dark horror game, foggy night, eerie lights, tense atmosphere",
-  battle: "epic battle game, energy blasts, sparks, intense action pose",
-  pets: "cute pet collection game, adorable fluffy pets, pastel colors, sparkles",
+  simulator:
+    "simulator game: the hero triumphantly holding a glowing rare reward, huge piles of shiny coins and gems bursting around, bright blue sky, green grass, cheerful energy",
+  tycoon: "tycoon game: the hero proudly in front of a huge colorful factory with conveyor belts, stacks of cash flying, sunny day, sense of growth and wealth",
+  obby: "obstacle course in the sky: the hero mid-jump between floating platforms, glowing lava far below, speed lines, dramatic low angle",
+  horror:
+    "horror game: dark corridor or foggy night, a terrifying monster looming behind a frightened hero, single cold light source, strong shadows, tense atmosphere",
+  battle: "battlegrounds fighting game: two fighters clashing, glowing energy blast, shockwave, sparks and debris, intense anime-style action pose",
+  pets: "pet collection game: adorable fluffy pets with big shiny eyes around a glowing legendary egg, pastel colors, sparkles, joyful mood",
+  racing: "racing game: a shiny sports car drifting toward the camera, tire smoke, motion blur, sunset road, dynamic perspective",
+  halloween: "Halloween update: glowing jack-o'-lanterns, purple and orange night sky, full moon, bats, playful spooky mood",
 } as const;
 export type ThumbStyle = keyof typeof THUMB_STYLES;
 
-const BASE =
-  "3D video game key art in a blocky toy style: characters with cube heads, rectangular bodies and simple smiling faces, glossy plastic look, " +
-  "vivid saturated colors, strong rim lighting, cinematic composition, the main subject large in the foreground, clean background depth. " +
-  "No text, no letters, no logos, no watermark, no UI.";
+const LOOK =
+  "3D rendered video game key art in a blocky toy style: characters with cube heads, rectangular bodies and very expressive cartoon faces, " +
+  "glossy plastic materials, soft global illumination with a bright rim light, vivid saturated colors, high contrast, slight depth of field on the background.";
+const COMPOSITION = {
+  wide: "Wide 16:9 composition: the hero large in the foreground on one side, the coveted object or threat clearly visible on the other side, dynamic low angle, frozen mid-action moment, empty space at the top or bottom for a title.",
+  square: "Square icon composition: one single subject cropped tight and filling the frame, readable at very small size, simple colorful background.",
+};
+const FORBIDDEN = "No text, no letters, no numbers, no logos, no watermark, no user interface, no real brands, no existing copyrighted characters.";
 
-export function buildPrompt(scene: string, style: ThumbStyle) {
-  return `${scene.trim().slice(0, 600)}. ${THUMB_STYLES[style]}. ${BASE}`;
+export function buildPrompt(scene: string, style: ThumbStyle, wide = true) {
+  return `${scene.trim().slice(0, 600)}. ${THUMB_STYLES[style]}. ${LOOK} ${wide ? COMPOSITION.wide : COMPOSITION.square} ${FORBIDDEN}`;
 }
 
 export class ThumbError extends Error {

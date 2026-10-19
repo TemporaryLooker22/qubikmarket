@@ -57,6 +57,29 @@ function drawGameText(ctx: CanvasRenderingContext2D, line: string, x: number, y:
   ctx.fillText(line, x, y);
 }
 
+// Pastille penchée dans le coin (« UPDATE 3 », « HALLOWEEN UPDATE »), très courante sur les thumbnails populaires
+function drawBadge(ctx: CanvasRenderingContext2D, text: string, size: number, margin: number, family: string) {
+  ctx.save();
+  ctx.font = `${size}px ${family}`;
+  const padX = size * 0.45;
+  const w = ctx.measureText(text).width + padX * 2;
+  const h = size * 1.35;
+  ctx.translate(margin + w / 2, margin + h / 2);
+  ctx.rotate(-0.07);
+  const g = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
+  g.addColorStop(0, "#FF9F1C");
+  g.addColorStop(1, "#FF3D6E");
+  ctx.beginPath();
+  ctx.roundRect(-w / 2, -h / 2, w, h, h * 0.28);
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.lineWidth = Math.max(3, size * 0.12);
+  ctx.strokeStyle = "#111111";
+  ctx.stroke();
+  drawGameText(ctx, text, 0, size * 0.04, size, "#FFFFFF", family);
+  ctx.restore();
+}
+
 export function ThumbnailStudio({ models, styles }: { models: Model[]; styles: string[] }) {
   const { t } = useI18n();
   const s = t.thumbs;
@@ -67,6 +90,7 @@ export function ThumbnailStudio({ models, styles }: { models: Model[]; styles: s
   const [wide, setWide] = useState(true);
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
+  const [badge, setBadge] = useState("");
   const [color, setColor] = useState(COLORS[0]);
   const [position, setPosition] = useState<Position>("bottom");
   const [busy, setBusy] = useState(false);
@@ -86,6 +110,8 @@ export function ThumbnailStudio({ models, styles }: { models: Model[]; styles: s
     drawCover(ctx, image, W, H);
     const titleText = title.trim().toUpperCase();
     const sub = subtitle.trim().toUpperCase();
+    const badgeText = badge.trim().toUpperCase();
+    if (badgeText) drawBadge(ctx, badgeText, wide ? 64 : 30, H * 0.05, family);
     if (!titleText && !sub) return;
 
     // Léger dégradé sombre derrière le texte pour qu'il reste lisible
@@ -111,7 +137,7 @@ export function ThumbnailStudio({ models, styles }: { models: Model[]; styles: s
       }
     }
     if (sub) drawGameText(ctx, sub, W / 2, y + subSize * 0.65, subSize, "#FFFFFF", family);
-  }, [image, title, subtitle, color, position, W, H, wide]);
+  }, [image, title, subtitle, badge, color, position, W, H, wide]);
 
   useEffect(() => {
     render();
@@ -216,6 +242,10 @@ export function ThumbnailStudio({ models, styles }: { models: Model[]; styles: s
             <div>
               <label htmlFor="thumb-sub" className={label}>{s.subtitle}</label>
               <input id="thumb-sub" maxLength={40} value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder={s.subtitlePlaceholder} className={inputClass} />
+            </div>
+            <div>
+              <label htmlFor="thumb-badge" className={label}>{s.badge}</label>
+              <input id="thumb-badge" maxLength={24} value={badge} onChange={(e) => setBadge(e.target.value)} placeholder={s.badgePlaceholder} className={inputClass} />
             </div>
           </div>
           <p className={`${label} mt-3`}>{s.color}</p>

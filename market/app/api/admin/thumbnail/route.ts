@@ -17,7 +17,7 @@ export async function POST(req: Request) {
 
   const started = Date.now();
   try {
-    const prompt = buildPrompt(scene, style);
+    const prompt = buildPrompt(scene, style, body.wide !== false);
     const seed = Number.isInteger(body.seed) && body.seed! >= 0 ? body.seed : undefined;
     const image = await generateThumbnail({ model, prompt, wide: body.wide !== false, seed });
     return NextResponse.json({ ...image, model, prompt, ms: Date.now() - started }, { headers: { "Cache-Control": "private, no-store" } });
