@@ -3,7 +3,8 @@ import { Ban, Search, Undo2, Users } from "lucide-react";
 import { db } from "@/lib/db";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatAmount, formatDate } from "@/lib/i18n/format";
-import { banMember, unbanMember } from "@/app/moderation-actions";
+import { banMember, pausePublishing, resumePublishing, unbanMember } from "@/app/moderation-actions";
+import { formatPauseEnd, PUBLISH_PAUSE_DAYS } from "@/lib/publish-pause";
 import { adminRemoveAvatar } from "@/app/member-actions";
 import { links } from "@/lib/notifications";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -146,6 +147,28 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
                     </li>
                   ))}
                 </ul>
+              </div>
+            )}
+
+            {/* Pause de publication (laisser de la place aux autres vendeurs) */}
+            {member.role !== "ADMIN" && !member.bannedAt && (
+              <div className="mt-4 rounded-2xl border border-border p-4">
+                {member.publishPausedUntil && member.publishPausedUntil > new Date() ? (
+                  <form action={resumePublishing} className="flex flex-wrap items-center justify-between gap-3">
+                    <input type="hidden" name="userId" value={member.id} />
+                    <p className="text-sm font-semibold text-warn">{t.publishPause.pausedUntil(formatPauseEnd(member.publishPausedUntil, locale))}</p>
+                    <button className="btn-ghost px-4 py-2 text-sm">{t.publishPause.resume}</button>
+                  </form>
+                ) : (
+                  <form action={pausePublishing} className="flex flex-wrap items-center justify-between gap-3">
+                    <input type="hidden" name="userId" value={member.id} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold">{t.publishPause.adminTitle(PUBLISH_PAUSE_DAYS)}</p>
+                      <p className="mt-0.5 text-xs text-muted">{t.publishPause.adminText}</p>
+                    </div>
+                    <button className="btn-ghost px-4 py-2 text-sm">{t.publishPause.pause(PUBLISH_PAUSE_DAYS)}</button>
+                  </form>
+                )}
               </div>
             )}
 

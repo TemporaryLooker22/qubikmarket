@@ -14,6 +14,7 @@ import { hasRobloxContent, type ScanReport } from "@/lib/scan";
 import { deleteStored } from "@/lib/storage";
 import { enqueueAnalysis, kickAiQueue, stopLiveReanalyses } from "@/lib/ai/run";
 import { grantFounderIfEligible } from "@/lib/sellers";
+import { PUBLISH_PAUSE_DAYS } from "@/lib/publish-pause";
 
 function refreshSite() {
   revalidatePath("/", "layout");
@@ -37,6 +38,26 @@ export async function unbanMember(formData: FormData) {
   if (!user?.bannedAt) return;
   await unbanUser(user.id);
   await logModeration({ moderatorId: admin.id, action: "UNBAN", targetType: "user", targetId: user.id, label: user.username });
+  refreshSite();
+}
+
+// Pause de publication : pas de nouvelle ressource pendant PUBLISH_PAUSE_DAYS jours (fenêtre d'information à l'arrivée)
+export async function pausePublishing(formData: FormData) {
+  const admin = await requireAdmin();
+  const user = await db.user.findUnique({ where: { id: String(formData.get("userId")) }, select: { id: true, username: true, role: true } });
+  if (!user || user.role === "ADMIN") return;
+  const until = new Date(Date.now() + PUBLISH_PAUSE_DAYS * 24 * 3600 * 1000);
+  await db.user.update({ where: { id: user.id }, data: { publishPausedUntil: until, publishPauseSeen: false } });
+  await logModeration({ moderatorId: admin.id, action: "PUBLISH_PAUSE", targetType: "user", targetId: user.id, label: user.username, note: `${PUBLISH_PAUSE_DAYS} j` });
+  refreshSite();
+}
+
+export async function resumePublishing(formData: FormData) {
+  const admin = await requireAdmin();
+  const user = await db.user.findUnique({ where: { id: String(formData.get("userId")) }, select: { id: true, username: true, publishPausedUntil: true } });
+  if (!user?.publishPausedUntil) return;
+  await db.user.update({ where: { id: user.id }, data: { publishPausedUntil: null, publishPauseSeen: true } });
+  await logModeration({ moderatorId: admin.id, action: "PUBLISH_RESUME", targetType: "user", targetId: user.id, label: user.username });
   refreshSite();
 }
 

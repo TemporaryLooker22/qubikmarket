@@ -5,7 +5,7 @@ import { refreshRating } from "./reviews";
 
 // Modération : journal des décisions et bannissement des membres.
 
-export type ModerationAction = "APPROVE" | "REJECT" | "KEEP" | "UNLIST" | "RELIST" | "EDIT" | "DELETE" | "REANALYZE" | "REVIEW_DELETE" | "REPORTS_DISMISS" | "BAN" | "UNBAN" | "CHAT_DISMISS" | "CHAT_MESSAGE_DELETE" | "MEMBER_REVIEW_DELETE" | "AVATAR_REMOVE";
+export type ModerationAction = "APPROVE" | "REJECT" | "KEEP" | "UNLIST" | "RELIST" | "EDIT" | "DELETE" | "REANALYZE" | "REVIEW_DELETE" | "REPORTS_DISMISS" | "BAN" | "UNBAN" | "CHAT_DISMISS" | "CHAT_MESSAGE_DELETE" | "MEMBER_REVIEW_DELETE" | "AVATAR_REMOVE" | "PUBLISH_PAUSE" | "PUBLISH_RESUME";
 
 // Garde une trace de chaque décision (page Modération → Journal)
 export async function logModeration(entry: {

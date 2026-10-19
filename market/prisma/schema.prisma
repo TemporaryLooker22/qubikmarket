@@ -34,6 +34,10 @@ model User {
   // Bannissement par un modérateur : plus de connexion, ressources retirées de la vente, avis masqués (réversible)
   bannedAt              DateTime?
   banReason             String?
+  // Pause de publication décidée par la modération (pour laisser de la place aux autres vendeurs) :
+  // pas de nouvelle ressource avant cette date. publishPauseSeen : la fenêtre d'information a été fermée.
+  publishPausedUntil    DateTime?
+  publishPauseSeen      Boolean              @default(true)
   // Provenance à l'inscription (voir components/SourceTracker.tsx) : site ou campagne d'origine, adresse du lien,
   // page d'arrivée et pays (déduit de l'adresse IP par Vercel, l'adresse IP n'est pas gardée)
   signupSource          String?

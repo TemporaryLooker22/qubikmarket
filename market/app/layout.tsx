@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { moderationCounts } from "@/lib/moderation";
 import { pendingModeratorMessage, unreadConversations } from "@/lib/chat";
 import { ModeratorNotice } from "@/components/chat/ModeratorNotice";
+import { PublishPauseNotice } from "@/components/PublishPauseNotice";
+import { formatPauseEnd, publishPause } from "@/lib/publish-pause";
 import { getDictionary } from "@/lib/i18n/server";
 import { LocaleProvider } from "@/lib/i18n/client";
 import Link from "next/link";
@@ -55,6 +57,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const isSeller = user ? (await db.resource.count({ where: { sellerId: user.id } })) > 0 : false;
   // Message d'un modérateur pas encore lu : affiché dans une fenêtre dès l'arrivée sur le site
   const moderatorNotice = user && user.role !== "ADMIN" ? await pendingModeratorMessage(user.id) : null;
+  // Pause de publication pas encore vue : fenêtre d'information (une seule fois par pause)
+  const pause = user ? await publishPause(user.id) : null;
+  const pauseNotice = pause && !pause.seen ? formatPauseEnd(pause.until, locale) : null;
 
   return (
     <html lang={locale} className={jakarta.variable}>
@@ -85,6 +90,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* Statistiques de visite sans cookie (Vercel Web Analytics) et provenance des inscriptions */}
         <Analytics />
         <ModeratorNotice notice={moderatorNotice} />
+        {!moderatorNotice && <PublishPauseNotice until={pauseNotice} />}
         <Suspense fallback={null}>
           <SourceTracker />
         </Suspense>

@@ -15,6 +15,13 @@ import { logModeration } from "@/lib/moderation";
 import { links, notify, notifyAdmins } from "@/lib/notifications";
 import type { ReviewState } from "./review-actions";
 
+// Fenêtre « Pause de publication » fermée : elle ne s'affiche plus avant une nouvelle pause
+export async function acknowledgePublishPause() {
+  const user = await requireUser();
+  await db.user.update({ where: { id: user.id }, data: { publishPauseSeen: true } });
+  revalidatePath("/", "layout");
+}
+
 function refreshProfile(username: string) {
   revalidatePath(`/u/${username}`);
   revalidatePath("/dashboard", "layout");
