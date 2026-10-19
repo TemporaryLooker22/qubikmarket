@@ -41,11 +41,11 @@ const GALLERY_SIZE = 10;
 
 const sellerSelect = { seller: { select: { username: true } } };
 
-// Classement des ressources par nombre d'achats payés (ou obtenus gratuitement), avec le nombre de ventes
+// Classement des ressources payantes par nombre de ventes payées (les ressources gratuites n'y figurent pas)
 async function getBestSellers(since?: Date) {
   const top = await db.purchase.groupBy({
     by: ["resourceId"],
-    where: { status: "PAID", resource: { status: "APPROVED" }, ...(since && { createdAt: { gte: since } }) },
+    where: { status: "PAID", amountCents: { gt: 0 }, resource: { status: "APPROVED", priceCents: { gt: 0 } }, ...(since && { createdAt: { gte: since } }) },
     _count: { resourceId: true },
     orderBy: { _count: { resourceId: "desc" } },
     take: GALLERY_SIZE,

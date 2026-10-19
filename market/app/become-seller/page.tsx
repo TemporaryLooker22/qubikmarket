@@ -20,10 +20,11 @@ async function getHeroCards(placeholders: HeroCard[]): Promise<HeroCard[]> {
     return DEMO_BEST_SELLERS.slice(0, 3).map(({ resource, sales }) => ({ ...resource, sales }));
   }
   const resources = await db.resource.findMany({
-    where: { status: "APPROVED", NOT: { images: { isEmpty: true } } },
+    // Meilleures ventes : seulement les ressources payantes
+    where: { status: "APPROVED", priceCents: { gt: 0 }, NOT: { images: { isEmpty: true } } },
     orderBy: { purchases: { _count: "desc" } },
     take: 3,
-    select: { title: true, category: true, priceCents: true, images: true, _count: { select: { purchases: { where: { status: "PAID" } } } } },
+    select: { title: true, category: true, priceCents: true, images: true, _count: { select: { purchases: { where: { status: "PAID", amountCents: { gt: 0 } } } } } },
   });
   if (resources.length < 3) return placeholders;
   return resources.map((r) => ({ title: r.title, category: r.category, priceCents: r.priceCents, image: r.images[0], sales: r._count.purchases }));
