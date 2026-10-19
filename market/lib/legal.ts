@@ -185,7 +185,7 @@ We use trusted providers who process data on our behalf:
 - **Neon** (database) — EU region (Frankfurt).
 - **Stripe** (payments).
 - **Translation services** (MyMemory or DeepL) — only receive the public descriptions of resources, never your personal data.
-- **AI content review** (OVHcloud AI Endpoints, Pollinations and LLM7) — receive the title, description and an extract of the file (object tree and scripts) of resources put up for sale, to check that they match. Never your personal data.
+- **AI content review** (OVHcloud AI Endpoints, Pollinations, LLM7 and OpenRouter, which forwards to free AI models) — receive the title, description and an extract of the file (object tree and scripts) of resources put up for sale, to check that they match. Never your personal data.
 
 ## 5. How long we keep it
 
@@ -256,7 +256,7 @@ Nous faisons appel à des prestataires de confiance qui traitent les données po
 - **Neon** (base de données) — région UE (Francfort).
 - **Stripe** (paiements).
 - **Services de traduction** (MyMemory ou DeepL) — ne reçoivent que les descriptions publiques des ressources, jamais tes données personnelles.
-- **Vérification du contenu par IA** (OVHcloud AI Endpoints, Pollinations et LLM7) — reçoivent le titre, la description et un extrait du fichier (arborescence et scripts) des ressources mises en vente, pour vérifier qu'ils correspondent. Jamais tes données personnelles.
+- **Vérification du contenu par IA** (OVHcloud AI Endpoints, Pollinations, LLM7 et OpenRouter, qui transmet à des modèles d'IA gratuits) — reçoivent le titre, la description et un extrait du fichier (arborescence et scripts) des ressources mises en vente, pour vérifier qu'ils correspondent. Jamais tes données personnelles.
 
 ## 5. Durée de conservation
 

@@ -89,11 +89,15 @@ export class AiError extends Error {
 }
 
 // Combien de temps le fournisseur veut qu'on attende : en-tête « Retry-After », champ « retry_after »
-// ou phrase « Retry after 14s » / « 88747 seconds » dans la réponse (au plus 26 h : quota du jour)
-function retryAfterMs(header: string | null, body: string) {
+// ou phrase « Retry after 14s » / « 88747 seconds » dans la réponse, ou « X-RateLimit-Reset » (heure de remise
+// à zéro en millisecondes, chez OpenRouter). Au plus 26 h : quota du jour.
+function retryAfterMs(headers: Headers, body: string) {
+  const MAX = 26 * 3600 * 1000;
+  const reset = Number(headers.get("x-ratelimit-reset"));
+  if (reset > 1e12 && reset > Date.now()) return Math.min(reset - Date.now(), MAX);
   const fromText = body.match(/retry[_ -]?after"?\s*[:=]?\s*(\d+)/i)?.[1] ?? body.match(/(\d+)\s*s(?:ec(?:onds?)?)?\b/i)?.[1];
-  const seconds = Number(header) || Number(fromText);
-  return seconds > 0 ? Math.min(seconds, 26 * 3600) * 1000 : null;
+  const seconds = Number(headers.get("retry-after")) || Number(fromText);
+  return seconds > 0 ? Math.min(seconds * 1000, MAX) : null;
 }
 
 // Une clé OVH refusée n'est plus utilisée jusqu'au prochain démarrage du serveur
@@ -129,7 +133,7 @@ export async function analyzeWithAi(
   const send = (key?: string) =>
     fetch(provider.url, {
       method: "POST",
-      headers: { "content-type": "application/json", ...(key && { authorization: `Bearer ${key}` }) },
+      headers: { "content-type": "application/json", ...provider.headers, ...(key && { authorization: `Bearer ${key}` }) },
       signal: AbortSignal.timeout(TIMEOUT_MS),
       body,
     }).catch((err: Error) => {
@@ -145,7 +149,7 @@ export async function analyzeWithAi(
   }
   if (!res.ok) {
     const text = await res.text();
-    throw new AiError(res.status, text.slice(0, 300), provider.name, retryAfterMs(res.headers.get("retry-after"), text));
+    throw new AiError(res.status, text.slice(0, 300), provider.name, retryAfterMs(res.headers, text));
   }
   const json = await res.json();
   const parsed = readJson(json.choices?.[0]?.message?.content);
