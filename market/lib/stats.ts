@@ -2,6 +2,7 @@ import "server-only";
 import { Prisma } from "@prisma/client";
 import { db } from "./db";
 import { localDay, startOfLocalDay, TIME_ZONE } from "./analytics";
+import { ONLINE_MS } from "./chat-text";
 
 // Calculs de Modération → Statistiques, à partir des pages vues (PageView), des recherches (SearchLog),
 // des inscriptions et des ventes. « Visiteurs » = visiteurs uniques de chaque jour, additionnés
@@ -186,7 +187,19 @@ export async function live() {
     WHERE ${HUMAN} AND "createdAt" >= ${new Date(Date.now() - 5 * 60_000)} ORDER BY "visitor", "createdAt" DESC`;
   const counts = new Map<string, number>();
   for (const r of rows) counts.set(r.path, (counts.get(r.path) ?? 0) + 1);
-  return { visitors: rows.length, pages: [...counts].map(([path, visitors]) => ({ path, visitors })).sort((a, b) => b.visitors - a.visitors).slice(0, 8) };
+  // Membres connectés en ce moment (le même « en ligne » que le point vert public des profils et de la messagerie),
+  // sans jamais dire sur quelle page ils sont. Les admins ne sont pas comptés, comme dans les visites.
+  const members = await db.user.findMany({
+    where: { lastSeenAt: { gte: new Date(Date.now() - ONLINE_MS) }, bannedAt: null, role: { not: "ADMIN" } },
+    orderBy: { lastSeenAt: "desc" },
+    take: 50,
+    select: { id: true, username: true, avatarUrl: true },
+  });
+  return {
+    visitors: Math.max(rows.length, members.length),
+    members,
+    pages: [...counts].map(([path, visitors]) => ({ path, visitors })).sort((a, b) => b.visitors - a.visitors).slice(0, 8),
+  };
 }
 
 // ---------- Entonnoir ----------
