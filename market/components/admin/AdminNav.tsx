@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChartLine, Flag, LayoutDashboard, MessagesSquare, Package, ScrollText, ShieldCheck, Star, Users, type LucideIcon } from "lucide-react";
+import { ChartLine, Flag, ImagePlus, LayoutDashboard, MessagesSquare, Package, ScrollText, ShieldCheck, Star, Users, type LucideIcon } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { useActiveTabScroll } from "@/components/useActiveTabScroll";
 
@@ -23,6 +23,7 @@ export function AdminNav({ username, counts }: Props) {
     { href: "/admin/resources", label: t.mod.menu.resources, icon: Package },
     { href: "/admin/users", label: t.mod.menu.users, icon: Users },
     { href: "/admin/log", label: t.mod.menu.log, icon: ScrollText },
+    { href: "/admin/thumbnails", label: t.mod.menu.thumbs, icon: ImagePlus },
   ];
 
   return (
