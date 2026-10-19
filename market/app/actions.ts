@@ -24,6 +24,8 @@ import { createOnboardingLink, createSellerAccount, PAYOUT_COUNTRIES } from "@/l
 import { cookies, headers } from "next/headers";
 import { isLocale, type Dictionary } from "@/lib/i18n/dictionaries";
 import { getDictionary, LOCALE_COOKIE } from "@/lib/i18n/server";
+import { randomBytes } from "node:crypto";
+import { PENDING_COOKIE, verify, type OAuthProfile } from "@/lib/oauth";
 
 export type FormState = { error?: string } | undefined;
 
@@ -110,6 +112,67 @@ export async function checkUsername(username: string): Promise<boolean> {
   if (!/^[a-zA-Z0-9_]{3,20}$/.test(name)) return false;
   const existing = await db.user.findFirst({ where: { username: { equals: name, mode: "insensitive" } }, select: { id: true } });
   return !existing;
+}
+
+// Fin de l'inscription avec Google ou Discord : le membre choisit son pseudo et accepte les conditions.
+// Son e-mail (vérifié par le fournisseur) et son identifiant chez eux viennent du cookie signé posé au retour.
+const oauthSchema = (e: Dictionary["errors"]) =>
+  z.object({
+    username: z
+      .string()
+      .trim()
+      .min(3, e.usernameMin)
+      .max(20, e.usernameMax)
+      .regex(/^[a-zA-Z0-9_]+$/, e.usernameChars),
+    age: z.literal("on", { errorMap: () => ({ message: e.ageRequired }) }),
+    terms: z.literal("on", { errorMap: () => ({ message: e.termsRequired }) }),
+  });
+
+export async function completeOAuthSignup(_: FormState, formData: FormData): Promise<FormState> {
+  const { t } = await getDictionary();
+  const jar = await cookies();
+  const pending = await verify<OAuthProfile & { src: string; next: string }>(jar.get(PENDING_COOKIE)?.value);
+  if (!pending) return { error: t.auth.oauthExpired };
+  const parsed = oauthSchema(t.errors).safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { username } = parsed.data;
+
+  const column = pending.provider === "google" ? "googleId" : "discordId";
+  const [taken, already] = await Promise.all([
+    db.user.findFirst({ where: { username: { equals: username, mode: "insensitive" } }, select: { id: true } }),
+    db.user.findFirst({ where: { OR: [{ email: pending.email }, { [column]: pending.id }] }, select: { id: true } }),
+  ]);
+  if (taken) return { error: t.errors.taken };
+  if (already) return { error: t.auth.oauthExpired };
+
+  const isFirstUser = (await db.user.count()) === 0;
+  let visit: { source?: unknown; referrer?: unknown; landing?: unknown } = {};
+  try {
+    visit = JSON.parse(pending.src || "{}") ?? {};
+  } catch {
+    // pas de provenance
+  }
+  const text = (v: unknown, max: number) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
+  const country = (await headers()).get("x-vercel-ip-country");
+
+  const user = await db.user.create({
+    data: {
+      username,
+      email: pending.email,
+      // Pas de mot de passe : connexion avec Google / Discord (mot de passe aléatoire que personne ne connaît)
+      passwordHash: await bcrypt.hash(randomBytes(32).toString("hex"), 10),
+      [column]: pending.id,
+      avatarUrl: pending.avatar,
+      role: isFirstUser ? "ADMIN" : "USER",
+      signupSource: text(visit.source, 60) ?? "direct",
+      signupReferrer: text(visit.referrer, 200),
+      signupLanding: text(visit.landing, 120),
+      signupCountry: country && /^[A-Z]{2}$/.test(country) ? country : null,
+    },
+  });
+  jar.delete(PENDING_COOKIE);
+  await createSession(user.id);
+  redirect(safeNext(pending.next));
 }
 
 export async function login(_: FormState, formData: FormData): Promise<FormState> {

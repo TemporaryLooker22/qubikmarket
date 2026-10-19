@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/i18n/server";
 import { RegisterForm } from "@/components/AuthForms";
 import { AuthLayout } from "@/components/auth/AuthLayout";
+import { configuredProviders } from "@/lib/oauth";
 
 export async function generateMetadata() {
   const { t } = await getDictionary();
@@ -28,7 +29,7 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
         </>
       }
     >
-      <RegisterForm next={next} />
+      <RegisterForm next={next} providers={configuredProviders()} />
     </AuthLayout>
   );
 }

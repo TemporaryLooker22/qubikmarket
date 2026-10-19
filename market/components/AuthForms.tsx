@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useActionState, useEffect, useId, useState } from "react";
 import { Check, Eye, EyeOff, Loader2, X } from "lucide-react";
-import { checkUsername, login, register } from "@/app/actions";
+import { checkUsername, completeOAuthSignup, login, register } from "@/app/actions";
+import { DiscordIcon } from "./DiscordIcon";
 import { useI18n } from "@/lib/i18n/client";
 import { SubmitButton } from "./SubmitButton";
 import { readVisitSource } from "./SourceTracker";
@@ -13,12 +14,13 @@ const inputClass =
 const submitClass =
   "mt-2 flex h-12 w-full items-center justify-center rounded-xl bg-accent text-[15px] font-semibold text-text transition hover:-translate-y-px hover:bg-accent-hover disabled:translate-y-0 disabled:opacity-60";
 
-export function LoginForm({ next }: { next?: string }) {
+export function LoginForm({ next, providers = [], error }: { next?: string; providers?: string[]; error?: string }) {
   const { t } = useI18n();
   const [state, action] = useActionState(login, undefined);
   return (
     <form action={action} className="space-y-4">
-      <ErrorBox message={state?.error} />
+      <ErrorBox message={state?.error ?? error} />
+      <OAuthButtons providers={providers} next={next} />
       <input type="hidden" name="next" value={next ?? ""} />
       <Field label={t.auth.email}>
         {(id) => <input id={id} name="email" type="email" required autoComplete="email" placeholder={t.auth.emailPh} className={inputClass} />}
@@ -37,7 +39,7 @@ export function LoginForm({ next }: { next?: string }) {
   );
 }
 
-export function RegisterForm({ next }: { next?: string }) {
+export function RegisterForm({ next, providers = [] }: { next?: string; providers?: string[] }) {
   const { t } = useI18n();
   const [state, action] = useActionState(register, undefined);
   const [password, setPassword] = useState("");
@@ -50,6 +52,7 @@ export function RegisterForm({ next }: { next?: string }) {
   return (
     <form action={action} className="space-y-4">
       <ErrorBox message={state?.error} />
+      <OAuthButtons providers={providers} next={next} />
       <input type="hidden" name="next" value={next ?? ""} />
       <input type="hidden" name="source" value={source} />
 
@@ -93,6 +96,77 @@ export function RegisterForm({ next }: { next?: string }) {
 
       <SubmitButton pendingText={t.auth.registerPending} className={submitClass}>
         {t.auth.registerSubmit}
+      </SubmitButton>
+    </form>
+  );
+}
+
+// « Continuer avec Google / Discord », puis un séparateur « ou » avant le formulaire classique
+export function OAuthButtons({ providers, next }: { providers: string[]; next?: string }) {
+  const { t } = useI18n();
+  // Provenance de la visite, gardée pendant l'aller-retour chez le fournisseur (comme avec le formulaire)
+  const [source, setSource] = useState("");
+  useEffect(() => setSource(readVisitSource()), []);
+  if (providers.length === 0) return null;
+  const href = (p: string) => {
+    const params = new URLSearchParams({ ...(next && { next }), ...(source && { src: source }) });
+    return `/api/auth/${p}/start${params.size ? `?${params}` : ""}`;
+  };
+  return (
+    <div className="space-y-2.5">
+      {providers.includes("google") && (
+        <a href={href("google")} className="flex h-11 w-full items-center justify-center gap-2.5 rounded-xl border border-border bg-card text-[15px] font-semibold transition hover:border-border-strong hover:bg-bg">
+          <GoogleIcon /> {t.auth.continueWith("Google")}
+        </a>
+      )}
+      {providers.includes("discord") && (
+        <a href={href("discord")} className="flex h-11 w-full items-center justify-center gap-2.5 rounded-xl bg-[#5865F2] text-[15px] font-semibold text-white transition hover:bg-[#4752c4]">
+          <DiscordIcon className="h-5 w-5" /> {t.auth.continueWith("Discord")}
+        </a>
+      )}
+      <div className="flex items-center gap-3 py-1 text-xs font-semibold uppercase tracking-wider text-muted">
+        <span className="h-px flex-1 bg-border" />
+        {t.auth.or}
+        <span className="h-px flex-1 bg-border" />
+      </div>
+    </div>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+      <path fill="#4285F4" d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.46a5.52 5.52 0 0 1-2.4 3.62v3h3.88c2.27-2.09 3.58-5.17 3.58-8.81z" />
+      <path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.91l-3.88-3c-1.07.72-2.45 1.15-4.06 1.15-3.12 0-5.77-2.11-6.71-4.95H1.28v3.1A12 12 0 0 0 12 24z" />
+      <path fill="#FBBC05" d="M5.29 14.29A7.2 7.2 0 0 1 4.91 12c0-.8.14-1.57.38-2.29v-3.1H1.28A12 12 0 0 0 0 12c0 1.94.46 3.77 1.28 5.39l4.01-3.1z" />
+      <path fill="#EA4335" d="M12 4.75c1.76 0 3.34.61 4.59 1.8l3.44-3.44A11.97 11.97 0 0 0 12 0 12 12 0 0 0 1.28 6.61l4.01 3.1C6.23 6.86 8.88 4.75 12 4.75z" />
+    </svg>
+  );
+}
+
+// Après Google / Discord : choix du pseudo (définitif) et acceptation des conditions
+export function OAuthCompleteForm({ suggested }: { suggested: string }) {
+  const { t } = useI18n();
+  const [state, action] = useActionState(completeOAuthSignup, undefined);
+  return (
+    <form action={action} className="space-y-4">
+      <ErrorBox message={state?.error} />
+      <Field label={t.auth.username}>{(id) => <UsernameInput id={id} initial={suggested} />}</Field>
+      <div className="space-y-2.5 pt-1">
+        <Checkbox name="age">{t.auth.age}</Checkbox>
+        <Checkbox name="terms">
+          {t.auth.termsStart}
+          <Link href="/terms" target="_blank" className="font-medium text-text underline decoration-accent decoration-2 underline-offset-2">
+            {t.auth.termsLink}
+          </Link>
+          {t.auth.termsAnd}
+          <Link href="/privacy" target="_blank" className="font-medium text-text underline decoration-accent decoration-2 underline-offset-2">
+            {t.auth.privacyLink}
+          </Link>
+        </Checkbox>
+      </div>
+      <SubmitButton pendingText={t.auth.registerPending} className={submitClass}>
+        {t.auth.completeSubmit}
       </SubmitButton>
     </form>
   );
@@ -197,9 +271,9 @@ function StrengthMeter({ password }: { password: string }) {
 }
 
 // Pseudo avec vérification « disponible / déjà pris » pendant la frappe
-function UsernameInput({ id }: { id: string }) {
+function UsernameInput({ id, initial = "" }: { id: string; initial?: string }) {
   const { t } = useI18n();
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(initial);
   const [status, setStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
 
   useEffect(() => {
