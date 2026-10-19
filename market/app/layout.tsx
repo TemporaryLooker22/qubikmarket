@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { moderationCounts } from "@/lib/moderation";
 import { pendingModeratorMessage, unreadConversations } from "@/lib/chat";
 import { ModeratorNotice } from "@/components/chat/ModeratorNotice";
+import { PartnerBanner } from "@/components/PartnerBanner";
 import { PublishPauseNotice } from "@/components/PublishPauseNotice";
 import { formatPauseEnd, publishPause } from "@/lib/publish-pause";
 import { getDictionary } from "@/lib/i18n/server";
@@ -65,6 +66,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang={locale} className={jakarta.variable}>
       <body className="flex min-h-screen flex-col font-sans antialiased">
         <LocaleProvider locale={locale}>
+          <PartnerBanner />
           <Navbar user={user ? { username: user.username, email: user.email, role: user.role, isSeller, avatarUrl: user.avatarUrl } : null} pendingCount={pendingCount} unreadCount={unreadCount} chatUnread={chatUnread} />
 
           <main className="flex-1 pb-16">{children}</main>
