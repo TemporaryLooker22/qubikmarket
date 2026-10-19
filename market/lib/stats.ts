@@ -283,3 +283,53 @@ export async function recentSignups() {
   });
   return { today: users.filter((u) => u.createdAt >= today), yesterday: users.filter((u) => u.createdAt < today) };
 }
+
+// ---------- En ce moment, en détail (fenêtre « Voir plus ») ----------
+
+export type LiveDetail = {
+  visitors: number;
+  views: number; // pages vues ces 5 dernières minutes
+  countries: { code: string; visitors: number }[];
+  devices: { value: string; visitors: number }[];
+  browsers: { value: string; visitors: number }[];
+  sources: { value: string; visitors: number }[]; // site d'origine, campagne ou accès direct
+  locales: { value: string; visitors: number }[];
+  pages: { path: string; visitors: number }[];
+  perMinute: { minute: string; visitors: number }[]; // 30 dernières minutes
+};
+
+export async function liveDetail(): Promise<LiveDetail> {
+  const since5 = new Date(Date.now() - 5 * 60_000);
+  const since30 = new Date(Date.now() - 30 * 60_000);
+  const [latest, [views], minutes] = await Promise.all([
+    // Dernière page vue de chaque visiteur actif (anonyme)
+    db.$queryRaw<{ path: string; country: string | null; device: string; browser: string | null; source: string; referrer: string | null; campaign: string | null; locale: string | null }[]>`
+      SELECT DISTINCT ON ("visitor") "path", "country", "device", "browser", "source", "referrer", "campaign", "locale"
+      FROM "PageView" WHERE ${HUMAN} AND "createdAt" >= ${since5} ORDER BY "visitor", "createdAt" DESC`,
+    db.$queryRaw<{ n: bigint }[]>`SELECT COUNT(*) AS n FROM "PageView" WHERE ${HUMAN} AND "createdAt" >= ${since5}`,
+    db.$queryRaw<{ m: Date; visitors: bigint }[]>`
+      SELECT date_trunc('minute', "createdAt") AS m, COUNT(DISTINCT "visitor") AS visitors
+      FROM "PageView" WHERE ${HUMAN} AND "createdAt" >= ${since30} GROUP BY 1`,
+  ]);
+  const tally = (values: string[]) => {
+    const map = new Map<string, number>();
+    for (const v of values) map.set(v, (map.get(v) ?? 0) + 1);
+    return [...map].map(([value, visitors]) => ({ value, visitors })).sort((a, b) => b.visitors - a.visitors);
+  };
+  const byMinute = new Map(minutes.map((r) => [r.m.toISOString().slice(0, 16), n(r.visitors)]));
+  const perMinute = Array.from({ length: 30 }, (_, i) => {
+    const key = new Date(Date.now() - (29 - i) * 60_000).toISOString().slice(0, 16);
+    return { minute: key, visitors: byMinute.get(key) ?? 0 };
+  });
+  return {
+    visitors: latest.length,
+    views: n(views.n),
+    countries: tally(latest.map((r) => r.country ?? "")).map((r) => ({ code: r.value, visitors: r.visitors })),
+    devices: tally(latest.map((r) => r.device)),
+    browsers: tally(latest.map((r) => r.browser ?? "")),
+    sources: tally(latest.map((r) => (r.campaign ? `?ref=${r.campaign}` : r.referrer ?? ""))),
+    locales: tally(latest.map((r) => r.locale ?? "")),
+    pages: tally(latest.map((r) => r.path)).map((r) => ({ path: r.value, visitors: r.visitors })),
+    perMinute,
+  };
+}

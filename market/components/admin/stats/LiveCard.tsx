@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { LiveGlobeModal } from "./LiveGlobeModal";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n/client";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -11,6 +12,8 @@ type Live = { visitors: number; members: { id: string; username: string; avatarU
 export function LiveCard({ initial }: { initial: Live }) {
   const { t } = useI18n();
   const [data, setData] = useState(initial);
+  const [open, setOpen] = useState(false);
+  const closeModal = useCallback(() => setOpen(false), []);
   useEffect(() => {
     const timer = setInterval(async () => {
       if (document.visibilityState !== "visible") return;
@@ -28,7 +31,12 @@ export function LiveCard({ initial }: { initial: Live }) {
     <section className="rounded-2xl border border-border bg-card p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold">{t.stats.liveTitle}</h2>
-        <span className="text-xs text-muted">{t.stats.liveNote}</span>
+        <span className="flex items-center gap-2">
+          <span className="text-xs text-muted">{t.stats.liveNote}</span>
+          <button type="button" onClick={() => setOpen(true)} className="rounded-lg border border-border px-2.5 py-1 text-xs font-semibold transition hover:bg-bg">
+            {t.stats.liveMore}
+          </button>
+        </span>
       </div>
       <p className="flex items-center gap-3">
         <span className="relative flex h-3 w-3">
@@ -73,6 +81,7 @@ export function LiveCard({ initial }: { initial: Live }) {
           ))}
         </ul>
       )}
+      {open && <LiveGlobeModal onClose={closeModal} />}
     </section>
   );
 }
