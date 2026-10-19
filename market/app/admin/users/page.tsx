@@ -3,8 +3,9 @@ import { Ban, Search, Undo2, Users } from "lucide-react";
 import { db } from "@/lib/db";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatAmount, formatDate } from "@/lib/i18n/format";
-import { banMember, pausePublishing, resumePublishing, unbanMember } from "@/app/moderation-actions";
-import { formatPauseEnd, PUBLISH_PAUSE_DAYS } from "@/lib/publish-pause";
+import { banMember, resumePublishing, setGlobalCooldown, setMemberCooldown, unbanMember } from "@/app/moderation-actions";
+import { formatPauseEnd, globalCooldownHours, MAX_COOLDOWN_HOURS, publishCooldown, publishPause, PUBLISH_PAUSE_DAYS, toBrusselsInput } from "@/lib/publish-pause";
+import { PublishPauseForm } from "@/components/admin/PublishPauseForm";
 import { adminRemoveAvatar } from "@/app/member-actions";
 import { links } from "@/lib/notifications";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -39,12 +40,33 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
       ])
     : null;
 
+  // Règles de publication : réglage global, et pause / délai du membre affiché
+  const [globalHours, memberPause, memberCooldown] = await Promise.all([
+    globalCooldownHours(),
+    member ? publishPause(member.id) : null,
+    member ? publishCooldown(member.id) : null,
+  ]);
+  const hoursField = "h-9 w-24 rounded-lg border border-border bg-card px-3 text-sm outline-none transition focus:border-text";
+
   const userHref = (userId: string) => `/admin/users?${new URLSearchParams({ ...(query && { q: query }), id: userId })}`;
   const fmt1 = (n: number) => n.toLocaleString(locale === "fr" ? "fr-FR" : "en-GB", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
   return (
     <>
       <PageTitle title={t.mod.menu.users} intro={t.mod.usersIntro} />
+
+      {/* Délai entre deux publications pour tous les vendeurs */}
+      <form action={setGlobalCooldown} className="mb-4 flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-border bg-card p-4">
+        <div className="min-w-0 max-w-xl">
+          <p className="text-sm font-semibold">{t.publishPause.globalTitle}</p>
+          <p className="mt-0.5 text-xs text-muted">{t.publishPause.globalHelp}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <input type="number" name="hours" min={0} max={MAX_COOLDOWN_HOURS} defaultValue={globalHours} aria-label={t.publishPause.globalTitle} className={hoursField} />
+          <span className="text-sm text-muted">{t.publishPause.hours}</span>
+          <button className="btn-ghost px-4 py-2 text-sm">{t.publishPause.save}</button>
+        </div>
+      </form>
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 xl:grid-cols-[300px_minmax(0,1fr)]">
         {/* Recherche et liste */}
         <div className="rounded-2xl border border-border bg-card p-2">
@@ -150,25 +172,45 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
               </div>
             )}
 
-            {/* Pause de publication (laisser de la place aux autres vendeurs) */}
-            {member.role !== "ADMIN" && !member.bannedAt && (
-              <div className="mt-4 rounded-2xl border border-border p-4">
-                {member.publishPausedUntil && member.publishPausedUntil > new Date() ? (
-                  <form action={resumePublishing} className="flex flex-wrap items-center justify-between gap-3">
+            {/* Publications : pause (durée, date ou jusqu'à nouvel ordre) et délai entre deux publications */}
+            {member.role !== "ADMIN" && !member.bannedAt && memberCooldown && (
+              <div className="mt-4 space-y-4 rounded-2xl border border-border p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-semibold">{t.publishPause.panelTitle}</p>
+                  {memberPause ? (
+                    <Badge tone="warn">{memberPause.indefinite ? t.publishPause.pausedIndefinite : t.publishPause.pausedUntil(formatPauseEnd(memberPause.until!, locale))}</Badge>
+                  ) : (
+                    <Badge tone="ok">{t.publishPause.statusFree}</Badge>
+                  )}
+                </div>
+
+                {memberPause ? (
+                  <form action={resumePublishing} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-warn-bg px-4 py-3">
                     <input type="hidden" name="userId" value={member.id} />
-                    <p className="text-sm font-semibold text-warn">{t.publishPause.pausedUntil(formatPauseEnd(member.publishPausedUntil, locale))}</p>
+                    <div className="min-w-0 text-sm">
+                      <p className="font-semibold text-warn">{memberPause.indefinite ? t.publishPause.pausedIndefinite : t.publishPause.pausedUntil(formatPauseEnd(memberPause.until!, locale))}</p>
+                      {memberPause.reason && <p className="mt-0.5 break-words text-text/80">{t.publishPause.reasonShown(memberPause.reason)}</p>}
+                    </div>
                     <button className="btn-ghost px-4 py-2 text-sm">{t.publishPause.resume}</button>
                   </form>
                 ) : (
-                  <form action={pausePublishing} className="flex flex-wrap items-center justify-between gap-3">
-                    <input type="hidden" name="userId" value={member.id} />
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold">{t.publishPause.adminTitle(PUBLISH_PAUSE_DAYS)}</p>
-                      <p className="mt-0.5 text-xs text-muted">{t.publishPause.adminText}</p>
-                    </div>
-                    <button className="btn-ghost px-4 py-2 text-sm">{t.publishPause.pause(PUBLISH_PAUSE_DAYS)}</button>
-                  </form>
+                  <PublishPauseForm userId={member.id} defaultUntil={toBrusselsInput(new Date(Date.now() + PUBLISH_PAUSE_DAYS * 24 * 3600 * 1000))} />
                 )}
+
+                <form action={setMemberCooldown} className="border-t border-border pt-4">
+                  <input type="hidden" name="userId" value={member.id} />
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-semibold">{t.publishPause.cooldownTitle}</p>
+                    <span className="text-xs font-semibold text-muted">{t.publishPause.cooldownStatus(memberCooldown.hours, memberCooldown.own)}</span>
+                  </div>
+                  {memberCooldown.nextAt && <p className="mt-1 text-xs font-semibold text-warn">{t.publishPause.nextAt(formatPauseEnd(memberCooldown.nextAt, locale))}</p>}
+                  <p className="mt-1 text-xs text-muted">{t.publishPause.cooldownHelp(globalHours)}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <input type="number" name="hours" min={0} max={MAX_COOLDOWN_HOURS} defaultValue={member.publishCooldownHours ?? ""} placeholder={String(globalHours)} aria-label={t.publishPause.cooldownTitle} className={hoursField} />
+                    <span className="text-sm text-muted">{t.publishPause.hours}</span>
+                    <button className="btn-ghost px-4 py-2 text-sm">{t.publishPause.save}</button>
+                  </div>
+                </form>
               </div>
             )}
 

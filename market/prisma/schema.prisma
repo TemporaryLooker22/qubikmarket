@@ -12,54 +12,59 @@ datasource db {
 }
 
 model User {
-  id                    String               @id @default(cuid())
-  username              String               @unique
-  email                 String               @unique
-  passwordHash          String
+  id                     String               @id @default(cuid())
+  username               String               @unique
+  email                  String               @unique
+  passwordHash           String
   // Connexion avec Google ou Discord (identifiant du compte chez eux, voir lib/oauth.ts)
-  googleId              String?              @unique
-  discordId             String?              @unique
-  role                  String               @default("USER") // USER ou ADMIN
-  createdAt             DateTime             @default(now())
+  googleId               String?              @unique
+  discordId              String?              @unique
+  role                   String               @default("USER") // USER ou ADMIN
+  createdAt              DateTime             @default(now())
   // Vendeur fondateur : commission réduite jusqu'à cette date (voir lib/sellers.ts)
-  founderUntil          DateTime?
+  founderUntil           DateTime?
   // Compte Stripe du vendeur pour recevoir ses gains (Stripe Connect), et s'il peut déjà recevoir des virements
-  stripeAccountId       String?              @unique
-  stripeTransfersActive Boolean              @default(false)
-  payouts               SellerPayout[]
-  resources             Resource[]
-  purchases             Purchase[]
-  earnings              SellerEarning[]
-  reviews               Review[]
+  stripeAccountId        String?              @unique
+  stripeTransfersActive  Boolean              @default(false)
+  payouts                SellerPayout[]
+  resources              Resource[]
+  purchases              Purchase[]
+  earnings               SellerEarning[]
+  reviews                Review[]
   // Bannissement par un modérateur : plus de connexion, ressources retirées de la vente, avis masqués (réversible)
-  bannedAt              DateTime?
-  banReason             String?
-  // Pause de publication décidée par la modération (pour laisser de la place aux autres vendeurs) :
-  // pas de nouvelle ressource avant cette date. publishPauseSeen : la fenêtre d'information a été fermée.
-  publishPausedUntil    DateTime?
-  publishPauseSeen      Boolean              @default(true)
+  bannedAt               DateTime?
+  banReason              String?
+  // Pause de publication décidée par la modération (voir lib/publish-pause.ts) : pas de nouvelle ressource avant
+  // publishPausedUntil, ou jusqu'à nouvel ordre si publishPauseIndefinite. publishPauseReason : motif montré au vendeur.
+  // publishPauseSeen : la fenêtre d'information a été fermée.
+  publishPausedUntil     DateTime?
+  publishPauseIndefinite Boolean              @default(false)
+  publishPauseReason     String?
+  publishPauseSeen       Boolean              @default(true)
+  // Délai minimum entre deux publications pour ce membre, en heures (vide = délai global du site, 0 = aucun)
+  publishCooldownHours   Int?
   // Provenance à l'inscription (voir components/SourceTracker.tsx) : site ou campagne d'origine, adresse du lien,
   // page d'arrivée et pays (déduit de l'adresse IP par Vercel, l'adresse IP n'est pas gardée)
-  signupSource          String?
-  signupReferrer        String?
-  signupLanding         String?
-  signupCountry         String?
-  reviewReports         ReviewReport[]
-  moderationLogs        ModerationLog[]
-  notifications         Notification[]
+  signupSource           String?
+  signupReferrer         String?
+  signupLanding          String?
+  signupCountry          String?
+  reviewReports          ReviewReport[]
+  moderationLogs         ModerationLog[]
+  notifications          Notification[]
   // Messagerie entre membres (voir lib/chat.ts)
-  lastSeenAt            DateTime? // dernière activité sur le site (point vert « en ligne » dans les messages)
-  conversationsA        Conversation[]       @relation("ConversationA")
-  conversationsB        Conversation[]       @relation("ConversationB")
-  messages              Message[]
-  blocks                Block[]              @relation("Blocker")
-  blockedBy             Block[]              @relation("Blocked")
-  conversationReports   ConversationReport[]
+  lastSeenAt             DateTime? // dernière activité sur le site (point vert « en ligne » dans les messages)
+  conversationsA         Conversation[]       @relation("ConversationA")
+  conversationsB         Conversation[]       @relation("ConversationB")
+  messages               Message[]
+  blocks                 Block[]              @relation("Blocker")
+  blockedBy              Block[]              @relation("Blocked")
+  conversationReports    ConversationReport[]
   // Profil public (/u/pseudo) : photo recadrée (Vercel Blob) et avis entre membres (voir lib/member-reviews.ts)
-  avatarUrl             String?
-  memberReviewsWritten  MemberReview[]       @relation("MemberReviewAuthor")
-  memberReviewsReceived MemberReview[]       @relation("MemberReviewTarget")
-  memberReviewReports   MemberReviewReport[]
+  avatarUrl              String?
+  memberReviewsWritten   MemberReview[]       @relation("MemberReviewAuthor")
+  memberReviewsReceived  MemberReview[]       @relation("MemberReviewTarget")
+  memberReviewReports    MemberReviewReport[]
 }
 
 model Resource {
@@ -446,4 +451,12 @@ model SearchLog {
   results   Int
 
   @@index([createdAt])
+}
+
+// Réglages du site modifiables depuis la modération (clé → valeur en texte).
+// publishCooldownHours : délai minimum entre deux publications pour tous les vendeurs (voir lib/publish-pause.ts)
+model SiteSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }

@@ -9,6 +9,7 @@ const TONES: Record<string, "ok" | "warn" | "bad" | "off"> = {
   UNBAN: "ok",
   PUBLISH_PAUSE: "warn",
   PUBLISH_RESUME: "ok",
+  PUBLISH_COOLDOWN: "off",
   REJECT: "bad",
   BAN: "bad",
   UNLIST: "warn",

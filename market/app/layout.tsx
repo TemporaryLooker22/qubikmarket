@@ -59,7 +59,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const moderatorNotice = user && user.role !== "ADMIN" ? await pendingModeratorMessage(user.id) : null;
   // Pause de publication pas encore vue : fenêtre d'information (une seule fois par pause)
   const pause = user ? await publishPause(user.id) : null;
-  const pauseNotice = pause && !pause.seen ? formatPauseEnd(pause.until, locale) : null;
+  const pauseNotice = pause && !pause.seen ? { until: pause.until ? formatPauseEnd(pause.until, locale) : null, reason: pause.reason } : null;
 
   return (
     <html lang={locale} className={jakarta.variable}>
@@ -90,7 +90,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* Statistiques de visite sans cookie (Vercel Web Analytics) et provenance des inscriptions */}
         <Analytics />
         <ModeratorNotice notice={moderatorNotice} />
-        {!moderatorNotice && <PublishPauseNotice until={pauseNotice} />}
+        {!moderatorNotice && <PublishPauseNotice notice={pauseNotice} />}
         <Suspense fallback={null}>
           <SourceTracker />
         </Suspense>

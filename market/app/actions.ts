@@ -8,7 +8,7 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { formatPauseEnd, publishPause } from "@/lib/publish-pause";
+import { publishBlockMessage } from "@/lib/publish-pause";
 import { createSession, destroySession, getCurrentUser, requireAdmin, requireUser } from "@/lib/auth";
 import { hasRobloxContent, scanUpload } from "@/lib/scan";
 import { isUploadedImage, receiveUpload } from "@/lib/uploads";
@@ -217,9 +217,9 @@ export async function publishResource(_: FormState, formData: FormData): Promise
   const user = await requireUser();
   const { locale, t } = await getDictionary();
 
-  // Pause de publication décidée par la modération : pas de nouvelle ressource avant la fin
-  const pause = await publishPause(user.id);
-  if (pause) return { error: t.publishPause.blocked(formatPauseEnd(pause.until, locale)) };
+  // Règles de la modération : pause de publication ou délai minimum depuis la dernière ressource publiée
+  const blocked = await publishBlockMessage(user.id, t.publishPause, locale);
+  if (blocked) return { error: blocked };
 
   const parsed = resourceSchema(t.errors).safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };

@@ -5,14 +5,15 @@ import { Clock } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { acknowledgePublishPause } from "@/app/member-actions";
 
-// Fenêtre affichée à l'arrivée sur le site quand la modération a mis en pause les publications du membre.
+// Fenêtre affichée à l'arrivée sur le site quand la modération a mis en pause les publications du membre
+// (jusqu'à une date, ou jusqu'à nouvel ordre si until est vide), avec le motif éventuel.
 // « J'ai compris » la ferme pour de bon (elle ne revient pas avant une nouvelle pause).
-export function PublishPauseNotice({ until }: { until: string | null }) {
+export function PublishPauseNotice({ notice }: { notice: { until: string | null; reason: string | null } | null }) {
   const { t } = useI18n();
-  const [open, setOpen] = useState(Boolean(until));
+  const [open, setOpen] = useState(Boolean(notice));
   const [, startTransition] = useTransition();
-  useEffect(() => setOpen(Boolean(until)), [until]);
-  if (!until || !open) return null;
+  useEffect(() => setOpen(Boolean(notice)), [notice?.until, notice?.reason]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!notice || !open) return null;
   const s = t.publishPause;
   const close = () => {
     setOpen(false);
@@ -31,7 +32,13 @@ export function PublishPauseNotice({ until }: { until: string | null }) {
           </p>
         </div>
         <div className="space-y-3 px-5 py-4 text-[15px] leading-relaxed">
-          <p>{s.body(until)}</p>
+          <p>{notice.until ? s.body(notice.until) : s.bodyIndefinite}</p>
+          {notice.reason && (
+            <div className="rounded-xl bg-bg px-4 py-3">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted">{s.reasonTitle}</p>
+              <p className="mt-1 whitespace-pre-wrap break-words">{notice.reason}</p>
+            </div>
+          )}
           <p className="text-muted">{s.keep}</p>
         </div>
         <div className="flex justify-end border-t border-border px-5 py-3">

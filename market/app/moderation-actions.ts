@@ -14,7 +14,7 @@ import { hasRobloxContent, type ScanReport } from "@/lib/scan";
 import { deleteStored } from "@/lib/storage";
 import { enqueueAnalysis, kickAiQueue, stopLiveReanalyses } from "@/lib/ai/run";
 import { grantFounderIfEligible } from "@/lib/sellers";
-import { PUBLISH_PAUSE_DAYS } from "@/lib/publish-pause";
+import { formatPauseEnd, fromBrusselsInput, MAX_COOLDOWN_HOURS, PUBLISH_PAUSE_DAYS, setGlobalCooldownHours } from "@/lib/publish-pause";
 
 function refreshSite() {
   revalidatePath("/", "layout");
@@ -41,23 +41,64 @@ export async function unbanMember(formData: FormData) {
   refreshSite();
 }
 
-// Pause de publication : pas de nouvelle ressource pendant PUBLISH_PAUSE_DAYS jours (fenêtre d'information à l'arrivée)
+// ---------- Règles de publication d'un membre (Modération → Utilisateurs, voir lib/publish-pause.ts) ----------
+
+const PAUSE_PRESETS: Record<string, number> = { "1d": 1, "2d": 2, "7d": 7, "30d": 30 };
+
+// Pause de publication : durée proposée, date choisie ou jusqu'à nouvel ordre, avec un motif facultatif.
+// Le membre voit une fenêtre d'information à sa prochaine visite.
 export async function pausePublishing(formData: FormData) {
   const admin = await requireAdmin();
   const user = await db.user.findUnique({ where: { id: String(formData.get("userId")) }, select: { id: true, username: true, role: true } });
   if (!user || user.role === "ADMIN") return;
-  const until = new Date(Date.now() + PUBLISH_PAUSE_DAYS * 24 * 3600 * 1000);
-  await db.user.update({ where: { id: user.id }, data: { publishPausedUntil: until, publishPauseSeen: false } });
-  await logModeration({ moderatorId: admin.id, action: "PUBLISH_PAUSE", targetType: "user", targetId: user.id, label: user.username, note: `${PUBLISH_PAUSE_DAYS} j` });
+  const mode = String(formData.get("mode") ?? "2d");
+  const reason = String(formData.get("reason") ?? "").trim().slice(0, 300) || null;
+  let until: Date | null = null;
+  if (mode === "custom") {
+    until = fromBrusselsInput(String(formData.get("until") ?? ""));
+    if (!until || until <= new Date()) return;
+  } else if (mode !== "indefinite") {
+    until = new Date(Date.now() + (PAUSE_PRESETS[mode] ?? PUBLISH_PAUSE_DAYS) * 24 * 3600 * 1000);
+  }
+  const indefinite = mode === "indefinite";
+  await db.user.update({
+    where: { id: user.id },
+    data: { publishPausedUntil: until, publishPauseIndefinite: indefinite, publishPauseReason: reason, publishPauseSeen: false },
+  });
+  const note = indefinite ? "jusqu'à nouvel ordre" : `jusqu'au ${formatPauseEnd(until!, "fr")}`;
+  await logModeration({ moderatorId: admin.id, action: "PUBLISH_PAUSE", targetType: "user", targetId: user.id, label: user.username, note: reason ? `${note} · ${reason}` : note });
   refreshSite();
 }
 
 export async function resumePublishing(formData: FormData) {
   const admin = await requireAdmin();
-  const user = await db.user.findUnique({ where: { id: String(formData.get("userId")) }, select: { id: true, username: true, publishPausedUntil: true } });
-  if (!user?.publishPausedUntil) return;
-  await db.user.update({ where: { id: user.id }, data: { publishPausedUntil: null, publishPauseSeen: true } });
+  const user = await db.user.findUnique({ where: { id: String(formData.get("userId")) }, select: { id: true, username: true, publishPausedUntil: true, publishPauseIndefinite: true } });
+  if (!user || (!user.publishPausedUntil && !user.publishPauseIndefinite)) return;
+  await db.user.update({ where: { id: user.id }, data: { publishPausedUntil: null, publishPauseIndefinite: false, publishPauseReason: null, publishPauseSeen: true } });
   await logModeration({ moderatorId: admin.id, action: "PUBLISH_RESUME", targetType: "user", targetId: user.id, label: user.username });
+  refreshSite();
+}
+
+// Délai entre deux publications propre à un membre (vide = délai global, 0 = aucun délai)
+export async function setMemberCooldown(formData: FormData) {
+  const admin = await requireAdmin();
+  const user = await db.user.findUnique({ where: { id: String(formData.get("userId")) }, select: { id: true, username: true } });
+  if (!user) return;
+  const raw = String(formData.get("hours") ?? "").trim();
+  const hours = raw === "" ? null : Math.max(0, Math.min(MAX_COOLDOWN_HOURS, Math.round(Number(raw))));
+  if (hours !== null && !Number.isFinite(hours)) return;
+  await db.user.update({ where: { id: user.id }, data: { publishCooldownHours: hours } });
+  await logModeration({ moderatorId: admin.id, action: "PUBLISH_COOLDOWN", targetType: "user", targetId: user.id, label: user.username, note: hours === null ? "délai global" : `${hours} h` });
+  refreshSite();
+}
+
+// Délai entre deux publications pour tous les vendeurs (0 = aucun)
+export async function setGlobalCooldown(formData: FormData) {
+  const admin = await requireAdmin();
+  const hours = Number(String(formData.get("hours") ?? "").trim() || "0");
+  if (!Number.isFinite(hours) || hours < 0) return;
+  await setGlobalCooldownHours(hours);
+  await logModeration({ moderatorId: admin.id, action: "PUBLISH_COOLDOWN", targetType: "site", targetId: "global", label: "Tous les vendeurs", note: `${Math.round(hours)} h` });
   refreshSite();
 }
 
