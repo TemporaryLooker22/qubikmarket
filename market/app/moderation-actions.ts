@@ -12,7 +12,7 @@ import { links, notify } from "@/lib/notifications";
 import { getDictionary } from "@/lib/i18n/server";
 import { hasRobloxContent, type ScanReport } from "@/lib/scan";
 import { deleteStored } from "@/lib/storage";
-import { enqueueAnalysis, kickAiQueue } from "@/lib/ai/run";
+import { enqueueAnalysis, kickAiQueue, stopLiveReanalyses } from "@/lib/ai/run";
 import { grantFounderIfEligible } from "@/lib/sellers";
 
 function refreshSite() {
@@ -115,6 +115,13 @@ export async function adminReanalyze(target: string | null, formData: FormData) 
     const r = resources.find((x) => x.id === v.resourceId)!;
     await logModeration({ moderatorId: admin.id, action: "REANALYZE", targetType: "resource", targetId: r.id, label: r.title });
   }
+  revalidatePath("/admin", "layout");
+}
+
+// Arrêter les réanalyses IA des ressources déjà en ligne (les nouvelles publications restent dans la file)
+export async function adminStopLiveReanalyses() {
+  await requireAdmin();
+  await stopLiveReanalyses();
   revalidatePath("/admin", "layout");
 }
 

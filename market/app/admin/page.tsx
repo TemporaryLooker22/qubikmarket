@@ -3,10 +3,11 @@ import { Clock, Flag, History, MessageSquareWarning, MessagesSquare, Percent, Sh
 import { db } from "@/lib/db";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatAmount, formatNumber } from "@/lib/i18n/format";
-import { findUnanalyzedVersionIds, kickAiQueue, queueLength } from "@/lib/ai/run";
+import { findUnanalyzedVersionIds, kickAiQueue, liveReanalysisCount, queueLength } from "@/lib/ai/run";
 import { hasAiKey } from "@/lib/ai/ovh";
 import { moderationCounts, QUEUE_RESOURCES, QUEUE_VERSIONS } from "@/lib/moderation";
 import { analyzeExistingResources } from "@/app/resource-actions";
+import { adminStopLiveReanalyses } from "@/app/moderation-actions";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { PageTitle, Panel, Stat } from "@/components/admin/AdminUi";
 import { RevenueBars } from "@/components/admin/RevenueBars";
@@ -57,7 +58,7 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
   const from = days ? new Date(now.getTime() - days * DAY) : null;
   const before = days ? new Date(now.getTime() - 2 * days * DAY) : null;
 
-  const [current, previous, members, previousMembers, totalMembers, activeSellers, counts, oldest, aiQueue, unanalyzed, paidList, balance] = await Promise.all([
+  const [current, previous, members, previousMembers, totalMembers, activeSellers, counts, oldest, aiQueue, liveQueued, unanalyzed, paidList, balance] = await Promise.all([
     money(from, now),
     from ? money(before, from) : null,
     db.user.count({ where: from ? { createdAt: { gte: from } } : {} }),
@@ -71,6 +72,7 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
       db.resourceVersion.findFirst({ where: QUEUE_VERSIONS, orderBy: { createdAt: "asc" }, select: { createdAt: true } }),
     ]).then((list) => list.filter(Boolean).map((x) => x!.createdAt.getTime()).sort()[0] ?? null),
     queueLength(),
+    liveReanalysisCount(),
     findUnanalyzedVersionIds(),
     // Ventes de la période pour le graphique
     db.purchase.findMany({
@@ -160,6 +162,13 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
         <Panel title={t.mod.aiTitle}>
           <ul className="divide-y divide-border">
             <Todo icon={Clock} tone="bg-surface" title={aiQueue ? t.mod.aiQueue(aiQueue) : t.mod.aiQueueEmpty} note={t.mod.aiQueueNote(hasAiKey())} />
+            {liveQueued > 0 && (
+              <Todo icon={History} tone="bg-surface" title={t.mod.aiLive(liveQueued)} note={t.mod.aiLiveNote}>
+                <form action={adminStopLiveReanalyses} className="ml-auto">
+                  <button className="shrink-0 text-sm font-semibold text-bad hover:underline">{t.mod.aiStop}</button>
+                </form>
+              </Todo>
+            )}
             {unanalyzed.length > 0 && (
               <Todo icon={History} tone="bg-surface" title={t.mod.aiOld(unanalyzed.length)} note={t.mod.aiOldNote}>
                 <form action={analyzeExistingResources} className="ml-auto">

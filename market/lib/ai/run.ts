@@ -77,6 +77,30 @@ export async function queueLength() {
   return db.resourceVersion.count({ where: { aiStatus: { in: ["QUEUED", "PENDING"] } } });
 }
 
+// ---------- Réanalyses des ressources déjà en ligne ----------
+
+// Versions en ligne remises dans la file (bouton « Réanalyser », texte modifié…). Les nouvelles publications
+// et nouvelles versions (statut « ANALYZING ») n'en font pas partie : elles attendent l'IA pour passer en ligne.
+const LIVE_REANALYSIS = {
+  aiStatus: { in: ["QUEUED", "PENDING"] },
+  status: { not: "ANALYZING" },
+  resource: { status: { in: ["APPROVED", "UNLISTED"] } },
+};
+
+export async function liveReanalysisCount() {
+  return db.resourceVersion.count({ where: LIVE_REANALYSIS });
+}
+
+// Retire ces versions de la file : elles retrouvent leur résultat précédent (ou aucun si elles n'en avaient pas).
+// Une analyse déjà partie chez OVH ne peut pas être coupée : son résultat s'enregistrera quand même.
+export async function stopLiveReanalyses() {
+  const [withResult, without] = await db.$transaction([
+    db.resourceVersion.updateMany({ where: { ...LIVE_REANALYSIS, aiReport: { not: null } }, data: { aiStatus: "DONE", aiAttempts: 0 } }),
+    db.resourceVersion.updateMany({ where: { ...LIVE_REANALYSIS, aiReport: null }, data: { aiStatus: null, aiAttempts: 0 } }),
+  ]);
+  return withResult.count + without.count;
+}
+
 // ---------- Traitement ----------
 
 async function acquireLease() {
