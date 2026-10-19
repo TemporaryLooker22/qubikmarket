@@ -10,7 +10,7 @@ import { inputClass } from "@/components/edit/EditForms";
 const gameFont = Lilita_One({ weight: "400", subsets: ["latin"] });
 
 type Model = { id: string; name: string; perDay: number };
-type Result = { dataUrl: string; seed: number; model: string; prompt: string; ms: number };
+type Result = { dataUrl: string; seed: number; model: string; prompt: string; ms: number; guide: string | null };
 type Position = "top" | "center" | "bottom";
 
 const COLORS = ["#FFD400", "#FFFFFF", "#4FE34F", "#3FB8FF", "#FF4D6D", "#C77DFF"];
@@ -112,7 +112,9 @@ export function ThumbnailStudio({ models, styles }: { models: Model[]; styles: s
   // Changer de format change les images proposées (miniatures 16:9 ou icônes) : on repart de zéro
   useEffect(() => setPicked([]), [wide]);
   const togglePick = (url: string) => setPicked((p) => (p.includes(url) ? p.filter((u) => u !== url) : p.length >= MAX_PICK ? p : [...p, url]));
-  const effectiveModel = picked.length ? "flux-2-klein-4b" : model;
+  // Guide de style déjà tiré des références choisies : réutilisé tant qu'elles ne changent pas
+  const [guide, setGuide] = useState<{ key: string; text: string } | null>(null);
+  const pickedKey = picked.join("|");
 
   const [W, H] = wide ? [1920, 1080] : [512, 512];
 
@@ -167,14 +169,23 @@ export function ThumbnailStudio({ models, styles }: { models: Model[]; styles: s
       const res = await fetch("/api/admin/thumbnail", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ scene, style, model: effectiveModel, wide, references: picked, ...(sameSeed && result && { seed: result.seed }) }),
+        body: JSON.stringify({
+          scene,
+          style,
+          model,
+          wide,
+          references: picked,
+          ...(guide?.key === pickedKey && picked.length && { guide: guide.text }),
+          ...(sameSeed && result && { seed: result.seed }),
+        }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(res.status === 429 ? s.quota : `${s.error} : ${data.error ?? res.status}`);
+      if (!res.ok) throw new Error(res.status === 429 ? s.quota : data.error === "flagged" ? s.flagged : `${s.error} : ${data.error ?? res.status}`);
       const img = new Image();
       img.onload = () => setImage(img);
       img.src = data.dataUrl;
       setResult(data);
+      if (data.guide) setGuide({ key: pickedKey, text: data.guide });
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -230,12 +241,11 @@ export function ThumbnailStudio({ models, styles }: { models: Model[]; styles: s
         </div>
         <div>
           <p className={label}>{s.model}</p>
-          {picked.length > 0 && <p className="mb-1.5 text-xs font-semibold text-muted">{s.refsForced}</p>}
-          <div className={`space-y-1.5 ${picked.length ? "opacity-60" : ""}`}>
+          <div className="space-y-1.5">
             {models.map((m) => (
-              <label key={m.id} className={`flex cursor-pointer items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm transition ${effectiveModel === m.id ? "border-text" : "border-border hover:border-border-strong"}`}>
+              <label key={m.id} className={`flex cursor-pointer items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm transition ${model === m.id ? "border-text" : "border-border hover:border-border-strong"}`}>
                 <span className="flex items-center gap-2 font-semibold">
-                  <input type="radio" name="model" disabled={picked.length > 0} checked={effectiveModel === m.id} onChange={() => setModel(m.id)} className="accent-[var(--color-text)]" />
+                  <input type="radio" name="model" checked={model === m.id} onChange={() => setModel(m.id)} className="accent-[var(--color-text)]" />
                   {m.name}
                 </span>
                 <span className="text-xs text-muted">{s.perDay(m.perDay)}</span>
@@ -360,6 +370,12 @@ export function ThumbnailStudio({ models, styles }: { models: Model[]; styles: s
           )}
         </section>
 
+        {result?.guide && (
+          <div className="rounded-xl bg-accent-soft px-4 py-3 text-xs">
+            <p className="font-semibold">{s.guideTitle}</p>
+            <p className="mt-1 leading-relaxed text-text/80">{result.guide}</p>
+          </div>
+        )}
         {result && (
           <details className="rounded-xl bg-surface px-4 py-3 text-xs text-muted">
             <summary className="cursor-pointer font-semibold">{s.prompt}</summary>

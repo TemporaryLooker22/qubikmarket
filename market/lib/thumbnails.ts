@@ -65,30 +65,64 @@ export class ThumbError extends Error {
   }
 }
 
-export const MAX_REFS = 4; // FLUX.2 : 4 images de référence au plus (input_image_0 à input_image_3)
+export const MAX_REFS = 4;
 
-// Consigne quand des images de référence sont jointes : l'IA s'en inspire pour le style, la scène reste celle demandée
-export function withReferences(prompt: string, count: number) {
-  if (!count) return prompt;
-  const list = Array.from({ length: count }, (_, i) => `image ${i}`).join(", ");
-  return (
-    `Reference images: ${list}. Study them closely and match their thumbnail style: color palette, saturation, lighting, rendering quality, ` +
-    `camera angle, character proportions and the energy of the composition. Do not copy their characters, logos, text or exact layout: ` +
-    `create a new original scene. ${prompt}`
-  );
-}
+// Images de référence : une IA de vision (Llama 4 Scout, Cloudflare) les regarde et décrit leur style en texte.
+// Le générateur ne reçoit que ce texte : envoyer les images elles-mêmes à FLUX.2 déclenchait son filtre de sécurité
+// (logos, personnages connus, visages réalistes dans les miniatures des jeux populaires).
+const VISION_MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
 
-// Télécharge une image de référence et la réduit sous 512×512 (limite de FLUX.2)
-async function referenceBlob(url: string) {
+// Télécharge une image de référence et la réduit (moins de données à envoyer à l'IA de vision)
+async function referenceDataUrl(url: string) {
   const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
   if (!res.ok) throw new ThumbError(400, `Image de référence illisible (${res.status})`);
   const sharp = (await import("sharp")).default;
-  const png = await sharp(Buffer.from(await res.arrayBuffer())).resize(504, 504, { fit: "inside" }).png().toBuffer();
-  return new Blob([new Uint8Array(png)], { type: "image/png" });
+  const jpg = await sharp(Buffer.from(await res.arrayBuffer())).resize(640, 640, { fit: "inside" }).jpeg({ quality: 85 }).toBuffer();
+  return `data:image/jpeg;base64,${jpg.toString("base64")}`;
+}
+
+const VISION_PROMPT =
+  "These images are Roblox game thumbnails used as style references for a new, original thumbnail. " +
+  "Write one style guide (110 words max, plain English, no lists, no intro) that an image generator can follow: " +
+  "color palette and saturation, lighting, rendering style, camera angle and framing, how the main character is posed and drawn, " +
+  "background, visual effects (speed lines, glow, particles), mood and composition tricks they share. " +
+  "Describe only visual style. Never mention game names, brands, logos, text, words, numbers, real people or known characters.";
+
+export async function describeReferences(urls: string[]) {
+  const account = process.env.CLOUDFLARE_ACCOUNT_ID;
+  const token = process.env.CLOUDFLARE_AI_TOKEN;
+  if (!account || !token) throw new ThumbError(503, "Clés Cloudflare manquantes");
+  const images = await Promise.all(urls.slice(0, MAX_REFS).map(referenceDataUrl));
+  const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/ai/v1/chat/completions`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    signal: AbortSignal.timeout(40_000),
+    body: JSON.stringify({
+      model: VISION_MODEL,
+      max_tokens: 300,
+      temperature: 0.2,
+      messages: [{ role: "user", content: [{ type: "text", text: VISION_PROMPT }, ...images.map((url) => ({ type: "image_url", image_url: { url } }))] }],
+    }),
+  }).catch((err: Error) => {
+    throw new ThumbError(504, `Cloudflare injoignable : ${err.message}`);
+  });
+  const text = await res.text();
+  if (!res.ok) throw new ThumbError(res.status === 429 ? 429 : 502, `Analyse des références : ${text.slice(0, 200)}`);
+  const content = JSON.parse(text).choices?.[0]?.message?.content;
+  const guide = String(content ?? "").replace(/\s+/g, " ").trim();
+  if (!guide) throw new ThumbError(502, "Analyse des références : réponse vide");
+  return guide.slice(0, 900);
+}
+
+// Ajoute le guide de style tiré des références, en gardant la consigne sous la limite de FLUX.1 (2048 caractères)
+export function withStyleGuide(prompt: string, guide: string | null) {
+  if (!guide) return prompt.slice(0, 2000);
+  const full = `${prompt} Match this reference style: ${guide}`;
+  return full.length <= 2000 ? full : `${prompt.slice(0, 2000 - guide.length - 32)} Match this reference style: ${guide}`;
 }
 
 // Génère l'image et la renvoie en base64 (JPEG ou PNG selon le modèle)
-export async function generateThumbnail(opts: { model: ThumbModelId; prompt: string; wide: boolean; seed?: number; references?: string[] }) {
+export async function generateThumbnail(opts: { model: ThumbModelId; prompt: string; wide: boolean; seed?: number }) {
   const account = process.env.CLOUDFLARE_ACCOUNT_ID;
   const token = process.env.CLOUDFLARE_AI_TOKEN;
   if (!account || !token) throw new ThumbError(503, "Clés Cloudflare manquantes");
@@ -100,15 +134,12 @@ export async function generateThumbnail(opts: { model: ThumbModelId; prompt: str
 
   let init: RequestInit;
   if (opts.model === "flux-2-klein-4b") {
-    // FLUX.2 attend un formulaire « multipart », avec les images de référence en input_image_0, 1, 2, 3
-    const refs = (opts.references ?? []).slice(0, MAX_REFS);
+    // FLUX.2 attend un formulaire « multipart »
     const form = new FormData();
-    form.append("prompt", withReferences(opts.prompt, refs.length));
+    form.append("prompt", opts.prompt);
     form.append("width", String(width));
     form.append("height", String(height));
     form.append("seed", String(seed));
-    const blobs = await Promise.all(refs.map(referenceBlob));
-    blobs.forEach((blob, i) => form.append(`input_image_${i}`, blob, `reference-${i}.png`));
     init = { body: form };
   } else if (opts.model === "lucid-origin") {
     init = { body: JSON.stringify({ prompt: opts.prompt, width, height, seed, steps: 20 }), headers: { "content-type": "application/json" } };
@@ -133,7 +164,9 @@ export async function generateThumbnail(opts: { model: ThumbModelId; prompt: str
     // réponse vide ou non JSON : traitée plus bas
   }
   if (!res.ok || !json.result?.image) {
-    const message = json.errors?.map((e) => e.message).join(" · ") || text.slice(0, 200) || `HTTP ${res.status}`;
+    const message = (json.errors?.map((e) => e.message).join(" · ") || text.slice(0, 200) || `HTTP ${res.status}`).replace(/^(AiError:\s*)+/, "");
+    // Filtre de sécurité du modèle : l'image produite a été bloquée (personnage connu, visage réaliste, violence…)
+    if (/flagged/i.test(message)) throw new ThumbError(422, "flagged");
     throw new ThumbError(res.status === 429 ? 429 : res.ok ? 502 : res.status, message);
   }
   const image = json.result.image;
