@@ -65,8 +65,30 @@ export class ThumbError extends Error {
   }
 }
 
+export const MAX_REFS = 4; // FLUX.2 : 4 images de référence au plus (input_image_0 à input_image_3)
+
+// Consigne quand des images de référence sont jointes : l'IA s'en inspire pour le style, la scène reste celle demandée
+export function withReferences(prompt: string, count: number) {
+  if (!count) return prompt;
+  const list = Array.from({ length: count }, (_, i) => `image ${i}`).join(", ");
+  return (
+    `Reference images: ${list}. Study them closely and match their thumbnail style: color palette, saturation, lighting, rendering quality, ` +
+    `camera angle, character proportions and the energy of the composition. Do not copy their characters, logos, text or exact layout: ` +
+    `create a new original scene. ${prompt}`
+  );
+}
+
+// Télécharge une image de référence et la réduit sous 512×512 (limite de FLUX.2)
+async function referenceBlob(url: string) {
+  const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+  if (!res.ok) throw new ThumbError(400, `Image de référence illisible (${res.status})`);
+  const sharp = (await import("sharp")).default;
+  const png = await sharp(Buffer.from(await res.arrayBuffer())).resize(504, 504, { fit: "inside" }).png().toBuffer();
+  return new Blob([new Uint8Array(png)], { type: "image/png" });
+}
+
 // Génère l'image et la renvoie en base64 (JPEG ou PNG selon le modèle)
-export async function generateThumbnail(opts: { model: ThumbModelId; prompt: string; wide: boolean; seed?: number }) {
+export async function generateThumbnail(opts: { model: ThumbModelId; prompt: string; wide: boolean; seed?: number; references?: string[] }) {
   const account = process.env.CLOUDFLARE_ACCOUNT_ID;
   const token = process.env.CLOUDFLARE_AI_TOKEN;
   if (!account || !token) throw new ThumbError(503, "Clés Cloudflare manquantes");
@@ -78,12 +100,15 @@ export async function generateThumbnail(opts: { model: ThumbModelId; prompt: str
 
   let init: RequestInit;
   if (opts.model === "flux-2-klein-4b") {
-    // FLUX.2 attend un formulaire « multipart »
+    // FLUX.2 attend un formulaire « multipart », avec les images de référence en input_image_0, 1, 2, 3
+    const refs = (opts.references ?? []).slice(0, MAX_REFS);
     const form = new FormData();
-    form.append("prompt", opts.prompt);
+    form.append("prompt", withReferences(opts.prompt, refs.length));
     form.append("width", String(width));
     form.append("height", String(height));
     form.append("seed", String(seed));
+    const blobs = await Promise.all(refs.map(referenceBlob));
+    blobs.forEach((blob, i) => form.append(`input_image_${i}`, blob, `reference-${i}.png`));
     init = { body: form };
   } else if (opts.model === "lucid-origin") {
     init = { body: JSON.stringify({ prompt: opts.prompt, width, height, seed, steps: 20 }), headers: { "content-type": "application/json" } };

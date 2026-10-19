@@ -14,6 +14,7 @@ type Result = { dataUrl: string; seed: number; model: string; prompt: string; ms
 type Position = "top" | "center" | "bottom";
 
 const COLORS = ["#FFD400", "#FFFFFF", "#4FE34F", "#3FB8FF", "#FF4D6D", "#C77DFF"];
+const MAX_PICK = 4; // FLUX.2 klein : 4 images de référence au plus
 
 // Recadre l'image pour remplir tout le format (comme « object-fit: cover »)
 function drawCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, w: number, h: number) {
@@ -98,6 +99,21 @@ export function ThumbnailStudio({ models, styles }: { models: Model[]; styles: s
   const [result, setResult] = useState<Result | null>(null);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
 
+  // Images de référence : miniatures des jeux Roblox populaires, chargées depuis le serveur
+  const [refs, setRefs] = useState<{ id: number; name: string; thumb: string | null; icon: string | null }[] | null>(null);
+  const [refsError, setRefsError] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
+  useEffect(() => {
+    fetch("/api/admin/thumbnail/refs")
+      .then((r) => r.json())
+      .then((d) => setRefs(d.refs ?? []))
+      .catch(() => setRefsError(true));
+  }, []);
+  // Changer de format change les images proposées (miniatures 16:9 ou icônes) : on repart de zéro
+  useEffect(() => setPicked([]), [wide]);
+  const togglePick = (url: string) => setPicked((p) => (p.includes(url) ? p.filter((u) => u !== url) : p.length >= MAX_PICK ? p : [...p, url]));
+  const effectiveModel = picked.length ? "flux-2-klein-4b" : model;
+
   const [W, H] = wide ? [1920, 1080] : [512, 512];
 
   // Redessine l'image et le texte à chaque changement
@@ -151,7 +167,7 @@ export function ThumbnailStudio({ models, styles }: { models: Model[]; styles: s
       const res = await fetch("/api/admin/thumbnail", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ scene, style, model, wide, ...(sameSeed && result && { seed: result.seed }) }),
+        body: JSON.stringify({ scene, style, model: effectiveModel, wide, references: picked, ...(sameSeed && result && { seed: result.seed }) }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(res.status === 429 ? s.quota : `${s.error} : ${data.error ?? res.status}`);
@@ -214,11 +230,12 @@ export function ThumbnailStudio({ models, styles }: { models: Model[]; styles: s
         </div>
         <div>
           <p className={label}>{s.model}</p>
-          <div className="space-y-1.5">
+          {picked.length > 0 && <p className="mb-1.5 text-xs font-semibold text-muted">{s.refsForced}</p>}
+          <div className={`space-y-1.5 ${picked.length ? "opacity-60" : ""}`}>
             {models.map((m) => (
-              <label key={m.id} className={`flex cursor-pointer items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm transition ${model === m.id ? "border-text" : "border-border hover:border-border-strong"}`}>
+              <label key={m.id} className={`flex cursor-pointer items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm transition ${effectiveModel === m.id ? "border-text" : "border-border hover:border-border-strong"}`}>
                 <span className="flex items-center gap-2 font-semibold">
-                  <input type="radio" name="model" checked={model === m.id} onChange={() => setModel(m.id)} className="accent-[var(--color-text)]" />
+                  <input type="radio" name="model" disabled={picked.length > 0} checked={effectiveModel === m.id} onChange={() => setModel(m.id)} className="accent-[var(--color-text)]" />
                   {m.name}
                 </span>
                 <span className="text-xs text-muted">{s.perDay(m.perDay)}</span>
@@ -294,6 +311,55 @@ export function ThumbnailStudio({ models, styles }: { models: Model[]; styles: s
             </div>
           </div>
         )}
+        {/* Galerie des références : l'IA regarde les images choisies (FLUX.2 klein) */}
+        <section className="rounded-2xl border border-border bg-card p-4">
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <p className="font-semibold">{s.refsTitle}</p>
+              <p className="text-xs text-muted">{s.refsIntro}</p>
+            </div>
+            <div className="flex items-center gap-3 text-xs font-semibold">
+              <span className="text-muted">{s.refsCount(picked.length, MAX_PICK)}</span>
+              {picked.length > 0 && (
+                <button type="button" onClick={() => setPicked([])} className="hover:underline">
+                  {s.refsClear}
+                </button>
+              )}
+            </div>
+          </div>
+          {refsError || (refs && refs.length === 0) ? (
+            <p className="text-sm text-muted">{s.refsError}</p>
+          ) : !refs ? (
+            <p className="flex justify-center py-6 text-muted">
+              <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+            </p>
+          ) : (
+            <ul className={`grid max-h-[420px] gap-2 overflow-y-auto pr-1 ${wide ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4" : "grid-cols-3 sm:grid-cols-4 lg:grid-cols-6"}`}>
+              {refs.map((r) => {
+                const url = wide ? r.thumb : r.icon;
+                if (!url) return null;
+                const on = picked.includes(url);
+                const index = picked.indexOf(url);
+                return (
+                  <li key={r.id}>
+                    <button
+                      type="button"
+                      onClick={() => togglePick(url)}
+                      aria-pressed={on}
+                      title={r.name}
+                      className={`relative block w-full overflow-hidden rounded-lg border-2 transition ${on ? "border-accent ring-2 ring-accent" : "border-transparent hover:border-border-strong"} ${!on && picked.length >= MAX_PICK ? "opacity-40" : ""}`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt={r.name} loading="lazy" className={`w-full object-cover ${wide ? "aspect-video" : "aspect-square"}`} />
+                      {on && <span className="absolute left-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-accent text-xs font-bold text-text">{index + 1}</span>}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
         {result && (
           <details className="rounded-xl bg-surface px-4 py-3 text-xs text-muted">
             <summary className="cursor-pointer font-semibold">{s.prompt}</summary>
