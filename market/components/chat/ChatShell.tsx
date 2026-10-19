@@ -21,6 +21,7 @@ export type ConversationItem = {
 
 // Cadre de la messagerie : liste des conversations à gauche, conversation ouverte à droite.
 // Sur téléphone : la liste seule sur /messages, la conversation seule ailleurs.
+// Hauteur fixe (620 px au plus) : toute la messagerie tient dans l'écran, sans dépasser en bas de la page.
 export function ChatShell({ items, children }: { items: ConversationItem[]; children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -34,7 +35,7 @@ export function ChatShell({ items, children }: { items: ConversationItem[]; chil
 
   return (
     <div className="container-q pt-4 sm:pt-6">
-      <div className="grid h-[calc(100dvh-7.5rem)] min-h-[420px] grid-cols-[minmax(0,1fr)] overflow-hidden rounded-2xl border border-border bg-card md:grid-cols-[300px_minmax(0,1fr)] lg:grid-cols-[320px_minmax(0,1fr)]">
+      <div className="grid h-[min(620px,calc(100dvh-9.5rem))] min-h-[360px] grid-cols-[minmax(0,1fr)] overflow-hidden rounded-2xl border border-border bg-card md:grid-cols-[300px_minmax(0,1fr)] lg:grid-cols-[320px_minmax(0,1fr)]">
         <div className={`min-h-0 flex-col border-border md:flex md:border-r ${onList ? "flex" : "hidden"}`}>
           <ConversationList items={items} />
         </div>
