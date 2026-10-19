@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Home, LayoutDashboard, LayoutGrid, LogIn, LogOut, Menu, Search, ShieldCheck, ShoppingBag, Store, Upload, UserPlus, UserRound, X, Zap, type LucideIcon } from "lucide-react";
+import { ChevronDown, Gift, Home, LayoutDashboard, LayoutGrid, LogIn, LogOut, Menu, Search, ShieldCheck, ShoppingBag, Store, Upload, UserPlus, UserRound, X, Zap, type LucideIcon } from "lucide-react";
 import { logout, setLocale } from "@/app/actions";
 import { CATEGORIES } from "@/lib/catalog";
 import { LOCALES } from "@/lib/i18n/dictionaries";
@@ -36,7 +36,8 @@ export function Navbar({ user, pendingCount, unreadCount, chatUnread }: Props) {
     { href: "/", label: t.nav.home, icon: Home },
     { href: "/resources", label: t.nav.catalog, icon: LayoutGrid },
     ...(user ? [{ href: "/dashboard", label: t.nav.dashboard, icon: LayoutDashboard }] : [{ href: "/sell", label: t.nav.sell, icon: Upload }]),
-    ...(user?.role === "ADMIN" ? [{ href: "/admin", label: t.nav.moderation, icon: ShieldCheck, badge: pendingCount }] : []),
+    // Modération pour les admins ; pour les autres, les ressources gratuites de dev (page réservée aux membres connectés)
+    ...(user?.role === "ADMIN" ? [{ href: "/admin", label: t.nav.moderation, icon: ShieldCheck, badge: pendingCount }] : [{ href: "/dev-resources", label: t.nav.devResources, icon: Gift }]),
   ];
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
   // Après la connexion ou l'inscription, on revient sur la page actuelle

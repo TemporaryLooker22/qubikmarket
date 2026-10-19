@@ -37,6 +37,7 @@ export const en = {
     homeAria: "Qubik, home",
     language: "Language",
     discord: "Join our Discord",
+    devResources: "Resources",
   },
   footer: {
     rights: "Qubik is not affiliated with Roblox Corporation.",
@@ -613,6 +614,15 @@ export const en = {
       locked: "Can't be changed",
       viewProfile: "View my public profile",
     },
+  },
+  devResources: {
+    badge: "Free",
+    title: "Free dev resources",
+    intro: "Free tools, kits and libraries to build your Roblox games faster, picked by the Qubik team.",
+    license: (name: string) => `${name} license`,
+    openGithub: "Open on GitHub",
+    open: "Open",
+    suggest: "Know a great free resource for Roblox developers? Suggest it on our Discord.",
   },
   modNotice: {
     title: "Message from the moderation team",
@@ -1214,6 +1224,7 @@ export const fr: Dictionary = {
     homeAria: "Qubik, accueil",
     language: "Langue",
     discord: "Rejoindre le Discord",
+    devResources: "Ressources",
   },
   footer: {
     rights: "Qubik n'est pas affilié à Roblox Corporation.",
@@ -1775,6 +1786,15 @@ export const fr: Dictionary = {
       locked: "Non modifiable",
       viewProfile: "Voir mon profil public",
     },
+  },
+  devResources: {
+    badge: "Gratuit",
+    title: "Ressources gratuites pour développeurs",
+    intro: "Des outils, kits et bibliothèques gratuits pour créer tes jeux Roblox plus vite, choisis par l'équipe Qubik.",
+    license: (name) => `Licence ${name}`,
+    openGithub: "Ouvrir sur GitHub",
+    open: "Ouvrir",
+    suggest: "Tu connais une super ressource gratuite pour les devs Roblox ? Propose-la sur notre Discord.",
   },
   modNotice: {
     title: "Message de la modération",
