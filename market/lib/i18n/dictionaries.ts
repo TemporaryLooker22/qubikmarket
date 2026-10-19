@@ -623,6 +623,9 @@ export const en = {
     openGithub: "Open on GitHub",
     open: "Open",
     suggest: "Know a great free resource for Roblox developers? Suggest it on our Discord.",
+    moreTitle: (category: string) => `${category} on Qubik`,
+    moreIntro: "Ready-made resources from our sellers to go further.",
+    seeAll: "See all",
   },
   modNotice: {
     title: "Message from the moderation team",
@@ -1807,6 +1810,9 @@ export const fr: Dictionary = {
     openGithub: "Ouvrir sur GitHub",
     open: "Ouvrir",
     suggest: "Tu connais une super ressource gratuite pour les devs Roblox ? Propose-la sur notre Discord.",
+    moreTitle: (category) => `${category} sur Qubik`,
+    moreIntro: "Des ressources prêtes à l'emploi de nos vendeurs pour aller plus loin.",
+    seeAll: "Tout voir",
   },
   modNotice: {
     title: "Message de la modération",
