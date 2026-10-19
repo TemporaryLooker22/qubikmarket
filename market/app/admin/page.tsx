@@ -5,6 +5,7 @@ import { getDictionary } from "@/lib/i18n/server";
 import { formatAmount, formatNumber } from "@/lib/i18n/format";
 import { findUnanalyzedVersionIds, kickAiQueue, liveReanalysisCount, queueLength } from "@/lib/ai/run";
 import { hasAiKey } from "@/lib/ai/ovh";
+import { activeProviders } from "@/lib/ai/providers";
 import { moderationCounts, QUEUE_RESOURCES, QUEUE_VERSIONS } from "@/lib/moderation";
 import { analyzeExistingResources } from "@/app/resource-actions";
 import { adminStopLiveReanalyses } from "@/app/moderation-actions";
@@ -161,7 +162,7 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
 
         <Panel title={t.mod.aiTitle}>
           <ul className="divide-y divide-border">
-            <Todo icon={Clock} tone="bg-surface" title={aiQueue ? t.mod.aiQueue(aiQueue) : t.mod.aiQueueEmpty} note={t.mod.aiQueueNote(hasAiKey())} />
+            <Todo icon={Clock} tone="bg-surface" title={aiQueue ? t.mod.aiQueue(aiQueue) : t.mod.aiQueueEmpty} note={t.mod.aiQueueNote(activeProviders().map((p) => p.name).join(" + "), hasAiKey())} />
             {liveQueued > 0 && (
               <Todo icon={History} tone="bg-surface" title={t.mod.aiLive(liveQueued)} note={t.mod.aiLiveNote}>
                 <form action={adminStopLiveReanalyses} className="ml-auto">

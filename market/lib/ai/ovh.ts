@@ -1,11 +1,9 @@
 import "server-only";
+import type { Provider } from "./providers";
 
-// Analyse IA via OVHcloud AI Endpoints (API compatible OpenAI, hébergée en Europe).
-// Sans clé : 2 requêtes par minute par adresse IP et par modèle. Avec OVH_AI_KEY : 400 par minute.
-// Si la clé est refusée par OVH (401/403), on réessaie sans clé : l'analyse continue, au rythme du niveau gratuit.
+// Analyse IA d'une ressource chez un fournisseur compatible OpenAI (OVHcloud, Pollinations ou LLM7, voir providers.ts).
+// Si la clé OVH est refusée (401/403), on réessaie sans clé : l'analyse continue, au rythme du niveau gratuit.
 
-const BASE_URL = process.env.OVH_AI_BASE_URL ?? "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1";
-const MODEL = process.env.QUBIK_AI_MODEL ?? "gpt-oss-120b";
 const TIMEOUT_MS = 45_000;
 
 export type AiResult = {
@@ -55,42 +53,73 @@ function systemPrompt(language: "fr" | "en") {
   ].join("\n");
 }
 
+// Pour les fournisseurs sans format imposé par schéma : la forme exacte de la réponse, dans la consigne
+const JSON_SHAPE =
+  'Reply with one JSON object and nothing else (no markdown, no text around it), exactly with these keys: {"match": integer 0-100, "quality": integer 0-100, "description": integer 0-100, "summary": string, "findings": [{"level": "ok" | "warn" | "bad", "text": string}], "tips": [string]}';
+
+// Lit l'objet JSON de la réponse, même entouré de ```json … ``` ou de texte
+function readJson(content: unknown) {
+  const text = typeof content === "string" ? content.trim() : "";
+  try {
+    return JSON.parse(text);
+  } catch {
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start >= 0 && end > start) return JSON.parse(text.slice(start, end + 1));
+    throw new SyntaxError("réponse sans JSON");
+  }
+}
+
 const clamp = (n: unknown) => Math.max(0, Math.min(100, Math.round(Number(n) || 0)));
 
 export class AiError extends Error {
   constructor(
     public status: number,
     body: string,
+    provider = "IA",
+    public retryAfterMs: number | null = null,
   ) {
-    super(`OVH AI ${status}: ${body}`);
+    super(`${provider} ${status}: ${body}`);
   }
-  // Trop de requêtes, panne passagère ou OVH injoignable (status 0) : on peut réessayer
+  // Trop de requêtes, panne passagère ou fournisseur injoignable (status 0) : on peut réessayer.
+  // Pollinations répond 402 quand sa limite gratuite est atteinte (1 réponse toutes les 30 s par IP).
   get retryable() {
-    return this.status === 0 || this.status === 429 || this.status >= 500;
+    return this.status === 0 || this.status === 402 || this.status === 429 || this.status >= 500;
   }
 }
 
-// Une clé refusée n'est plus utilisée jusqu'au prochain démarrage du serveur
+// Combien de temps le fournisseur veut qu'on attende : en-tête « Retry-After », champ « retry_after »
+// ou phrase « Retry after 14s » / « 88747 seconds » dans la réponse (au plus 26 h : quota du jour)
+function retryAfterMs(header: string | null, body: string) {
+  const fromText = body.match(/retry[_ -]?after"?\s*[:=]?\s*(\d+)/i)?.[1] ?? body.match(/(\d+)\s*s(?:ec(?:onds?)?)?\b/i)?.[1];
+  const seconds = Number(header) || Number(fromText);
+  return seconds > 0 ? Math.min(seconds, 26 * 3600) * 1000 : null;
+}
+
+// Une clé OVH refusée n'est plus utilisée jusqu'au prochain démarrage du serveur
 let keyRejected = false;
 
-// Vrai si une clé valide est utilisée (pas besoin d'attendre 30 s entre deux analyses)
+// Vrai si une clé OVH valide est utilisée (pas besoin d'attendre 30 s entre deux analyses OVH)
 export const hasAiKey = () => Boolean(process.env.OVH_AI_KEY) && !keyRejected;
 
-export async function analyzeWithAi(input: {
-  title: string;
-  summary: string;
-  description: string;
-  category: string;
-  digest: string;
-  language: "fr" | "en";
-}): Promise<AiResult> {
+export async function analyzeWithAi(
+  input: {
+    title: string;
+    summary: string;
+    description: string;
+    category: string;
+    digest: string;
+    language: "fr" | "en";
+  },
+  provider: Provider,
+): Promise<AiResult> {
   const body = JSON.stringify({
-    model: MODEL,
+    model: provider.model,
     temperature: 0,
-    max_tokens: 1500,
-    response_format: { type: "json_schema", json_schema: { name: "qubik_review", strict: true, schema: SCHEMA } },
+    max_tokens: provider.strictSchema ? 1500 : 3000, // les modèles qui réfléchissent avant de répondre ont besoin de plus de place
+    response_format: provider.strictSchema ? { type: "json_schema", json_schema: { name: "qubik_review", strict: true, schema: SCHEMA } } : { type: "json_object" },
     messages: [
-      { role: "system", content: systemPrompt(input.language) },
+      { role: "system", content: provider.strictSchema ? systemPrompt(input.language) : `${systemPrompt(input.language)}\n${JSON_SHAPE}` },
       {
         role: "user",
         content: `Category: ${input.category}\nTitle: ${input.title}\nSummary: ${input.summary}\nDescription:\n${input.description.slice(0, 6000)}\n\n<file>\n${input.digest}\n</file>`,
@@ -98,26 +127,32 @@ export async function analyzeWithAi(input: {
     ],
   });
   const send = (key?: string) =>
-    fetch(`${BASE_URL}/chat/completions`, {
+    fetch(provider.url, {
       method: "POST",
       headers: { "content-type": "application/json", ...(key && { authorization: `Bearer ${key}` }) },
       signal: AbortSignal.timeout(TIMEOUT_MS),
       body,
     }).catch((err: Error) => {
-      throw new AiError(0, err.message); // réseau coupé ou délai dépassé
+      throw new AiError(0, err.message, provider.name); // réseau coupé ou délai dépassé
     });
 
-  const key = keyRejected ? undefined : process.env.OVH_AI_KEY;
+  const key = provider.id === "ovh" && keyRejected ? undefined : provider.key;
   let res = await send(key);
-  if (key && (res.status === 401 || res.status === 403)) {
+  if (provider.id === "ovh" && key && (res.status === 401 || res.status === 403)) {
     console.error("Clé OVH refusée : analyses sans clé (niveau gratuit) en attendant une clé valide");
     keyRejected = true;
     res = await send();
   }
-  if (!res.ok) throw new AiError(res.status, (await res.text()).slice(0, 300));
+  if (!res.ok) {
+    const text = await res.text();
+    throw new AiError(res.status, text.slice(0, 300), provider.name, retryAfterMs(res.headers.get("retry-after"), text));
+  }
   const json = await res.json();
-  const content = json.choices?.[0]?.message?.content;
-  const parsed = JSON.parse(typeof content === "string" ? content : "");
+  const parsed = readJson(json.choices?.[0]?.message?.content);
+  // Réponse sans notes (texte libre, JSON incomplet) : analyse ratée chez ce fournisseur
+  if (["match", "quality", "description"].some((k) => typeof parsed?.[k] !== "number" && !/^\d+$/.test(String(parsed?.[k] ?? "")))) {
+    throw new AiError(422, "réponse sans les trois notes", provider.name);
+  }
   return {
     match: clamp(parsed.match),
     quality: clamp(parsed.quality),

@@ -8,12 +8,16 @@ import { promoteVersion } from "@/lib/versions";
 import { hasRobloxContent, type ScanReport } from "@/lib/scan";
 import { buildDigest } from "./digest";
 import { links, notify, notifyAdmins } from "@/lib/notifications";
-import { AiError, analyzeWithAi, hasAiKey } from "./ovh";
+import { AiError, analyzeWithAi } from "./ovh";
+import { activeProviders, type Provider, type ProviderId } from "./providers";
 
 // File d'attente des analyses IA.
 // Chaque version à analyser reçoit aiStatus « QUEUED » (aiAt = son heure d'arrivée dans la file).
-// Un seul serveur à la fois traite la file (verrou « ai-queue »), une analyse après l'autre :
-// sans clé OVH, on attend 30 s entre deux analyses (limite de 2 par minute).
+// Un seul serveur à la fois traite la file (verrou « ai-queue »), avec plusieurs fournisseurs en même temps
+// (OVH, Pollinations, LLM7 : voir providers.ts). Chacun prend la prochaine version de la file à son rythme
+// (OVH sans clé : une toutes les 31 s ; Pollinations : 31 s ; LLM7 : 61 s, avec un petit quota par jour).
+// Un fournisseur saturé ou en panne fait une pause (le temps qu'il demande, sinon 2 min), et la version
+// qu'il traitait retourne en tête de file pour les autres.
 // La file avance à chaque publication, à chaque visite de Mon espace ou de la modération
 // (la page du vendeur se recharge toute seule tant qu'il attend) et une fois par jour (tâche Vercel).
 //
@@ -24,14 +28,15 @@ import { AiError, analyzeWithAi, hasAiKey } from "./ovh";
 //     un signalement d'une ressource en ligne apparaît dans la page de modération
 
 export const AI_THRESHOLD = 50; // sous cette note (correspondance, qualité ou description), la ressource est signalée
-const KEYLESS_GAP_MS = 31_000; // sans clé : 2 analyses par minute au plus
-const WITH_KEY_SECONDS = 10; // durée moyenne d'une analyse avec clé (pour l'estimation affichée)
+const AVG_ANALYSIS_MS = 12_000; // durée moyenne d'une analyse (pour l'estimation affichée)
 const START_BUDGET_MS = 60_000; // plus de nouvelle analyse après 60 s (une analyse dure 45 s au plus, maxDuration = 120 s)
 const LEASE_MS = 150_000; // le verrou expire tout seul si le serveur s'arrête en plein milieu
-const MAX_BUSY_ATTEMPTS = 40; // OVH saturé : on réessaie longtemps avant d'abandonner
-const MAX_ERROR_ATTEMPTS = 3; // erreur qui ne vient pas de la saturation (fichier illisible, réponse invalide…)
+const BUSY_PAUSE_MS = 120_000; // fournisseur saturé sans « Retry-After » : pause de 2 minutes
+const MAX_BUSY_ATTEMPTS = 40; // fournisseurs saturés : on réessaie longtemps avant d'abandonner
+const MAX_ERROR_ATTEMPTS = 4; // erreur qui ne vient pas de la saturation (fichier illisible, réponse invalide…)
 
-export type AiReport = { summary: string; findings: { level: "ok" | "warn" | "bad"; text: string }[]; tips: string[] };
+// provider : le fournisseur qui a fait l'analyse (affiché dans la modération)
+export type AiReport = { summary: string; findings: { level: "ok" | "warn" | "bad"; text: string }[]; tips: string[]; provider?: ProviderId };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -61,7 +66,9 @@ export async function queueSpots(versionIds: string[]): Promise<Map<string, Queu
     orderBy: { aiAt: "asc" },
     select: { id: true, aiStatus: true },
   });
-  const perItem = hasAiKey() ? WITH_KEY_SECONDS : KEYLESS_GAP_MS / 1000;
+  // Les fournisseurs travaillent en même temps : leurs rythmes s'additionnent
+  const perMinute = activeProviders().reduce((sum, p) => sum + 60_000 / Math.max(p.gapMs, AVG_ANALYSIS_MS), 0);
+  const perItem = 60 / perMinute;
   let position = 0;
   for (const item of queue) {
     if (item.aiStatus === "QUEUED") position++;
@@ -120,62 +127,90 @@ async function releaseLease() {
   await db.lease.updateMany({ where: { name: "ai-queue" }, data: { until: new Date(0) } });
 }
 
+// Prochain moment où un fournisseur peut lancer une analyse (gardé en base : vaut aussi pour le passage suivant)
+const slotName = (p: Provider) => `ai-next:${p.id}`;
+
+async function nextSlot(p: Provider) {
+  const row = await db.lease.findUnique({ where: { name: slotName(p) } });
+  return row?.until.getTime() ?? 0;
+}
+
+async function setNextSlot(p: Provider, at: number) {
+  const until = new Date(at);
+  await db.lease.upsert({ where: { name: slotName(p) }, update: { until }, create: { name: slotName(p), until } });
+}
+
+// Prend la prochaine version de la file pour soi (deux fournisseurs ne prennent jamais la même)
+async function claimNext() {
+  for (let i = 0; i < 5; i++) {
+    const next = await db.resourceVersion.findFirst({ where: { aiStatus: "QUEUED" }, orderBy: { aiAt: "asc" }, include: { resource: true } });
+    if (!next) return null;
+    const { count } = await db.resourceVersion.updateMany({ where: { id: next.id, aiStatus: "QUEUED" }, data: { aiStatus: "PENDING", aiAttempts: { increment: 1 } } });
+    if (count === 1) return next;
+  }
+  return null;
+}
+
+// Un fournisseur : il analyse les versions de la file une par une, à son rythme, jusqu'à la fin du temps du passage
+async function worker(provider: Provider, start: number) {
+  while (true) {
+    const wait = Math.max(0, (await nextSlot(provider)) - Date.now());
+    if (Date.now() + wait - start > START_BUDGET_MS) return; // la suite au prochain passage
+    if (wait > 0) await sleep(wait);
+
+    const next = await claimNext();
+    if (!next) return;
+    await setNextSlot(provider, Date.now() + provider.gapMs);
+    try {
+      const bytes = new Uint8Array(await readUpload(next.filePath));
+      const digest = buildDigest(bytes, next.fileName);
+      const input = {
+        title: next.resource.title,
+        summary: next.resource.summary,
+        description: next.resource.description,
+        category: next.resource.category,
+        digest,
+        language: next.aiLanguage === "en" ? ("en" as const) : ("fr" as const),
+      };
+      const result = await analyzeWithAi(input, provider);
+      await applyResult(next.id, result, provider.id);
+    } catch (err) {
+      // Fournisseur saturé, panne passagère ou délai dépassé : la version garde sa place en tête de file
+      // pour les autres fournisseurs, et celui-ci fait une pause
+      const busy = err instanceof AiError && err.retryable;
+      const attempts = next.aiAttempts + 1;
+      console.error(`Analyse IA ${provider.name} (version ${next.id}, essai ${attempts}) :`, (err as Error).message);
+      if (attempts >= (busy ? MAX_BUSY_ATTEMPTS : MAX_ERROR_ATTEMPTS)) {
+        await applyResult(next.id, null);
+      } else {
+        await db.resourceVersion.update({ where: { id: next.id }, data: { aiStatus: "QUEUED", ...(!busy && { aiAt: new Date() }) } });
+      }
+      if (busy) {
+        const pause = err instanceof AiError && err.retryAfterMs ? err.retryAfterMs : BUSY_PAUSE_MS;
+        await setNextSlot(provider, Date.now() + Math.max(pause, provider.gapMs));
+        return;
+      }
+    }
+  }
+}
+
 export async function processAiQueue() {
   if (!(await acquireLease())) return;
   try {
     // Le verrou était libre : une analyse « en cours » a forcément été interrompue, elle reprend sa place
     await db.resourceVersion.updateMany({ where: { aiStatus: "PENDING" }, data: { aiStatus: "QUEUED" } });
-
     const start = Date.now();
-    // Dernière analyse terminée (passage précédent) : le délai de 30 s sans clé compte depuis elle
-    const last = await db.resourceVersion.findFirst({ where: { aiStatus: { in: ["DONE", "FAILED"] } }, orderBy: { aiAt: "desc" }, select: { aiAt: true } });
-    let lastCall = last?.aiAt?.getTime() ?? 0;
-    while (true) {
-      const next = await db.resourceVersion.findFirst({ where: { aiStatus: "QUEUED" }, orderBy: { aiAt: "asc" }, include: { resource: true } });
-      if (!next) break;
-
-      // Sans clé : on respecte la limite de 2 analyses par minute
-      const wait = !hasAiKey() && lastCall ? lastCall + KEYLESS_GAP_MS - Date.now() : 0;
-      if (Date.now() + wait - start > START_BUDGET_MS) break; // la suite au prochain passage
-      if (wait > 0) await sleep(wait);
-
-      await db.resourceVersion.update({ where: { id: next.id }, data: { aiStatus: "PENDING", aiAttempts: { increment: 1 } } });
-      try {
-        const bytes = new Uint8Array(await readUpload(next.filePath));
-        const digest = buildDigest(bytes, next.fileName);
-        lastCall = Date.now();
-        const result = await analyzeWithAi({
-          title: next.resource.title,
-          summary: next.resource.summary,
-          description: next.resource.description,
-          category: next.resource.category,
-          digest,
-          language: next.aiLanguage === "en" ? "en" : "fr",
-        });
-        await applyResult(next.id, result);
-      } catch (err) {
-        // Saturation d'OVH, panne passagère ou délai dépassé : la version garde sa place
-        const busy = err instanceof AiError && err.retryable;
-        const attempts = next.aiAttempts + 1;
-        console.error(`Analyse IA (version ${next.id}, essai ${attempts}) :`, (err as Error).message);
-        if (attempts >= (busy ? MAX_BUSY_ATTEMPTS : MAX_ERROR_ATTEMPTS)) {
-          await applyResult(next.id, null);
-        } else {
-          await db.resourceVersion.update({ where: { id: next.id }, data: { aiStatus: "QUEUED", ...(!busy && { aiAt: new Date() }) } });
-        }
-        if (busy) break; // on réessaiera au prochain passage
-      }
-    }
+    await Promise.all(activeProviders().map((p) => worker(p, start)));
   } finally {
     await releaseLease();
   }
 }
 
 // Enregistre le résultat d'une analyse (null = analyse impossible) et décide de la suite
-async function applyResult(versionId: string, result: Awaited<ReturnType<typeof analyzeWithAi>> | null) {
+async function applyResult(versionId: string, result: Awaited<ReturnType<typeof analyzeWithAi>> | null, provider?: ProviderId) {
   // Signalée si une des trois notes est sous le seuil (contenu, qualité ou description incomplète)
   const flagged = result ? result.match < AI_THRESHOLD || result.quality < AI_THRESHOLD || result.description < AI_THRESHOLD : null;
-  const report: AiReport | null = result ? { summary: result.summary, findings: result.findings, tips: result.tips } : null;
+  const report: AiReport | null = result ? { summary: result.summary, findings: result.findings, tips: result.tips, provider } : null;
 
   // Ce qui s'est passé, pour prévenir le vendeur et les modérateurs après coup
   let outcome: "resource" | "version" | "live" | null = null;

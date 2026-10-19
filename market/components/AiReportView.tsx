@@ -1,6 +1,7 @@
 import { AlertTriangle, BadgeCheck, Check, Clock, Flag, Loader2, X } from "lucide-react";
 import { getDictionary } from "@/lib/i18n/server";
 import { parseAiReport, queueSpots, type QueueSpot } from "@/lib/ai/run";
+import { providerName } from "@/lib/ai/providers";
 
 type Analysis = {
   id?: string;
@@ -81,6 +82,8 @@ export async function AiReportView({ analysis, showTips = true }: { analysis: An
       </div>
 
       {report?.summary && <p className="mt-3 text-muted">{report.summary}</p>}
+      {/* Modération : quel fournisseur d'IA a fait l'analyse */}
+      {!showTips && providerName(report?.provider) && <p className="mt-1 text-xs text-muted">{t.ai.by(providerName(report?.provider)!)}</p>}
 
       {report && report.findings.length > 0 && (
         <ul className="mt-2 divide-y divide-border">
