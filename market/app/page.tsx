@@ -6,6 +6,8 @@ import { getDictionary } from "@/lib/i18n/server";
 import { formatAmount, formatNumber } from "@/lib/i18n/format";
 import { DEMO_BEST_SELLERS, DEMO_ENABLED, DEMO_LATEST } from "@/lib/demo";
 import { getShowcaseImages } from "@/lib/showcase";
+import { communityCounts } from "@/lib/community";
+import { CommunityNote } from "@/components/CommunityNote";
 import { pickPromoted } from "@/lib/promotion";
 import { DISCORD_URL, SITE_NAME, SITE_URL } from "@/lib/site";
 import { CategoryIcon } from "@/components/CategoryIcon";
@@ -83,14 +85,9 @@ export default async function HomePage() {
       db.resource.count({ where: { status: "REJECTED" } }),
       db.user.count({ where: { resources: { some: { status: "APPROVED" } } } }),
     ]),
-    // Sous la recherche : membres, vendeurs (au moins une ressource en ligne) et gains des vendeurs (ventes non annulées)
-    Promise.all([
-      db.user.count({ where: { bannedAt: null } }),
-      db.user.count({ where: { bannedAt: null, resources: { some: { status: "APPROVED" } } } }),
-      db.sellerEarning.aggregate({ where: { purchaseId: { not: null }, status: { not: "CANCELED" } }, _sum: { amountCents: true } }),
-    ]),
+    // Sous la recherche : membres, vendeurs et gains des vendeurs (mis à jour en direct ensuite, voir CommunityNote)
+    communityCounts(),
   ]);
-  const [memberCount, activeSellers, earned] = community;
   // Pas de vente ces 30 derniers jours : on se rabat sur le classement de tous les temps
   const realBestSellers = recentBestSellers.length ? recentBestSellers : await getBestSellers();
 
@@ -131,9 +128,8 @@ export default async function HomePage() {
               />
             </label>
           </form>
-          <p className="animate-fade-up mt-4 inline-flex items-center gap-1.5 text-sm text-muted" style={{ animationDelay: "200ms" }}>
-            <Users className="h-4 w-4" aria-hidden="true" />
-            {t.home.communityNote(memberCount, activeSellers, formatAmount(earned._sum.amountCents ?? 0, locale))}
+          <p className="animate-fade-up mt-4 text-sm text-muted" style={{ animationDelay: "200ms" }}>
+            <CommunityNote initial={community} />
           </p>
         </section>
 
