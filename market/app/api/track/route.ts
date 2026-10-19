@@ -27,6 +27,7 @@ export async function POST(req: Request) {
   const str = (v: unknown) => (typeof v === "string" ? v : undefined);
   await recordPageView(req.headers, {
     path: str(body.path) ?? "",
+    prev: str(body.prev),
     source: str(body.source),
     referrer: str(body.referrer),
     campaign: str(body.campaign),

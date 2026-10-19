@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BadgeCheck, LayoutDashboard, Package, Receipt, Settings, ShoppingBag, type LucideIcon } from "lucide-react";
+import { BadgeCheck, ChartLine, LayoutDashboard, Package, Receipt, Settings, ShoppingBag, type LucideIcon } from "lucide-react";
 import { UserAvatar } from "@/components/UserAvatar";
 import { useI18n } from "@/lib/i18n/client";
 
@@ -17,6 +17,7 @@ export function DashboardNav({ username, avatarUrl, isSeller, counts }: Props) {
     { href: "/dashboard", label: t.dashboard.menu.overview, icon: LayoutDashboard },
     { href: "/dashboard/resources", label: t.dashboard.menu.resources, icon: Package, count: counts.resources },
     { href: "/dashboard/sales", label: t.dashboard.menu.sales, icon: Receipt },
+    { href: "/dashboard/stats", label: t.dashboard.menu.stats, icon: ChartLine },
   ];
   const purchases = { href: "/dashboard/purchases", label: t.dashboard.menu.purchases, icon: ShoppingBag, count: counts.purchases };
   const settings = { href: "/dashboard/settings", label: t.dashboard.menu.settings, icon: Settings };

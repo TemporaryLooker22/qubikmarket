@@ -113,7 +113,26 @@ export function normalizePath(raw: string): string | null {
 
 const clip = (v: unknown, max: number) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
 
-export async function recordPageView(headers: Headers, input: { path: string; source?: string; referrer?: string; campaign?: string; locale?: string }) {
+// Famille de la page précédente du site (d'où l'on arrive sur une page)
+export function fromCategory(prev: string | undefined): string | null {
+  if (!prev) return null;
+  let url: URL;
+  try {
+    url = new URL(prev, "https://qubikmarket.com");
+  } catch {
+    return null;
+  }
+  const p = url.pathname.replace(/\/+$/, "") || "/";
+  if (p === "/") return "home";
+  if (p === "/resources") return url.searchParams.get("q") ? "search" : "catalog";
+  if (p.startsWith("/resources/")) return "resource";
+  if (p.startsWith("/u/")) return "profile";
+  if (p.startsWith("/messages")) return "messages";
+  if (p.startsWith("/dashboard")) return "dashboard";
+  return "site";
+}
+
+export async function recordPageView(headers: Headers, input: { path: string; prev?: string; source?: string; referrer?: string; campaign?: string; locale?: string }) {
   const path = normalizePath(input.path);
   if (!path) return;
   const ua = headers.get("user-agent") ?? "";
@@ -125,6 +144,7 @@ export async function recordPageView(headers: Headers, input: { path: string; so
       source: clip(input.source, 60)?.toLowerCase() ?? "direct",
       referrer: clip(input.referrer, 120)?.toLowerCase().replace(/^www\./, "") ?? null,
       campaign: clip(input.campaign, 60)?.toLowerCase() ?? null,
+      from: fromCategory(input.prev),
       country: clip(headers.get("x-vercel-ip-country"), 2),
       device,
       browser,

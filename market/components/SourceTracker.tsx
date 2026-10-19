@@ -31,7 +31,23 @@ function noteSource() {
   }
 }
 
+// Page précédente sur le site (pour savoir d'où l'on arrive sur une ressource : catalogue, recherche, accueil…)
+let previous: string | null = null;
+
 function sendPageView() {
+  const current = location.pathname + location.search;
+  let prev = previous;
+  if (prev === null) {
+    // Première page de l'onglet : on vient peut-être quand même du site (lien classique, rechargement)
+    try {
+      const ref = new URL(document.referrer);
+      if (ref.host === location.host) prev = ref.pathname + ref.search;
+    } catch {
+      // arrivée depuis un autre site ou un lien tapé
+    }
+  }
+  previous = current;
+  if (prev === current) prev = null;
   let visit: Partial<VisitSource> = {};
   try {
     visit = JSON.parse(sessionStorage.getItem(KEY) ?? "{}");
@@ -39,7 +55,8 @@ function sendPageView() {
     // provenance inconnue
   }
   const body = JSON.stringify({
-    path: location.pathname + location.search,
+    path: current,
+    prev: prev ?? undefined,
     source: visit.source ?? "direct",
     referrer: visit.referrer ? visit.referrer.split("/")[0] : undefined,
     campaign: visit.campaign,

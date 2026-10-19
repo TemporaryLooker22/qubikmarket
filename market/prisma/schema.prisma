@@ -418,6 +418,7 @@ model PageView {
   source    String   @default("direct") // provenance de la visite, comme User.signupSource
   referrer  String? // site d'origine (domaine)
   campaign  String? // ?utm_source= ou ?ref=
+  from      String? // page du site d'où l'on vient : home, catalog, search, resource, profile… (vide = arrivée sur le site)
   country   String?
   device    String   @default("desktop") // mobile, tablet ou desktop
   browser   String?
