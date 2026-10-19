@@ -627,10 +627,6 @@ export const en = {
     moreIntro: "Ready-made resources from our sellers to go further.",
     seeAll: "See all",
   },
-  partner: {
-    text: "Partner: Boros, buy Roblox games that already have players",
-    cta: "Visit",
-  },
   publishPause: {
     title: "Publishing paused",
     body: (until: string) => `Thanks for all your resources! To give other sellers room on the marketplace, you won't be able to publish new resources until ${until}.`,
@@ -1848,10 +1844,6 @@ export const fr: Dictionary = {
     moreTitle: (category) => `${category} sur Qubik`,
     moreIntro: "Des ressources prêtes à l'emploi de nos vendeurs pour aller plus loin.",
     seeAll: "Tout voir",
-  },
-  partner: {
-    text: "Partenaire : Boros, pour acquérir des jeux Roblox qui ont déjà des joueurs",
-    cta: "Découvrir",
   },
   publishPause: {
     title: "Publications en pause",
