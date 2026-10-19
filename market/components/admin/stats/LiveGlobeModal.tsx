@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import createGlobe from "cobe";
 import { Eye, Loader2, Users, UserRound, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
@@ -12,17 +12,25 @@ type Live = { visitors: number; members: { id: string; username: string; avatarU
 
 const flag = (code: string) => (/^[A-Z]{2}$/.test(code) ? String.fromCodePoint(...[...code].map((c) => 0x1f1a5 + c.charCodeAt(0))) : "🌐");
 
-// Globe gris qui tourne, avec un point jaune par pays où il y a des visiteurs en ce moment (plus gros s'ils sont nombreux)
+const THETA = 0.3;
+const clampTheta = (v: number) => Math.max(-1.3, Math.min(1.3, v));
+
+// Globe gris qui tourne, avec un point jaune par pays où il y a des visiteurs en ce moment (plus gros s'ils sont nombreux).
+// On peut le faire pivoter dans tous les sens en le glissant à la souris ou au doigt.
 function Globe({ countries }: { countries: { code: string; visitors: number }[] }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const markers = useRef<{ location: [number, number]; size: number }[]>([]);
+  // Position actuelle du globe et glissement en cours (null quand on ne le tient pas)
+  const view = useRef({ phi: 0, theta: THETA });
+  const drag = useRef<{ x: number; y: number; phi: number; theta: number } | null>(null);
+  const [grabbing, setGrabbing] = useState(false);
   const max = Math.max(1, ...countries.map((c) => c.visitors));
   markers.current = countries.flatMap((c) => (COUNTRY_CENTROIDS[c.code] ? [{ location: COUNTRY_CENTROIDS[c.code], size: 0.04 + 0.08 * (c.visitors / max) }] : []));
 
   useEffect(() => {
     if (!canvas.current) return;
-    // Rotation selon le temps écoulé (même vitesse quel que soit le nombre d'images par seconde)
-    const start = performance.now();
+    // Rotation automatique selon le temps écoulé (même vitesse quel que soit le nombre d'images par seconde), en pause pendant qu'on le tient
+    let last = performance.now();
     let width = canvas.current.offsetWidth;
     const onResize = () => canvas.current && (width = canvas.current.offsetWidth);
     window.addEventListener("resize", onResize);
@@ -31,7 +39,7 @@ function Globe({ countries }: { countries: { code: string; visitors: number }[] 
       width: width * 2,
       height: width * 2,
       phi: 0,
-      theta: 0.3,
+      theta: THETA,
       dark: 0,
       diffuse: 1.1,
       mapSamples: 16000,
@@ -41,7 +49,11 @@ function Globe({ countries }: { countries: { code: string; visitors: number }[] 
       glowColor: [0.94, 0.94, 0.93],
       markers: markers.current,
       onRender: (state) => {
-        state.phi = ((performance.now() - start) / 1000) * 0.2;
+        const now = performance.now();
+        if (!drag.current) view.current.phi += ((now - last) / 1000) * 0.2;
+        last = now;
+        state.phi = view.current.phi;
+        state.theta = view.current.theta;
         state.width = width * 2;
         state.height = width * 2;
         state.markers = markers.current;
@@ -53,7 +65,35 @@ function Globe({ countries }: { countries: { code: string; visitors: number }[] 
     };
   }, []);
 
-  return <canvas ref={canvas} className="aspect-square w-full max-w-[420px]" aria-hidden="true" />;
+  // Glisser : horizontal = tourner autour de l'axe, vertical = incliner vers le haut ou le bas
+  const onPointerDown = (e: PointerEvent<HTMLCanvasElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    drag.current = { x: e.clientX, y: e.clientY, ...view.current };
+    setGrabbing(true);
+  };
+  const onPointerMove = (e: PointerEvent<HTMLCanvasElement>) => {
+    const d = drag.current;
+    if (!d) return;
+    const size = e.currentTarget.offsetWidth || 1;
+    view.current.phi = d.phi + ((e.clientX - d.x) / size) * Math.PI;
+    view.current.theta = clampTheta(d.theta + ((e.clientY - d.y) / size) * Math.PI);
+  };
+  const onPointerUp = () => {
+    drag.current = null;
+    setGrabbing(false);
+  };
+
+  return (
+    <canvas
+      ref={canvas}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      className={`aspect-square w-full max-w-[420px] touch-none select-none ${grabbing ? "cursor-grabbing" : "cursor-grab"}`}
+      aria-hidden="true"
+    />
+  );
 }
 
 // Fenêtre « Voir plus » de la carte En ce moment : globe des pays, chiffres et détail des visiteurs actifs (anonymes)
