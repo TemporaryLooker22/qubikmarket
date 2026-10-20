@@ -25,6 +25,8 @@ const TONES: Record<string, "ok" | "warn" | "bad" | "off"> = {
   AVATAR_REMOVE: "warn",
   ROLE_GRANT: "warn",
   ROLE_REVOKE: "off",
+  PROJECT_RELEASE: "ok",
+  PROJECT_REFUND: "warn",
 };
 
 // Modération → Journal : toutes les décisions, les plus récentes d'abord
@@ -37,7 +39,7 @@ export default async function AdminLogPage() {
     (await db.resource.findMany({ where: { id: { in: logs.filter((l) => l.targetType === "resource").map((l) => l.targetId) } }, select: { id: true, slug: true } })).map((r) => [r.id, r.slug]),
   );
   const link = (l: (typeof logs)[number]) =>
-    l.targetType === "user" ? `/admin/users?id=${l.targetId}` : l.targetType === "conversation" ? `/admin/messages/${l.targetId}` : l.targetType === "resource" && slugs.has(l.targetId) ? `/resources/${slugs.get(l.targetId)}` : null;
+    l.targetType === "user" ? `/admin/users?id=${l.targetId}` : l.targetType === "project" ? `/projects/work/${l.targetId}` : l.targetType === "conversation" ? `/admin/messages/${l.targetId}` : l.targetType === "resource" && slugs.has(l.targetId) ? `/resources/${slugs.get(l.targetId)}` : null;
 
   return (
     <>

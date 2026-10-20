@@ -48,7 +48,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   }
   // Pastille « Modération » : seulement calculée pour les admins
   // (éléments à vérifier + signalements de l'IA + avis signalés, voir lib/moderation.ts)
-  const pendingCount = user?.role === "ADMIN" ? await moderationCounts().then((c) => c.queue + c.flags + c.reports + c.chats) : 0;
+  const pendingCount = user?.role === "ADMIN" ? await moderationCounts().then((c) => c.queue + c.flags + c.reports + c.chats + c.projects) : 0;
   // Cloche : notifications non lues (la liste se charge au clic)
   const unreadCount = user ? await db.notification.count({ where: { userId: user.id, readAt: null } }) : 0;
   // Icône Messages : conversations avec des messages non lus

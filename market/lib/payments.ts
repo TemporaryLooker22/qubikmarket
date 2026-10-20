@@ -16,7 +16,7 @@ export { PLATFORM_FEE_PERCENT } from "./earnings";
 // « Services fournis par voie électronique » : le régime de TVA européen des produits numériques
 export const TAX_CODE = "txcd_10000000";
 
-const BUYER_FEE_KIND = "buyer_fee";
+export const BUYER_FEE_KIND = "buyer_fee";
 
 export async function createCheckoutSession(opts: {
   purchaseId: string;

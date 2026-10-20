@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
+import { db } from "@/lib/db";
 import { fulfillCheckoutSession, setPurchaseStatusByPaymentIntent, stripe } from "@/lib/payments";
+import { fulfillProjectSession, setProjectStatusByPaymentIntent } from "@/lib/projects";
 
 // Webhook Stripe : Stripe prévient le site quand un paiement aboutit, est remboursé ou contesté.
 // C'est la source fiable : l'acheteur peut fermer la page avant de revenir sur /checkout/success.
@@ -23,26 +25,33 @@ export async function POST(req: Request) {
     // Paiement terminé (carte : tout de suite ; virement ou autre moyen différé : plus tard)
     case "checkout.session.completed":
     case "checkout.session.async_payment_succeeded":
-      await fulfillCheckoutSession(event.data.object);
+      // Paiement d'un projet sur mesure (metadata.projectId) ou achat d'une ressource (metadata.purchaseId)
+      if (event.data.object.metadata?.projectId) await fulfillProjectSession(event.data.object);
+      else await fulfillCheckoutSession(event.data.object);
       break;
 
     // Remboursement complet : l'achat n'est plus valable
     case "charge.refunded": {
       const charge = event.data.object;
       const paymentIntent = paymentIntentOf(charge.payment_intent);
-      if (paymentIntent && charge.refunded) await setPurchaseStatusByPaymentIntent(paymentIntent, "REFUNDED");
+      if (paymentIntent && charge.refunded && !(await setProjectStatusByPaymentIntent(paymentIntent, "REFUNDED"))) await setPurchaseStatusByPaymentIntent(paymentIntent, "REFUNDED");
       break;
     }
 
     // Contestation bancaire : accès suspendu, puis rendu si Qubik gagne la contestation
     case "charge.dispute.created": {
       const paymentIntent = paymentIntentOf(event.data.object.payment_intent);
-      if (paymentIntent) await setPurchaseStatusByPaymentIntent(paymentIntent, "DISPUTED");
+      if (paymentIntent && !(await setProjectStatusByPaymentIntent(paymentIntent, "DISPUTED"))) await setPurchaseStatusByPaymentIntent(paymentIntent, "DISPUTED");
       break;
     }
     case "charge.dispute.closed": {
       const dispute = event.data.object;
       const paymentIntent = paymentIntentOf(dispute.payment_intent);
+      // Projet : contestation perdue = remboursé ; gagnée = le projet reste en litige, tranché par la modération
+      if (paymentIntent && (await db.project.count({ where: { stripePaymentIntentId: paymentIntent } }))) {
+        if (dispute.status !== "won") await setProjectStatusByPaymentIntent(paymentIntent, "REFUNDED");
+        break;
+      }
       if (paymentIntent) await setPurchaseStatusByPaymentIntent(paymentIntent, dispute.status === "won" ? "PAID" : "REFUNDED");
       break;
     }

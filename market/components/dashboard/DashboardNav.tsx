@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BadgeCheck, ChartLine, LayoutDashboard, Package, Receipt, Settings, ShoppingBag, type LucideIcon } from "lucide-react";
+import { BadgeCheck, Briefcase, ChartLine, LayoutDashboard, Package, Receipt, Settings, ShoppingBag, type LucideIcon } from "lucide-react";
 import { UserAvatar } from "@/components/UserAvatar";
 import { useI18n } from "@/lib/i18n/client";
 import { useActiveTabScroll } from "@/components/useActiveTabScroll";
@@ -22,6 +22,7 @@ export function DashboardNav({ username, avatarUrl, isSeller, counts }: Props) {
     { href: "/dashboard/stats", label: t.dashboard.menu.stats, icon: ChartLine },
   ];
   const purchases = { href: "/dashboard/purchases", label: t.dashboard.menu.purchases, icon: ShoppingBag, count: counts.purchases };
+  const projects = { href: "/dashboard/projects", label: t.dashboard.menu.projects, icon: Briefcase };
   const settings = { href: "/dashboard/settings", label: t.dashboard.menu.settings, icon: Settings };
 
   const item = ({ href, label, icon: Icon, count }: (typeof seller)[number]) => {
@@ -62,6 +63,7 @@ export function DashboardNav({ username, avatarUrl, isSeller, counts }: Props) {
         {isSeller && seller.map(item)}
         {isSeller && <hr className="mx-2 my-2 hidden border-border lg:block" />}
         {item(purchases)}
+        {item(projects)}
         {item(settings)}
       </nav>
     </aside>

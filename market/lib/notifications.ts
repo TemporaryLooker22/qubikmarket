@@ -43,6 +43,18 @@ export type NotificationType =
   | "MOD_FLAG" // ressource en ligne signalée par l'IA
   | "MOD_REPORT" // avis signalé
   | "MOD_CHAT" // conversation signalée
+  | "MOD_PROJECT" // litige ouvert sur un projet sur mesure
+  // Projets sur mesure (voir lib/projects.ts)
+  | "PROJECT_OFFER" // client : un développeur a fait une offre
+  | "PROJECT_CHOSEN" // développeur : son offre a été choisie
+  | "PROJECT_PAID" // développeur : le client a payé, le projet commence
+  | "PROJECT_MESSAGE" // nouveau message dans la conversation du projet
+  | "PROJECT_DELIVERED" // client : le développeur a livré
+  | "PROJECT_REVISION" // développeur : le client demande des modifications
+  | "PROJECT_COMPLETED" // projet validé, développeur payé
+  | "PROJECT_DISPUTE" // un litige est ouvert
+  | "PROJECT_REFUNDED" // client remboursé
+  | "PROJECT_CANCELED" // projet annulé avant paiement
   // Messagerie
   | "MESSAGE"; // nouveau message (une seule notification par conversation tant qu'elle n'est pas lue)
 
@@ -99,4 +111,6 @@ export const links = {
   chat: (id: string) => `/messages/${id}`,
   profile: (username: string, role?: "SELLER" | "BUYER") => `/u/${encodeURIComponent(username)}${role ? `?tab=${role === "SELLER" ? "seller" : "buyer"}#avis` : ""}`,
   adminChat: (id: string) => `/admin/messages/${id}`,
+  project: (id: string) => `/projects/work/${id}`,
+  projectRequest: (id: string) => `/projects/${id}`,
 };

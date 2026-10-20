@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { processAiQueue, queueLength } from "@/lib/ai/run";
 import { purgeOldAnalytics } from "@/lib/analytics";
+import { releaseOverdueProjects } from "@/lib/projects";
 
 // Filet de sécurité de la file d'analyse IA, lancé une fois par jour par Vercel (voir vercel.json),
 // qui fait aussi le ménage des statistiques de visite de plus de 13 mois.
@@ -16,5 +17,7 @@ export async function GET(req: Request) {
   await processAiQueue();
   // Statistiques de visite : on ne garde que 13 mois
   await purgeOldAnalytics().catch((err) => console.error("Statistiques :", err));
+  // Projets sur mesure livrés sans réponse du client depuis 7 jours : validés, le développeur est payé
+  await releaseOverdueProjects().catch((err) => console.error("Projets :", err));
   return NextResponse.json({ remaining: await queueLength() });
 }

@@ -45,31 +45,42 @@ You may **not** resell, share, publish or redistribute the resource (as is or mo
 - **Promotion:** for each paid resource, you can choose to leave Qubik a higher commission, up to **15%**, instead of your normal commission. A promoted resource appears in spots clearly marked **“Sponsored”** (home page, top of the catalog and search results, similar resources). The higher the chosen commission, the more often and the higher it is shown, by weighted random rotation. The chosen commission applies to all sales of the resource while it is set, and you can change it at any time for the next sales. Promotion never changes the normal catalog sorting, the search results or the best sellers.
 - You remain the owner of your resources. You grant Qubik a licence to host, display, scan and distribute them to buyers, and to show their images and descriptions to promote the marketplace.
 
-## 5. Acceptable use
+## 5. Custom projects
+
+- A member can post a request for a custom project (budget from 5 € to 500 €). Developers send offers with a price and a deadline; the client chooses one.
+- The client pays Qubik the price plus a service fee. **Qubik holds the payment** until the delivery is validated: the developer is not paid before.
+- The developer delivers through Qubik. Delivered files are scanned like resources. The client can validate, ask for changes, or open a dispute.
+- Without an answer from the client **7 days after the delivery**, the project is validated automatically and the developer is paid.
+- In case of dispute, a Qubik moderator reads the project conversation and decides to pay the developer or refund the client. This decision is final on Qubik, without prejudice to your legal rights.
+- Qubik keeps a **10% commission** on the price (excluding VAT); the developer receives the rest with the usual weekly payouts.
+- Once the project is paid to the developer, **the client owns the work created for them** and can use it in their games, unless the request said otherwise. The developer keeps the right to show it in their portfolio.
+- Payments and file exchanges outside Qubik are forbidden and not protected.
+
+## 6. Acceptable use
 
 You agree not to: break the law; attack, overload or try to bypass the security of Qubik; try to fool the scanner; create fake accounts, fake reviews or fake sales; harass other users; or use Qubik to distribute anything harmful.
 
-## 6. Security scanner
+## 7. Security scanner
 
 The scanner greatly reduces the risk of backdoors, but **no automated check is perfect**. Qubik does not guarantee that a resource is free of every defect or risk. Always test a resource before using it in a live game.
 
-## 7. Intellectual property and reports
+## 8. Intellectual property and reports
 
 If you believe a resource infringes your rights, send us a report at arthur.vanstrydonck.mail@gmail.com with a link to the resource and proof of your rights. We will review it and remove the resource if needed.
 
-## 8. Suspension and closing an account
+## 9. Suspension and closing an account
 
 We may suspend or close an account that breaks these terms, after warning the user when possible. You can close your account at any time by contacting us. Resources you bought remain available unless they were removed for legal reasons.
 
-## 9. Liability
+## 10. Liability
 
 Qubik provides the marketplace "as is". To the extent allowed by law, Qubik is not liable for indirect damages, loss of profits or data, or for content published by sellers. Nothing in these terms limits your rights as a consumer under the law of your country.
 
-## 10. Changes
+## 11. Changes
 
 We may update these terms. We will announce important changes on the site or by email. The date of the latest version is shown at the top of this page.
 
-## 11. Applicable law
+## 12. Applicable law
 
 These terms are governed by Belgian law. In case of dispute, we will first try to find an amicable solution. Consumers may also use the European Online Dispute Resolution platform.`,
   },
@@ -110,31 +121,42 @@ Tu ne peux **pas** revendre, partager, publier ou redistribuer la ressource (tel
 - **Mise en avant :** pour chaque ressource payante, tu peux choisir de laisser à Qubik une commission plus élevée, jusqu'à **15 %**, au lieu de ta commission normale. Une ressource mise en avant apparaît dans des emplacements clairement indiqués **« Sponsorisé »** (accueil, haut du catalogue et des résultats de recherche, ressources similaires). Plus la commission choisie est haute, plus elle apparaît souvent et en bonne position, par une rotation aléatoire pondérée. La commission choisie s'applique à toutes les ventes de la ressource tant qu'elle est réglée, et tu peux la changer à tout moment pour les ventes suivantes. La mise en avant ne change jamais le tri normal du catalogue, les résultats de recherche ni les meilleures ventes.
 - Tu restes propriétaire de tes ressources. Tu accordes à Qubik une licence pour les héberger, les afficher, les scanner et les fournir aux acheteurs, et pour montrer leurs images et descriptions afin de promouvoir la marketplace.
 
-## 5. Bon usage
+## 5. Projets sur mesure
+
+- Un membre peut publier une demande de projet sur mesure (budget de 5 € à 500 €). Des développeurs envoient des offres avec un prix et un délai ; le client en choisit une.
+- Le client paie à Qubik le prix plus des frais de service. **Qubik garde le paiement** jusqu'à la validation de la livraison : le développeur n'est pas payé avant.
+- Le développeur livre via Qubik. Les fichiers livrés sont scannés comme les ressources. Le client peut valider, demander des modifications ou ouvrir un litige.
+- Sans réponse du client **7 jours après la livraison**, le projet est validé automatiquement et le développeur est payé.
+- En cas de litige, un modérateur de Qubik lit la conversation du projet et décide de payer le développeur ou de rembourser le client. Cette décision est définitive sur Qubik, sans préjudice de tes droits légaux.
+- Qubik garde une **commission de 10 %** sur le prix (hors TVA) ; le développeur reçoit le reste avec les versements hebdomadaires habituels.
+- Une fois le projet payé au développeur, **le client devient propriétaire du travail créé pour lui** et peut l'utiliser dans ses jeux, sauf mention contraire dans la demande. Le développeur garde le droit de le montrer dans son portfolio.
+- Les paiements et échanges de fichiers en dehors de Qubik sont interdits et ne sont pas protégés.
+
+## 6. Bon usage
 
 Tu t'engages à ne pas : enfreindre la loi ; attaquer, surcharger ou contourner la sécurité de Qubik ; essayer de tromper le scanner ; créer de faux comptes, de faux avis ou de fausses ventes ; harceler d'autres utilisateurs ; ni utiliser Qubik pour diffuser quoi que ce soit de nuisible.
 
-## 6. Scanner de sécurité
+## 7. Scanner de sécurité
 
 Le scanner réduit fortement le risque de backdoors, mais **aucune vérification automatique n'est parfaite**. Qubik ne garantit pas qu'une ressource est exempte de tout défaut ou risque. Teste toujours une ressource avant de l'utiliser dans un jeu en ligne.
 
-## 7. Propriété intellectuelle et signalements
+## 8. Propriété intellectuelle et signalements
 
 Si tu penses qu'une ressource porte atteinte à tes droits, envoie-nous un signalement à arthur.vanstrydonck.mail@gmail.com avec le lien de la ressource et la preuve de tes droits. Nous l'examinerons et retirerons la ressource si nécessaire.
 
-## 8. Suspension et fermeture de compte
+## 9. Suspension et fermeture de compte
 
 Nous pouvons suspendre ou fermer un compte qui ne respecte pas ces conditions, en prévenant l'utilisateur quand c'est possible. Tu peux fermer ton compte à tout moment en nous contactant. Les ressources achetées restent disponibles, sauf si elles ont été retirées pour des raisons légales.
 
-## 9. Responsabilité
+## 10. Responsabilité
 
 Qubik fournit la marketplace « en l'état ». Dans les limites permises par la loi, Qubik n'est pas responsable des dommages indirects, pertes de bénéfices ou de données, ni des contenus publiés par les vendeurs. Rien dans ces conditions ne limite tes droits de consommateur selon la loi de ton pays.
 
-## 10. Modifications
+## 11. Modifications
 
 Nous pouvons mettre à jour ces conditions. Les changements importants seront annoncés sur le site ou par email. La date de la dernière version est indiquée en haut de cette page.
 
-## 11. Droit applicable
+## 12. Droit applicable
 
 Ces conditions sont régies par le droit belge. En cas de litige, nous chercherons d'abord une solution amiable. Les consommateurs peuvent aussi utiliser la plateforme européenne de règlement en ligne des litiges.`,
   },

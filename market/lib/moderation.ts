@@ -5,13 +5,13 @@ import { refreshRating } from "./reviews";
 
 // Modération : journal des décisions et bannissement des membres.
 
-export type ModerationAction = "APPROVE" | "REJECT" | "KEEP" | "UNLIST" | "RELIST" | "EDIT" | "DELETE" | "REANALYZE" | "REVIEW_DELETE" | "REPORTS_DISMISS" | "BAN" | "UNBAN" | "CHAT_DISMISS" | "CHAT_MESSAGE_DELETE" | "MEMBER_REVIEW_DELETE" | "AVATAR_REMOVE" | "PUBLISH_PAUSE" | "PUBLISH_RESUME" | "PUBLISH_COOLDOWN" | "ROLE_GRANT" | "ROLE_REVOKE";
+export type ModerationAction = "APPROVE" | "REJECT" | "KEEP" | "UNLIST" | "RELIST" | "EDIT" | "DELETE" | "REANALYZE" | "REVIEW_DELETE" | "REPORTS_DISMISS" | "BAN" | "UNBAN" | "CHAT_DISMISS" | "CHAT_MESSAGE_DELETE" | "MEMBER_REVIEW_DELETE" | "AVATAR_REMOVE" | "PUBLISH_PAUSE" | "PUBLISH_RESUME" | "PUBLISH_COOLDOWN" | "ROLE_GRANT" | "ROLE_REVOKE" | "PROJECT_RELEASE" | "PROJECT_REFUND";
 
 // Garde une trace de chaque décision (page Modération → Journal)
 export async function logModeration(entry: {
   moderatorId: string;
   action: ModerationAction;
-  targetType: "resource" | "version" | "review" | "user" | "conversation" | "site";
+  targetType: "resource" | "version" | "review" | "user" | "conversation" | "site" | "project";
   targetId: string;
   label: string;
   note?: string | null;
@@ -54,7 +54,7 @@ export const AI_FLAGS = { status: "LIVE", aiFlagged: true, aiReviewed: false, re
 export const REPORTED_REVIEWS = { reports: { some: { dismissedAt: null } }, user: { bannedAt: null } };
 
 export async function moderationCounts() {
-  const [resources, versions, flags, reports, chats] = await Promise.all([
+  const [resources, versions, flags, reports, chats, projects] = await Promise.all([
     db.resource.count({ where: QUEUE_RESOURCES }),
     db.resourceVersion.count({ where: QUEUE_VERSIONS }),
     db.resourceVersion.count({ where: AI_FLAGS }),
@@ -62,6 +62,8 @@ export async function moderationCounts() {
     Promise.all([db.review.count({ where: REPORTED_REVIEWS }), db.memberReview.count({ where: REPORTED_MEMBER_REVIEWS })]).then(([a, b]) => a + b),
     // Conversations avec au moins un signalement en attente
     db.conversation.count({ where: { reports: { some: { dismissedAt: null } } } }),
+    // Projets sur mesure en litige
+    db.project.count({ where: { status: "DISPUTED" } }),
   ]);
-  return { queue: resources + versions, flags, reports, chats };
+  return { queue: resources + versions, flags, reports, chats, projects };
 }

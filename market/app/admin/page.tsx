@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Clock, Flag, History, MessageSquareWarning, MessagesSquare, Percent, ShieldCheck, ShoppingCart, Store, UserPlus, Wallet, type LucideIcon } from "lucide-react";
+import { Clock, Flag, Gavel, History, MessageSquareWarning, MessagesSquare, Percent, ShieldCheck, ShoppingCart, Store, UserPlus, Wallet, type LucideIcon } from "lucide-react";
 import { db } from "@/lib/db";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatAmount, formatNumber } from "@/lib/i18n/format";
@@ -148,13 +148,14 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
 
       <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-2">
         <Panel title={t.mod.todo}>
-          {counts.queue + counts.flags + counts.reports + counts.chats === 0 ? (
+          {counts.queue + counts.flags + counts.reports + counts.chats + counts.projects === 0 ? (
             <p className="py-2 text-sm text-muted">{t.mod.todoNone}</p>
           ) : (
             <ul className="divide-y divide-border">
               {counts.queue > 0 && <Todo icon={ShieldCheck} tone="bg-accent-soft" title={t.mod.todoQueue(counts.queue)} note={wait ? t.mod.todoOldest(wait) : ""} href="/admin/queue" open={t.mod.open} />}
               {counts.flags > 0 && <Todo icon={Flag} tone="bg-warn-bg text-warn" title={t.mod.todoFlags(counts.flags)} note={t.mod.todoFlagsNote} href="/admin/flags" open={t.mod.open} />}
               {counts.reports > 0 && <Todo icon={MessageSquareWarning} tone="bg-bad-bg text-bad" title={t.mod.todoReports(counts.reports)} note={t.mod.todoReportsNote} href="/admin/reviews" open={t.mod.open} />}
+              {counts.projects > 0 && <Todo icon={Gavel} tone="bg-bad-bg text-bad" title={t.mod.todoProjects(counts.projects)} note={t.mod.todoProjectsNote} href="/admin/projects" open={t.mod.open} />}
               {counts.chats > 0 && <Todo icon={MessagesSquare} tone="bg-bad-bg text-bad" title={t.mod.todoChats(counts.chats)} note={t.mod.todoChatsNote} href="/admin/messages" open={t.mod.open} />}
             </ul>
           )}

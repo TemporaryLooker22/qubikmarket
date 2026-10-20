@@ -65,6 +65,12 @@ model User {
   memberReviewsWritten   MemberReview[]       @relation("MemberReviewAuthor")
   memberReviewsReceived  MemberReview[]       @relation("MemberReviewTarget")
   memberReviewReports    MemberReviewReport[]
+  // Projets sur mesure (voir lib/projects.ts)
+  projectRequests        ProjectRequest[]
+  projectOffers          ProjectOffer[]
+  projectsAsClient       Project[]            @relation("ProjectClient")
+  projectsAsDev          Project[]            @relation("ProjectDev")
+  projectMessages        ProjectMessage[]
 }
 
 model Resource {
@@ -151,7 +157,8 @@ model Purchase {
 model SellerEarning {
   id          String   @id @default(cuid())
   sellerId    String
-  purchaseId  String?  @unique // la vente d'origine (vide pour une régularisation)
+  purchaseId  String?  @unique // la vente d'origine (vide pour une régularisation ou un projet)
+  projectId   String?  @unique // le projet sur mesure terminé d'origine
   reversesId  String?  @unique // régularisation : le gain déjà versé qu'elle annule
   amountCents Int // ce que touche le vendeur (négatif pour une régularisation)
   grossCents  Int      @default(0) // payé par l'acheteur, TVA comprise
@@ -167,6 +174,7 @@ model SellerEarning {
 
   seller   User           @relation(fields: [sellerId], references: [id])
   purchase Purchase?      @relation(fields: [purchaseId], references: [id])
+  project  Project?       @relation(fields: [projectId], references: [id])
   reverses SellerEarning? @relation("Reversal", fields: [reversesId], references: [id])
   reversal SellerEarning? @relation("Reversal")
   payout   SellerPayout?  @relation(fields: [payoutId], references: [id])
@@ -459,4 +467,113 @@ model SiteSetting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+// ---------- Projets sur mesure (voir lib/projects.ts) ----------
+// Un client publie une demande, des développeurs proposent un prix et un délai, le client en choisit un et paie Qubik.
+// Qubik garde l'argent jusqu'à la livraison validée (ou 7 jours sans réponse), puis le développeur est payé
+// avec les versements hebdomadaires habituels. Un litige est tranché par la modération.
+
+model ProjectRequest {
+  id           String   @id @default(cuid())
+  clientId     String
+  title        String
+  description  String
+  category     String // catégorie du catalogue (lib/catalog.ts)
+  budgetCents  Int // budget maximum annoncé, TVA comprise (5 à 500 €)
+  deadlineDays Int? // délai souhaité, en jours
+  // OPEN (reçoit des offres), ASSIGNED (un développeur choisi), CLOSED (terminée) ou CANCELED (retirée par le client)
+  status       String   @default("OPEN")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  client   User           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  offers   ProjectOffer[]
+  projects Project[]
+
+  @@index([status, createdAt])
+  @@index([clientId, createdAt])
+}
+
+model ProjectOffer {
+  id         String   @id @default(cuid())
+  requestId  String
+  devId      String
+  priceCents Int // prix proposé, TVA comprise (ce que paie le client, hors frais de service)
+  days       Int // délai proposé, en jours
+  message    String
+  // PENDING (en attente), ACCEPTED (choisie), DECLINED (une autre a été choisie) ou WITHDRAWN (retirée par le développeur)
+  status     String   @default("PENDING")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  request  ProjectRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  dev      User           @relation(fields: [devId], references: [id], onDelete: Cascade)
+  projects Project[]
+
+  @@unique([requestId, devId])
+  @@index([devId, createdAt])
+}
+
+model Project {
+  id                    String    @id @default(cuid())
+  requestId             String
+  offerId               String
+  clientId              String
+  devId                 String
+  title                 String
+  priceCents            Int // prix de l'offre, TVA comprise
+  days                  Int
+  // AWAITING_PAYMENT (le client doit payer), IN_PROGRESS (payé, en cours), DELIVERED (livré, en attente de validation),
+  // COMPLETED (validé, développeur payé), DISPUTED (litige ouvert), REFUNDED (client remboursé) ou CANCELED (annulé avant paiement)
+  status                String    @default("AWAITING_PAYMENT")
+  // Paiement (comme un achat de ressource) : total payé, TVA, frais de service du client et leur TVA
+  amountCents           Int       @default(0)
+  taxCents              Int       @default(0)
+  buyerFeeCents         Int       @default(0)
+  buyerFeeTaxCents      Int       @default(0)
+  stripeSessionId       String?   @unique
+  stripePaymentIntentId String?   @unique
+  paidAt                DateTime?
+  deliveredAt           DateTime?
+  autoReleaseAt         DateTime? // sans réponse du client à cette date : validé automatiquement
+  completedAt           DateTime?
+  disputedAt            DateTime?
+  disputeReason         String?
+  disputeById           String?
+  resolution            String? // décision de la modération (RELEASED ou REFUNDED) et sa note
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  request  ProjectRequest   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  offer    ProjectOffer     @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  client   User             @relation("ProjectClient", fields: [clientId], references: [id], onDelete: Cascade)
+  dev      User             @relation("ProjectDev", fields: [devId], references: [id], onDelete: Cascade)
+  messages ProjectMessage[]
+  earning  SellerEarning?
+
+  @@index([clientId, updatedAt])
+  @@index([devId, updatedAt])
+  @@index([status, autoReleaseAt])
+}
+
+model ProjectMessage {
+  id          String   @id @default(cuid())
+  projectId   String
+  senderId    String? // vide pour un message automatique (paiement reçu, livraison, validation…)
+  // TEXT, DELIVERY (livraison avec fichier) ou SYSTEM (événement du projet, le texte est dans event)
+  kind        String   @default("TEXT")
+  body        String   @default("")
+  event       String? // SYSTEM : PAID, DELIVERED, REVISION, COMPLETED, AUTO_COMPLETED, DISPUTED, RELEASED, REFUNDED, CANCELED
+  fileName    String? // DELIVERY : fichier livré (stocké comme les ressources, scanné)
+  filePath    String?
+  fileSize    Int?
+  scanVerdict String?
+  offPlatform Boolean  @default(false) // parle de payer ailleurs : alerte affichée
+  createdAt   DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sender  User?   @relation(fields: [senderId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, createdAt])
 }
