@@ -6,6 +6,8 @@ import { moderationCounts } from "@/lib/moderation";
 import { pendingModeratorMessage, unreadConversations } from "@/lib/chat";
 import { ModeratorNotice } from "@/components/chat/ModeratorNotice";
 import { PublishPauseNotice } from "@/components/PublishPauseNotice";
+import { ProjectsBanner, ProjectsIntroModal } from "@/components/ProjectsAnnounce";
+import { ANNOUNCE_BANNER_COOKIE, ANNOUNCE_MODAL_COOKIE } from "@/lib/announce";
 import { formatPauseEnd, publishPause } from "@/lib/publish-pause";
 import { getDictionary } from "@/lib/i18n/server";
 import { LocaleProvider } from "@/lib/i18n/client";
@@ -14,7 +16,7 @@ import { Navbar } from "@/components/Navbar";
 import { SourceTracker } from "@/components/SourceTracker";
 import { Suspense } from "react";
 import { after } from "next/server";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { botName, recordBotView } from "@/lib/analytics";
 import { Analytics } from "@vercel/analytics/next";
 import { DEMO_ENABLED } from "@/lib/demo";
@@ -39,7 +41,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [user, { locale, t }, requestHeaders] = await Promise.all([getCurrentUser(), getDictionary(), headers()]);
+  const [user, { locale, t }, requestHeaders, cookieStore] = await Promise.all([getCurrentUser(), getDictionary(), headers(), cookies()]);
   // Statistiques : les robots (Google…) n'exécutent pas toujours la page, on les compte ici, côté serveur
   const bot = botName(requestHeaders.get("user-agent") ?? "");
   if (bot) {
@@ -60,11 +62,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // Pause de publication pas encore vue : fenêtre d'information (une seule fois par pause)
   const pause = user ? await publishPause(user.id) : null;
   const pauseNotice = pause && !pause.seen ? { until: pause.until ? formatPauseEnd(pause.until, locale) : null, reason: pause.reason } : null;
+  // Projets sur mesure : bannière (jusqu'à ce qu'on la masque) et fenêtre de présentation (une seule fois), pour tout le monde
+  const showProjectsBanner = !bot && !cookieStore.has(ANNOUNCE_BANNER_COOKIE);
+  const showProjectsIntro = !bot && !cookieStore.has(ANNOUNCE_MODAL_COOKIE) && !moderatorNotice && !pauseNotice;
 
   return (
     <html lang={locale} className={jakarta.variable}>
       <body className="flex min-h-screen flex-col font-sans antialiased">
         <LocaleProvider locale={locale}>
+          {showProjectsBanner && <ProjectsBanner />}
           <Navbar user={user ? { username: user.username, email: user.email, role: user.role, isSeller, avatarUrl: user.avatarUrl } : null} pendingCount={pendingCount} unreadCount={unreadCount} chatUnread={chatUnread} />
 
           <main className="flex-1 pb-16">{children}</main>
@@ -86,6 +92,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               </span>
             </div>
           </footer>
+          {showProjectsIntro && <ProjectsIntroModal />}
         </LocaleProvider>
         {/* Statistiques de visite sans cookie (Vercel Web Analytics) et provenance des inscriptions */}
         <Analytics />
