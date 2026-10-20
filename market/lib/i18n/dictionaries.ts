@@ -56,8 +56,8 @@ export const en = {
     searchLabel: "Search for a resource",
     searchPlaceholder: "Search for a system, a map, a UI…",
     scannedNote: "Every file is scanned for backdoors",
-    communityNote: (members: number, sellers: number, earned: string) =>
-      `${members.toLocaleString("en-GB")} member${members === 1 ? "" : "s"} · ${sellers.toLocaleString("en-GB")} seller${sellers === 1 ? "" : "s"} · ${earned} earned by sellers`,
+    // Vendeurs et gains des vendeurs masqués pour l'instant (chiffres encore petits) : seulement les membres
+    communityNote: (members: number, _sellers: number, _earned: string) => `${members.toLocaleString("en-GB")} member${members === 1 ? "" : "s"}`,
     bestSellers: "Best sellers right now",
     bestSellersSub: "The most bought resources over the last 30 days.",
     latest: "Latest resources",
@@ -1479,8 +1479,7 @@ export const fr: Dictionary = {
     searchLabel: "Rechercher une ressource",
     searchPlaceholder: "Rechercher un système, une map, une UI…",
     scannedNote: "Chaque fichier est scanné contre les backdoors",
-    communityNote: (members, sellers, earned) =>
-      `${members.toLocaleString("fr-FR")} membre${members > 1 ? "s" : ""} · ${sellers.toLocaleString("fr-FR")} vendeur${sellers > 1 ? "s" : ""} · ${earned} gagnés par les vendeurs`,
+    communityNote: (members) => `${members.toLocaleString("fr-FR")} membre${members > 1 ? "s" : ""}`,
     bestSellers: "Les plus vendues en ce moment",
     bestSellersSub: "Les ressources les plus achetées ces 30 derniers jours.",
     latest: "Les plus récentes",
