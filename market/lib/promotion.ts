@@ -26,21 +26,27 @@ export function promoToStore(value: unknown, baseFee: number, priceCents: number
 const cardInclude = { seller: { select: { username: true, founderUntil: true } } } as const;
 type Candidate = Prisma.ResourceGetPayload<{ include: typeof cardInclude }>;
 
+// Variété (accueil) : après chaque tirage, les autres ressources du même vendeur et de la même catégorie
+// pèsent beaucoup moins, pour qu'un vendeur qui met en avant beaucoup de ressources ne remplisse pas toute la rangée
+const SAME_SELLER_FACTOR = 0.1;
+const SAME_CATEGORY_FACTOR = 0.4;
+
 // Tirage pondéré sans remise : poids = points de commission au-dessus de la commission normale
-function weightedPick<T>(items: { item: T; weight: number }[], count: number): T[] {
+function weightedPick<T>(items: { item: T; weight: number }[], count: number, spread?: (a: T, b: T) => number): T[] {
   const pool = items.filter((x) => x.weight > 0);
   const out: T[] = [];
   while (pool.length && out.length < count) {
-    const total = pool.reduce((sum, x) => sum + x.weight, 0);
+    const weights = pool.map((x) => out.reduce((w, picked) => w * (spread ? spread(x.item, picked) : 1), x.weight));
+    const total = weights.reduce((sum, w) => sum + w, 0);
     let r = Math.random() * total;
-    const index = pool.findIndex((x) => (r -= x.weight) <= 0);
+    const index = weights.findIndex((w) => (r -= w) <= 0);
     out.push(pool.splice(index === -1 ? pool.length - 1 : index, 1)[0].item);
   }
   return out;
 }
 
 // Ressources mises en avant à afficher (catégorie ou recherche facultatives)
-export async function pickPromoted(opts: { count: number; category?: string; query?: string; excludeIds?: string[] }): Promise<Candidate[]> {
+export async function pickPromoted(opts: { count: number; category?: string; query?: string; excludeIds?: string[]; varied?: boolean }): Promise<Candidate[]> {
   const q = opts.query?.trim();
   const candidates = await db.resource.findMany({
     where: {
@@ -63,5 +69,6 @@ export async function pickPromoted(opts: { count: number; category?: string; que
       return { item: r, weight: extra > 0 ? Math.pow(extra, 1.4) : 0 };
     }),
     opts.count,
+    opts.varied ? (a, b) => (a.sellerId === b.sellerId ? SAME_SELLER_FACTOR : 1) * (a.category === b.category ? SAME_CATEGORY_FACTOR : 1) : undefined,
   );
 }

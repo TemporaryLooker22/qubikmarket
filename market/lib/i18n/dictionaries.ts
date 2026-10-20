@@ -63,8 +63,8 @@ export const en = {
     latest: "Latest resources",
     latestSub: "Freshly published.",
     seeAll: "See all",
-    setupsTitle: "Featured",
-    setupsSub: "A pick from different creators, renewed on every visit.",
+    setupsTitle: "Launch your game this weekend",
+    setupsSub: "Game Setups: complete games, ready to publish.",
     howTitle: "How it works",
     step: (n: number) => `Step ${n}`,
     steps: [
@@ -1486,8 +1486,8 @@ export const fr: Dictionary = {
     latest: "Les plus récentes",
     latestSub: "Tout juste publiées.",
     seeAll: "Tout voir",
-    setupsTitle: "À la une",
-    setupsSub: "Une sélection de créateurs différents, renouvelée à chaque visite.",
+    setupsTitle: "Lance ton jeu ce week-end",
+    setupsSub: "Game Setups : des jeux complets, prêts à publier.",
     howTitle: "Comment ça marche",
     step: (n) => `Étape ${n}`,
     steps: [
