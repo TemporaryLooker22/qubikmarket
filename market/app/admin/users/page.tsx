@@ -3,7 +3,8 @@ import { Ban, Search, Undo2, Users } from "lucide-react";
 import { db } from "@/lib/db";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatAmount, formatDate } from "@/lib/i18n/format";
-import { banMember, resumePublishing, setGlobalCooldown, setMemberCooldown, unbanMember } from "@/app/moderation-actions";
+import { banMember, resumePublishing, setGlobalCooldown, setMemberCooldown, setModerator, unbanMember } from "@/app/moderation-actions";
+import { getCurrentUser, siteOwnerId } from "@/lib/auth";
 import { formatPauseEnd, globalCooldownHours, MAX_COOLDOWN_HOURS, publishCooldown, publishPause, PUBLISH_PAUSE_DAYS, toBrusselsInput } from "@/lib/publish-pause";
 import { PublishPauseForm } from "@/components/admin/PublishPauseForm";
 import { adminRemoveAvatar } from "@/app/member-actions";
@@ -41,6 +42,8 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
     : null;
 
   // Règles de publication : réglage global, et pause / délai du membre affiché
+  const [viewer, ownerId] = await Promise.all([getCurrentUser(), siteOwnerId()]);
+  const isOwner = Boolean(viewer && viewer.id === ownerId);
   const [globalHours, memberPause, memberCooldown] = await Promise.all([
     globalCooldownHours(),
     member ? publishPause(member.id) : null,
@@ -211,6 +214,23 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
                     <button className="btn-ghost px-4 py-2 text-sm">{t.publishPause.save}</button>
                   </div>
                 </form>
+              </div>
+            )}
+
+            {/* Rôle de modérateur : seul le propriétaire du site peut le donner ou le retirer */}
+            {isOwner && member.id !== viewer!.id && !member.bannedAt && (
+              <div className="mt-4 rounded-2xl border border-border p-4">
+                <p className="text-sm font-semibold">{t.mod.roleTitle}</p>
+                {member.id === ownerId ? (
+                  <p className="mt-1 text-xs text-muted">{t.mod.roleOwner}</p>
+                ) : (
+                  <form action={setModerator} className="mt-1 flex flex-wrap items-end justify-between gap-3">
+                    <input type="hidden" name="userId" value={member.id} />
+                    <input type="hidden" name="make" value={member.role === "ADMIN" ? "0" : "1"} />
+                    <p className="min-w-0 max-w-xl text-xs text-muted">{member.role === "ADMIN" ? t.mod.roleRevokeText : t.mod.roleGrantText}</p>
+                    <button className="btn-ghost px-4 py-2 text-sm">{member.role === "ADMIN" ? t.mod.roleRevoke : t.mod.roleGrant(member.username)}</button>
+                  </form>
+                )}
               </div>
             )}
 

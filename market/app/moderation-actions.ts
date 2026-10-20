@@ -6,7 +6,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, siteOwnerId } from "@/lib/auth";
 import { banUser, logModeration, unbanUser } from "@/lib/moderation";
 import { links, notify } from "@/lib/notifications";
 import { getDictionary } from "@/lib/i18n/server";
@@ -99,6 +99,20 @@ export async function setGlobalCooldown(formData: FormData) {
   if (!Number.isFinite(hours) || hours < 0) return;
   await setGlobalCooldownHours(hours);
   await logModeration({ moderatorId: admin.id, action: "PUBLISH_COOLDOWN", targetType: "site", targetId: "global", label: "Tous les vendeurs", note: `${Math.round(hours)} h` });
+  refreshSite();
+}
+
+// Nommer un membre modérateur, ou lui retirer ce rôle (seulement le propriétaire du site, jamais sur lui-même)
+export async function setModerator(formData: FormData) {
+  const admin = await requireAdmin();
+  const ownerId = await siteOwnerId();
+  if (admin.id !== ownerId) return;
+  const user = await db.user.findUnique({ where: { id: String(formData.get("userId")) }, select: { id: true, username: true, role: true, bannedAt: true } });
+  if (!user || user.id === ownerId) return;
+  const makeModerator = formData.get("make") === "1";
+  if (makeModerator === (user.role === "ADMIN") || (makeModerator && user.bannedAt)) return;
+  await db.user.update({ where: { id: user.id }, data: { role: makeModerator ? "ADMIN" : "USER" } });
+  await logModeration({ moderatorId: admin.id, action: makeModerator ? "ROLE_GRANT" : "ROLE_REVOKE", targetType: "user", targetId: user.id, label: user.username });
   refreshSite();
 }
 

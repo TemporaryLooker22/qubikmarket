@@ -23,6 +23,8 @@ const TONES: Record<string, "ok" | "warn" | "bad" | "off"> = {
   CHAT_MESSAGE_DELETE: "warn",
   MEMBER_REVIEW_DELETE: "off",
   AVATAR_REMOVE: "warn",
+  ROLE_GRANT: "warn",
+  ROLE_REVOKE: "off",
 };
 
 // Modération → Journal : toutes les décisions, les plus récentes d'abord

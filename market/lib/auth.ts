@@ -59,6 +59,13 @@ export async function requireUser(next?: string) {
   return user;
 }
 
+// Propriétaire du site : le premier compte modérateur créé. Lui seul peut nommer ou retirer des modérateurs,
+// pour qu'un modérateur ne puisse jamais retirer l'accès du propriétaire.
+export async function siteOwnerId() {
+  const owner = await db.user.findFirst({ where: { role: "ADMIN" }, orderBy: { createdAt: "asc" }, select: { id: true } });
+  return owner?.id ?? null;
+}
+
 export async function requireAdmin() {
   const user = await requireUser("/admin");
   if (user.role !== "ADMIN") redirect("/");
