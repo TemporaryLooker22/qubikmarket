@@ -9,6 +9,7 @@ import { getShowcaseImages } from "@/lib/showcase";
 import { communityCounts } from "@/lib/community";
 import { CommunityNote } from "@/components/CommunityNote";
 import { pickPromoted } from "@/lib/promotion";
+import { pickFeatured } from "@/lib/featured";
 import { DISCORD_URL, SITE_NAME, SITE_URL } from "@/lib/site";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { Gallery } from "@/components/Gallery";
@@ -73,13 +74,8 @@ export default async function HomePage() {
       take: GALLERY_SIZE,
       include: sellerSelect,
     }),
-    // Game Setups à la une : les plus récents
-    db.resource.findMany({
-      where: { status: "APPROVED", category: "game-setups" },
-      orderBy: { createdAt: "desc" },
-      take: 3,
-      include: sellerSelect,
-    }),
+    // À la une : tirage au hasard à chaque visite, vendeurs et catégories différents (voir lib/featured.ts)
+    pickFeatured(3),
     Promise.all([
       db.resource.count(),
       db.resource.count({ where: { status: "REJECTED" } }),
@@ -194,11 +190,11 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* 5. Game Setups à la une (caché s'il n'y en a aucun) */}
+      {/* 5. À la une : vendeurs et catégories différents à chaque visite (caché s'il n'y en a aucun) */}
       {mainSetup && (
         <section className="reveal mt-12 bg-surface py-12">
           <div className="container-q">
-            <SectionTitle title={t.home.setupsTitle} subtitle={t.home.setupsSub} href="/resources?category=game-setups" seeAll={t.home.seeAll} />
+            <SectionTitle title={t.home.setupsTitle} subtitle={t.home.setupsSub} href="/resources" seeAll={t.home.seeAll} />
             <div className={`grid grid-cols-[minmax(0,1fr)] gap-4 ${otherSetups.length ? "md:grid-cols-[2fr_1fr]" : ""}`}>
               <ResourceCard resource={mainSetup} locale={locale} size="large" />
               {otherSetups.length > 0 && (
