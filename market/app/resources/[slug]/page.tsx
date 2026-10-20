@@ -49,6 +49,8 @@ type Product = {
   fileSize: number;
   createdAt: Date;
   sales: number;
+  // Vues de la page (visiteurs et membres, hors admins et robots ; absentes pour les exemples de démo)
+  views?: number;
   scanVerdict: string;
   scriptCount: number;
   status: string;
@@ -167,6 +169,7 @@ export default async function ResourcePage({ params, searchParams }: { params: P
     product = {
       ...resource,
       sales: resource._count.purchases,
+      views: await db.pageView.count({ where: { path: `/resources/${resource.slug}`, bot: null } }),
       scriptCount: scan.scriptCount,
       rating: {
         avg: resource.ratingAvg,
@@ -353,6 +356,7 @@ export default async function ResourcePage({ params, searchParams }: { params: P
                 <Detail label={t.resource.size} value={formatSize(product.fileSize, locale)} />
                 <Detail label={t.resource.published} value={formatDate(product.createdAt, locale)} />
                 <Detail label={t.resource.downloads} value={String(product.sales)} />
+                {product.views !== undefined && <Detail label={t.resource.views} value={product.views.toLocaleString(locale === "fr" ? "fr-BE" : "en-US")} />}
               </dl>
             </Card>
             <Card title={t.resource.seller}>

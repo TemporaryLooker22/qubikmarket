@@ -448,6 +448,7 @@ model PageView {
 
   @@index([createdAt])
   @@index([visitor, createdAt])
+  @@index([path])
 }
 
 // Recherches tapées dans le catalogue, avec le nombre de résultats (0 = idée de ressource qui manque)

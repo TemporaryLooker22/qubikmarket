@@ -174,6 +174,7 @@ export const en = {
     size: "Size",
     published: "Published",
     downloads: "Downloads",
+    views: "Page views",
     seller: "Seller",
     sellerStats: (resources: number, sales: number) =>
       `${resources} ${resources === 1 ? "resource" : "resources"} · ${sales} ${sales === 1 ? "sale" : "sales"}`,
@@ -1595,6 +1596,7 @@ export const fr: Dictionary = {
     size: "Taille",
     published: "Publiée le",
     downloads: "Téléchargements",
+    views: "Vues de la page",
     seller: "Vendeur",
     sellerStats: (resources, sales) =>
       `${resources} ${resources === 1 ? "ressource" : "ressources"} · ${sales} ${sales === 1 ? "vente" : "ventes"}`,
