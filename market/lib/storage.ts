@@ -3,6 +3,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { del, put } from "@vercel/blob";
+import sharp from "sharp";
 
 // Deux modes de stockage des fichiers des vendeurs :
 // - sur Vercel (BLOB_READ_WRITE_TOKEN défini) : Vercel Blob, avec une adresse impossible à deviner
@@ -30,10 +31,33 @@ export async function saveUpload(bytes: Uint8Array, originalName: string) {
   return storedName;
 }
 
-// Captures d'écran : publiques (affichées sur le site), contrairement aux fichiers vendus.
+// Images compressées : préfixe de leur nom dans le stockage (images/q-…), pour reconnaître celles déjà traitées
+export const COMPRESSED_PREFIX = "q-";
+// Plus grand côté gardé : assez pour la galerie d'une ressource en plein écran
+export const IMAGE_MAX_SIDE = 1920;
+// Photos de profil : affichées en petit
+export const AVATAR_MAX_SIDE = 512;
+
+// Réduit une image (1920 px au plus) et la convertit en WebP : ~10 fois plus légère qu'une capture d'écran brute,
+// sans différence visible sur le site. On garde l'originale si elle est déjà plus légère (ou illisible).
+export async function compressImage(bytes: Uint8Array, ext: ImageExt, maxSide = IMAGE_MAX_SIDE): Promise<{ bytes: Uint8Array; ext: ImageExt }> {
+  try {
+    const out = await sharp(bytes, { limitInputPixels: 100_000_000 })
+      .rotate()
+      .resize({ width: maxSide, height: maxSide, fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toBuffer();
+    return out.length < bytes.length ? { bytes: new Uint8Array(out), ext: "webp" } : { bytes, ext };
+  } catch {
+    return { bytes, ext };
+  }
+}
+
+// Captures d'écran : publiques (affichées sur le site), contrairement aux fichiers vendus. Compressées avant d'être gardées.
 // Sur Vercel : Vercel Blob. En local sans Blob : dossier public/uploads (servi par Next.js).
-export async function saveImage(bytes: Uint8Array, ext: ImageExt) {
-  const name = `${randomUUID()}.${ext}`;
+export async function saveImage(original: Uint8Array, originalExt: ImageExt, maxSide = IMAGE_MAX_SIDE) {
+  const { bytes, ext } = await compressImage(original, originalExt, maxSide);
+  const name = `${COMPRESSED_PREFIX}${randomUUID()}.${ext}`;
   if (useBlob) {
     const blob = await put(`images/${name}`, Buffer.from(bytes), {
       access: "public",

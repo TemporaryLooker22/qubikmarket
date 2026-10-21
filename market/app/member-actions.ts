@@ -9,8 +9,8 @@ import { getCurrentUser, requireAdmin, requireUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/i18n/server";
 import { REVIEW_MAX } from "@/lib/reviews";
 import { canMemberReview, MEMBER_ROLES, type MemberRole } from "@/lib/member-reviews";
-import { isUploadedImage } from "@/lib/uploads";
-import { deleteStored } from "@/lib/storage";
+import { compressUploadedImage, isUploadedImage } from "@/lib/uploads";
+import { AVATAR_MAX_SIDE, deleteStored } from "@/lib/storage";
 import { logModeration } from "@/lib/moderation";
 import { links, notify, notifyAdmins } from "@/lib/notifications";
 import type { ReviewState } from "./review-actions";
@@ -128,8 +128,9 @@ export async function dismissMemberReviewReports(formData: FormData) {
 export async function setAvatar(url: string): Promise<{ ok: boolean }> {
   const user = await getCurrentUser();
   if (!user || !(await isUploadedImage(url))) return { ok: false };
+  const avatar = await compressUploadedImage(url, AVATAR_MAX_SIDE);
   const before = await db.user.findUnique({ where: { id: user.id }, select: { avatarUrl: true } });
-  await db.user.update({ where: { id: user.id }, data: { avatarUrl: url } });
+  await db.user.update({ where: { id: user.id }, data: { avatarUrl: avatar } });
   if (before?.avatarUrl) await deleteStored([before.avatarUrl]).catch(() => {});
   revalidatePath("/", "layout");
   return { ok: true };

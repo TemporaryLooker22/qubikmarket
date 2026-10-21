@@ -6,7 +6,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { getCurrentUser, requireAdmin } from "@/lib/auth";
-import { isUploadedImage } from "@/lib/uploads";
+import { compressUploadedImage, isUploadedImage } from "@/lib/uploads";
 import { links, notify, notifyAdmins } from "@/lib/notifications";
 import { logModeration } from "@/lib/moderation";
 import { MESSAGE_MAX_IMAGES, MESSAGE_MAX_LENGTH, mentionsOffPlatform, REPORT_REASONS, type ReportReason } from "@/lib/chat-text";
@@ -22,7 +22,7 @@ export async function sendMessage(input: { conversationId?: string; to?: string;
   if (!me) return { ok: false, error: "login" };
 
   const body = String(input.body ?? "").trim();
-  const images = Array.isArray(input.images) ? input.images.map(String) : [];
+  let images = Array.isArray(input.images) ? input.images.map(String) : [];
   if (!body && images.length === 0) return { ok: false, error: "empty" };
   if (body.length > MESSAGE_MAX_LENGTH) return { ok: false, error: "tooLong" };
   if (images.length > MESSAGE_MAX_IMAGES) return { ok: false, error: "images" };
@@ -41,6 +41,8 @@ export async function sendMessage(input: { conversationId?: string; to?: string;
   if (limited) return { ok: false, error: limited };
   // Images : seulement celles envoyées dans notre stockage, vérifiées une par une
   if (images.length && !(await Promise.all(images.map(isUploadedImage))).every(Boolean)) return { ok: false, error: "images" };
+  // Compressées avant d'être gardées (affichées en grand dans la conversation)
+  images = await Promise.all(images.map((url) => compressUploadedImage(url)));
 
   // Carte « À propos de » : une seule fois par ressource dans la conversation
   let aboutId: string | null = null;

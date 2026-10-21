@@ -14,6 +14,7 @@ import { hasRobloxContent, type ScanReport } from "@/lib/scan";
 import { deleteStored } from "@/lib/storage";
 import { enqueueAnalysis, kickAiQueue, stopLiveReanalyses } from "@/lib/ai/run";
 import { grantFounderIfEligible } from "@/lib/sellers";
+import { compressStoredImages } from "@/lib/image-compression";
 import { formatPauseEnd, fromBrusselsInput, MAX_COOLDOWN_HOURS, PUBLISH_PAUSE_DAYS, setGlobalCooldownHours } from "@/lib/publish-pause";
 
 function refreshSite() {
@@ -195,6 +196,13 @@ export async function adminReanalyze(target: string | null, formData: FormData) 
 }
 
 // Arrêter les réanalyses IA des ressources déjà en ligne (les nouvelles publications restent dans la file)
+// Compresse les anciennes images (environ 1 min par clic ; recliquer s'il en reste)
+export async function adminCompressImages() {
+  await requireAdmin();
+  await compressStoredImages(80_000);
+  revalidatePath("/", "layout");
+}
+
 export async function adminStopLiveReanalyses() {
   await requireAdmin();
   await stopLiveReanalyses();

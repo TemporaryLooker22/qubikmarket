@@ -10,7 +10,7 @@ import { feePercentFor } from "@/lib/earnings";
 import { promoToStore } from "@/lib/promotion";
 import { requireAdmin, requireUser } from "@/lib/auth";
 import { hasRobloxContent, scanUpload, type ScanReport } from "@/lib/scan";
-import { isUploadedImage, receiveUpload } from "@/lib/uploads";
+import { compressUploadedImage, isUploadedImage, receiveUpload } from "@/lib/uploads";
 import { parseYouTubeId } from "@/lib/youtube";
 import { grantFounderIfEligible } from "@/lib/sellers";
 import { detectImage, saveImage } from "@/lib/storage";
@@ -162,7 +162,7 @@ export async function updateResourceImages(_: EditState, formData: FormData): Pr
       // Image envoyée directement dans le stockage (jusqu'à 20 Mo)
       const url = entry.slice(4);
       if (!(await isUploadedImage(url))) return { error: t.errors.imageTooBig };
-      urls.push(url);
+      urls.push(await compressUploadedImage(url));
     } else if (resource.images.includes(entry)) {
       // Seulement des images qui appartiennent déjà à cette ressource
       urls.push(entry);

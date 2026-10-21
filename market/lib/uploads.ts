@@ -1,7 +1,7 @@
 import "server-only";
 import { head } from "@vercel/blob";
 import { ALLOWED_EXTENSIONS, extOf, IMAGE_EXTENSIONS, MAX_FILE_SIZE, MAX_FILE_SIZE_INLINE, MAX_IMAGE_SIZE_DIRECT } from "./formats";
-import { detectImage, directUploads, readUpload, saveUpload } from "./storage";
+import { COMPRESSED_PREFIX, deleteStored, detectImage, directUploads, IMAGE_MAX_SIDE, readUpload, saveImage, saveUpload } from "./storage";
 import type { Dictionary } from "./i18n/dictionaries";
 
 // Réception du fichier vendu, quand le vendeur publie une ressource ou une nouvelle version.
@@ -68,4 +68,30 @@ export async function isUploadedImage(url: string) {
   if (!info || info.size > MAX_IMAGE_SIZE_DIRECT) return false;
   const start = await fetch(url, { headers: { Range: "bytes=0-31" }, cache: "no-store" }).then((r) => r.arrayBuffer()).catch(() => null);
   return start !== null && detectImage(new Uint8Array(start)) !== null;
+}
+
+// Image déjà compressée (nom en images/q-…) : rien à refaire
+export function isCompressedImage(url: string) {
+  try {
+    return new URL(url, "https://qubikmarket.com").pathname.split("/").pop()!.startsWith(COMPRESSED_PREFIX);
+  } catch {
+    return false;
+  }
+}
+
+// Image envoyée directement dans le stockage (déjà vérifiée par isUploadedImage) : on la remplace par sa version
+// compressée et on efface l'originale. En cas de problème, on garde l'originale telle quelle.
+export async function compressUploadedImage(url: string, maxSide = IMAGE_MAX_SIDE) {
+  if (isCompressedImage(url)) return url;
+  try {
+    const bytes = new Uint8Array(await readUpload(url));
+    const ext = detectImage(bytes);
+    if (!ext) return url;
+    const compressed = await saveImage(bytes, ext, maxSide);
+    await deleteStored([url]).catch(() => {});
+    return compressed;
+  } catch (err) {
+    console.error("Compression d'image :", err);
+    return url;
+  }
 }

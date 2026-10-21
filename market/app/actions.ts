@@ -11,7 +11,7 @@ import { db } from "@/lib/db";
 import { publishBlockMessage } from "@/lib/publish-pause";
 import { createSession, destroySession, getCurrentUser, requireAdmin, requireUser } from "@/lib/auth";
 import { hasRobloxContent, scanUpload } from "@/lib/scan";
-import { isUploadedImage, receiveUpload } from "@/lib/uploads";
+import { compressUploadedImage, isUploadedImage, receiveUpload } from "@/lib/uploads";
 import { parseYouTubeId } from "@/lib/youtube";
 import { detectImage, saveImage } from "@/lib/storage";
 import { CATEGORIES, MAX_IMAGE_SIZE, MAX_IMAGES, slugify } from "@/lib/catalog";
@@ -272,7 +272,7 @@ export async function publishResource(_: FormState, formData: FormData): Promise
   const reviewNote = report.verdict === "dangerous" ? t.errors.autoReject : null;
 
   // 4) Enregistrement
-  const imageUrls = [...(await Promise.all(images.map((img) => saveImage(img.bytes, img.ext)))), ...directImages];
+  const imageUrls = [...(await Promise.all(images.map((img) => saveImage(img.bytes, img.ext)))), ...(await Promise.all(directImages.map((url) => compressUploadedImage(url))))];
   const baseSlug = slugify(data.title) || "ressource";
   const slug = (await db.resource.findUnique({ where: { slug: baseSlug } }))
     ? `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`

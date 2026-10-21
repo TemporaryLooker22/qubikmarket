@@ -10,6 +10,11 @@ const nextConfig: NextConfig = {
   // Captures d'écran des ressources, stockées sur Vercel Blob
   images: {
     ...(ASSETS && { path: `${ASSETS}/_next/image` }),
+    // Moins de tailles différentes (7 au lieu de 16) et gardées 31 jours : Vercel relit moins souvent
+    // les images d'origine dans Vercel Blob (transfert limité sur le plan gratuit)
+    deviceSizes: [640, 828, 1200, 1920],
+    imageSizes: [128, 256, 384],
+    minimumCacheTTL: 31 * 24 * 60 * 60,
     // + miniatures des vidéos YouTube de présentation
     remotePatterns: [
       { protocol: "https", hostname: "*.public.blob.vercel-storage.com" },

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Clock, Flag, Gavel, History, MessageSquareWarning, MessagesSquare, Percent, ShieldCheck, ShoppingCart, Store, UserPlus, Wallet, type LucideIcon } from "lucide-react";
+import { Clock, Flag, Gavel, History, ImageDown, MessageSquareWarning, MessagesSquare, Percent, ShieldCheck, ShoppingCart, Store, UserPlus, Wallet, type LucideIcon } from "lucide-react";
 import { db } from "@/lib/db";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatAmount, formatNumber } from "@/lib/i18n/format";
@@ -8,7 +8,9 @@ import { hasAiKey } from "@/lib/ai/ovh";
 import { activeProviders } from "@/lib/ai/providers";
 import { moderationCounts, QUEUE_RESOURCES, QUEUE_VERSIONS } from "@/lib/moderation";
 import { analyzeExistingResources } from "@/app/resource-actions";
-import { adminStopLiveReanalyses } from "@/app/moderation-actions";
+import { adminCompressImages, adminStopLiveReanalyses } from "@/app/moderation-actions";
+import { uncompressedImageCount } from "@/lib/image-compression";
+import { SubmitButton } from "@/components/SubmitButton";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { PageTitle, Panel, Stat } from "@/components/admin/AdminUi";
 import { RevenueBars } from "@/components/admin/RevenueBars";
@@ -59,7 +61,7 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
   const from = days ? new Date(now.getTime() - days * DAY) : null;
   const before = days ? new Date(now.getTime() - 2 * days * DAY) : null;
 
-  const [current, previous, members, previousMembers, totalMembers, activeSellers, counts, oldest, aiQueue, liveQueued, unanalyzed, paidList, balance] = await Promise.all([
+  const [current, previous, members, previousMembers, totalMembers, activeSellers, counts, oldest, aiQueue, liveQueued, unanalyzed, paidList, balance, heavyImages] = await Promise.all([
     money(from, now),
     from ? money(before, from) : null,
     db.user.count({ where: from ? { createdAt: { gte: from } } : {} }),
@@ -82,6 +84,8 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
     }),
     // Solde Stripe et part des vendeurs (une panne de Stripe ne doit pas bloquer la page)
     platformBalance().catch(() => null),
+    // Anciennes images pas encore compressées (bouton « Compresser »)
+    uncompressedImageCount().catch(() => 0),
   ]);
   if (aiQueue > 0) kickAiQueue();
 
@@ -168,6 +172,15 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
               <Todo icon={History} tone="bg-surface" title={t.mod.aiLive(liveQueued)} note={t.mod.aiLiveNote}>
                 <form action={adminStopLiveReanalyses} className="ml-auto">
                   <button className="shrink-0 text-sm font-semibold text-bad hover:underline">{t.mod.aiStop}</button>
+                </form>
+              </Todo>
+            )}
+            {heavyImages > 0 && (
+              <Todo icon={ImageDown} tone="bg-warn-bg text-warn" title={t.mod.imagesTitle(heavyImages)} note={t.mod.imagesNote}>
+                <form action={adminCompressImages} className="ml-auto">
+                  <SubmitButton className="shrink-0 text-sm font-semibold hover:underline" pendingText={t.mod.imagesRunning}>
+                    {t.mod.imagesButton}
+                  </SubmitButton>
                 </form>
               </Todo>
             )}
