@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Clock, Flag, Gavel, History, ImageDown, MessageSquareWarning, MessagesSquare, Percent, ShieldCheck, ShoppingCart, Store, UserPlus, Wallet, type LucideIcon } from "lucide-react";
 import { db } from "@/lib/db";
+import { REAL_SALE } from "@/lib/sales";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatAmount, formatNumber } from "@/lib/i18n/format";
 import { findUnanalyzedVersionIds, kickAiQueue, liveReanalysisCount, queueLength } from "@/lib/ai/run";
@@ -29,7 +30,7 @@ async function money(from: Date | null, to: Date) {
   const range = { ...(from && { gte: from }), lt: to };
   const [purchases, earnings] = await Promise.all([
     db.purchase.aggregate({
-      where: { status: "PAID", amountCents: { gt: 0 }, paidAt: range },
+      where: { ...REAL_SALE, paidAt: range },
       _sum: { amountCents: true, taxCents: true, buyerFeeCents: true, buyerFeeTaxCents: true },
       _count: true,
     }),
@@ -79,7 +80,7 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
     findUnanalyzedVersionIds(),
     // Ventes de la période pour le graphique
     db.purchase.findMany({
-      where: { status: "PAID", amountCents: { gt: 0 }, ...(from && { paidAt: { gte: from } }) },
+      where: { ...REAL_SALE, ...(from && { paidAt: { gte: from } }) },
       select: { paidAt: true, buyerFeeCents: true, buyerFeeTaxCents: true, earning: { select: { feeCents: true, status: true } } },
     }),
     // Solde Stripe et part des vendeurs (une panne de Stripe ne doit pas bloquer la page)

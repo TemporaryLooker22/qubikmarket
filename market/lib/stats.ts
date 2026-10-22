@@ -1,6 +1,7 @@
 import "server-only";
 import { Prisma } from "@prisma/client";
 import { db } from "./db";
+import { REAL_SALE } from "./sales";
 import { localDay, startOfLocalDay, TIME_ZONE } from "./analytics";
 import { ONLINE_MS } from "./chat-text";
 
@@ -45,7 +46,7 @@ export async function kpis(from: Date | null, to: Date): Promise<Kpis> {
         (SELECT COUNT(*) FROM (SELECT "visitor" FROM "PageView" WHERE ${HUMAN} AND ${within(from, to)} GROUP BY "visitor" HAVING COUNT(*) = 1) b) AS bounced
       FROM "PageView" WHERE ${HUMAN} AND ${within(from, to)}`,
     db.user.count({ where: { createdAt: { ...(from && { gte: from }), lt: to } } }),
-    db.purchase.count({ where: { status: "PAID", amountCents: { gt: 0 }, paidAt: { ...(from && { gte: from }), lt: to } } }),
+    db.purchase.count({ where: { ...REAL_SALE, paidAt: { ...(from && { gte: from }), lt: to } } }),
   ]);
   const visitors = n(visits.visitors);
   return { visitors, views: n(visits.views), bounce: visitors ? n(visits.bounced) / visitors : 0, signups, sales };
@@ -239,7 +240,7 @@ export async function resourceStats(from: Date | null, to: Date) {
       FROM "PageView" WHERE ${HUMAN} AND "path" LIKE '/resources/%' AND ${within(from, to)} GROUP BY 1 ORDER BY views DESC LIMIT 50`,
     db.purchase.groupBy({
       by: ["resourceId"],
-      where: { status: "PAID", amountCents: { gt: 0 }, paidAt: { ...(from && { gte: from }), lt: to } },
+      where: { ...REAL_SALE, paidAt: { ...(from && { gte: from }), lt: to } },
       _count: true,
       _sum: { amountCents: true, buyerFeeCents: true },
     }),

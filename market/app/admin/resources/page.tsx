@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import { CircleCheck, EyeOff, ExternalLink, Eye, Package, Pencil, RefreshCw, Search, Star, Trash2 } from "lucide-react";
 import { db } from "@/lib/db";
+import { REAL_SALE } from "@/lib/sales";
 import { CATEGORIES, categoryLabel } from "@/lib/catalog";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatAmount, formatPrice } from "@/lib/i18n/format";
@@ -47,7 +48,7 @@ export default async function AdminResourcesPage({ searchParams }: { searchParam
   // Chiffres de chaque ressource : ventes payées, encaissé, achats qui bloquent la suppression, analyse IA de la version en ligne
   const [sales, locked, versions] = ids.length
     ? await Promise.all([
-        db.purchase.groupBy({ by: ["resourceId"], where: { resourceId: { in: ids }, status: "PAID", amountCents: { gt: 0 } }, _count: true, _sum: { amountCents: true } }),
+        db.purchase.groupBy({ by: ["resourceId"], where: { resourceId: { in: ids }, ...REAL_SALE }, _count: true, _sum: { amountCents: true } }),
         db.purchase.groupBy({ by: ["resourceId"], where: { resourceId: { in: ids }, status: { not: "PENDING" } }, _count: true }),
         db.resourceVersion.findMany({
           where: { OR: resources.map((r) => ({ resourceId: r.id, version: r.version })) },

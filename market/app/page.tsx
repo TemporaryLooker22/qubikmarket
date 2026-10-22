@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Download, Plus, ScanSearch, Search, Store, Upload, Users } from "lucide-react";
 import { db } from "@/lib/db";
+import { REAL_SALE } from "@/lib/sales";
 import { CATEGORIES } from "@/lib/catalog";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatAmount, formatNumber } from "@/lib/i18n/format";
@@ -48,7 +49,7 @@ const sellerSelect = { seller: { select: { username: true } } };
 async function getBestSellers(since?: Date) {
   const top = await db.purchase.groupBy({
     by: ["resourceId"],
-    where: { status: "PAID", amountCents: { gt: 0 }, resource: { status: "APPROVED", priceCents: { gt: 0 } }, ...(since && { createdAt: { gte: since } }) },
+    where: { ...REAL_SALE, resource: { status: "APPROVED", priceCents: { gt: 0 } }, ...(since && { createdAt: { gte: since } }) },
     _count: { resourceId: true },
     orderBy: { _count: { resourceId: "desc" } },
     take: GALLERY_SIZE,
