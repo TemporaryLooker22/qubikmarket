@@ -41,6 +41,10 @@ export async function recordSaleEarning(tx: Tx, purchaseId: string, paidAt: Date
   const grossCents = purchase.amountCents - purchase.buyerFeeCents;
   const taxCents = purchase.taxCents - purchase.buyerFeeTaxCents;
   const { feeCents, amountCents } = splitSale(grossCents, taxCents, feePercent);
+  // Le propriétaire du site (le plus ancien ADMIN, voir siteOwnerId() dans lib/auth.ts) n'a pas de délai de sécurité :
+  // ses gains sont versables tout de suite (c'est lui qui assume un éventuel remboursement)
+  const owner = await tx.user.findFirst({ where: { role: "ADMIN" }, orderBy: { createdAt: "asc" }, select: { id: true } });
+  const holdDays = owner?.id === seller.id ? 0 : HOLD_DAYS;
   await tx.sellerEarning.create({
     data: {
       sellerId: seller.id,
@@ -50,7 +54,7 @@ export async function recordSaleEarning(tx: Tx, purchaseId: string, paidAt: Date
       taxCents,
       feeCents,
       feePercent,
-      availableAt: new Date(paidAt.getTime() + HOLD_DAYS * DAY),
+      availableAt: new Date(paidAt.getTime() + holdDays * DAY),
     },
   });
 }

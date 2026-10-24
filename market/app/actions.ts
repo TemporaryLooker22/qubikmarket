@@ -9,7 +9,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { publishBlockMessage } from "@/lib/publish-pause";
-import { createSession, destroySession, getCurrentUser, requireAdmin, requireUser } from "@/lib/auth";
+import { createSession, destroySession, getCurrentUser, requireAdmin, requireUser, siteOwnerId } from "@/lib/auth";
 import { hasRobloxContent, scanUpload } from "@/lib/scan";
 import { compressUploadedImage, isUploadedImage, receiveUpload } from "@/lib/uploads";
 import { parseYouTubeId } from "@/lib/youtube";
@@ -29,6 +29,8 @@ import { randomBytes } from "node:crypto";
 import { PENDING_COOKIE, verify, type OAuthProfile } from "@/lib/oauth";
 import { promoToStore } from "@/lib/promotion";
 import { feePercentFor } from "@/lib/earnings";
+import { minPayoutCents, payoutSeller } from "@/lib/payouts";
+import { formatAmount } from "@/lib/i18n/format";
 
 export type FormState = { error?: string } | undefined;
 
@@ -351,6 +353,24 @@ export async function setListed(formData: FormData) {
 }
 
 // ---------- Versements aux vendeurs ----------
+
+// « Encaisser maintenant » : réservé au propriétaire du site, verse tout de suite ses gains disponibles
+// (même logique que le versement du lundi, voir lib/payouts.ts : un gain ne peut jamais être versé deux fois)
+export type CashoutState = { error?: string; ok?: string } | undefined;
+
+export async function ownerCashout(): Promise<CashoutState> {
+  const user = await requireUser("/dashboard/sales");
+  const { locale, t } = await getDictionary();
+  const ownerId = await siteOwnerId();
+  if (user.id !== ownerId) return { error: t.errors.notFound };
+  const seller = await db.user.findUnique({ where: { id: user.id }, select: { stripeAccountId: true } });
+  if (!seller?.stripeAccountId || isDemoMode) return { error: t.dashboard.payouts.cashoutFailed };
+  const result = await payoutSeller({ id: user.id, stripeAccountId: seller.stripeAccountId }, ownerId);
+  revalidatePath("/dashboard/sales");
+  if (result.status === "PAID") return { ok: t.dashboard.payouts.cashoutDone(formatAmount(result.amountCents, locale)) };
+  if (result.reason === "minimum de versement pas atteint") return { error: t.dashboard.payouts.cashoutNothing(formatAmount(minPayoutCents(user.id, ownerId), locale)) };
+  return { error: t.dashboard.payouts.cashoutFailed };
+}
 
 // « Configurer mes versements » : crée le compte Stripe du vendeur puis l'envoie sur le formulaire d'inscription Stripe
 export async function startPayoutSetup(_: FormState, formData: FormData): Promise<FormState> {

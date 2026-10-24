@@ -2,15 +2,16 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BadgeCheck, CheckCircle2, Crown, ExternalLink, Hourglass, Landmark, Receipt, Star, Wallet } from "lucide-react";
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireUser, siteOwnerId } from "@/lib/auth";
 import { links } from "@/lib/notifications";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatAmount, formatDate } from "@/lib/i18n/format";
 import { HOLD_DAYS } from "@/lib/earnings";
 import { PAYOUT_COUNTRIES, refreshTransfersStatus } from "@/lib/connect";
-import { MIN_PAYOUT_CENTS } from "@/lib/payouts";
+import { minPayoutCents } from "@/lib/payouts";
 import { isDemoMode } from "@/lib/payments";
 import { PayoutSetupForm } from "@/components/dashboard/PayoutSetupForm";
+import { CashoutButton } from "@/components/dashboard/CashoutButton";
 import { FOUNDER_FEE_PERCENT } from "@/lib/sellers";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 
@@ -79,6 +80,9 @@ export default async function DashboardSalesPage() {
   const available = pendingRows.filter((e) => e.availableAt <= now).reduce((n, e) => n + e.amountCents, 0);
   const paid = totals.find((g) => g.status === "PAID")?._sum.amountCents ?? 0;
   const isFounder = seller?.founderUntil && seller.founderUntil > now;
+  // Propriétaire du site : minimum de versement plus bas et bouton « Encaisser maintenant »
+  const ownerId = await siteOwnerId();
+  const isOwner = user.id === ownerId;
 
   const statusOf = (e: (typeof earnings)[number]) => {
     if (e.status === "CANCELED") return { label: t.dashboard.earningStatus.canceled, style: "bg-surface text-muted" };
@@ -101,7 +105,7 @@ export default async function DashboardSalesPage() {
               </span>
               <div className="min-w-56 flex-1">
                 <h2 className="font-semibold">{t.dashboard.payouts.activeTitle}</h2>
-                <p className="mt-0.5 text-sm text-muted">{t.dashboard.payouts.activeText(formatAmount(MIN_PAYOUT_CENTS, locale))}</p>
+                <p className="mt-0.5 text-sm text-muted">{t.dashboard.payouts.activeText(formatAmount(minPayoutCents(user.id, ownerId), locale))}</p>
               </div>
               <a href="/api/stripe/dashboard" target="_blank" rel="noopener" className="btn-ghost">
                 <ExternalLink className="h-4 w-4" aria-hidden="true" />
@@ -144,6 +148,8 @@ export default async function DashboardSalesPage() {
         <Balance icon={Wallet} label={t.dashboard.balanceAvailable} value={formatAmount(available, locale)} help={t.dashboard.balanceAvailableHelp} dark />
         <Balance icon={CheckCircle2} label={t.dashboard.balancePaid} value={formatAmount(paid, locale)} help={t.dashboard.balancePaidHelp} />
       </div>
+
+      {isOwner && transfersActive && !isDemoMode && <CashoutButton />}
 
       {isFounder && (
         <p className="mb-4 flex items-center gap-2 text-sm text-muted">
