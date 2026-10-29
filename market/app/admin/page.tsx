@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Clock, Flag, Gavel, History, ImageDown, MessageSquareWarning, MessagesSquare, Percent, ShieldCheck, ShoppingCart, Store, UserPlus, Wallet, type LucideIcon } from "lucide-react";
+import { Clock, Flag, Gavel, History, ImageDown, MessageSquareWarning, MessagesSquare, Percent, ShieldCheck, ShoppingCart, Store, UserPlus, Wallet, Wrench, type LucideIcon } from "lucide-react";
 import { db } from "@/lib/db";
 import { REAL_SALE } from "@/lib/sales";
 import { getDictionary } from "@/lib/i18n/server";
@@ -9,7 +9,9 @@ import { hasAiKey } from "@/lib/ai/ovh";
 import { activeProviders } from "@/lib/ai/providers";
 import { moderationCounts, QUEUE_RESOURCES, QUEUE_VERSIONS } from "@/lib/moderation";
 import { analyzeExistingResources } from "@/app/resource-actions";
-import { adminCompressImages, adminStopLiveReanalyses } from "@/app/moderation-actions";
+import { adminCompressImages, adminStopLiveReanalyses, setMaintenanceMode } from "@/app/moderation-actions";
+import { getCurrentUser, siteOwnerId } from "@/lib/auth";
+import { maintenanceState } from "@/lib/maintenance";
 import { uncompressedImageCount } from "@/lib/image-compression";
 import { SubmitButton } from "@/components/SubmitButton";
 import { AutoRefresh } from "@/components/AutoRefresh";
@@ -89,6 +91,8 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
     uncompressedImageCount().catch(() => 0),
   ]);
   if (aiQueue > 0) kickAiQueue();
+  const [viewer, ownerId, maintenance] = await Promise.all([getCurrentUser(), siteOwnerId(), maintenanceState()]);
+  const isOwner = Boolean(viewer && viewer.id === ownerId);
 
 
 
@@ -137,6 +141,31 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
           ))}
         </div>
       </PageTitle>
+
+      {/* Mode maintenance : seulement pour le propriétaire du site */}
+      {isOwner && (
+        <form action={setMaintenanceMode} className={`mb-4 rounded-2xl border p-4 ${maintenance ? "border-bad bg-bad-bg" : "border-border bg-card"}`}>
+          <input type="hidden" name="on" value={maintenance ? "0" : "1"} />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 max-w-2xl items-center gap-3">
+              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${maintenance ? "bg-bad text-white" : "bg-surface"}`}>
+                <Wrench className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <p className={`text-sm font-semibold ${maintenance ? "text-bad" : ""}`}>{t.mod.maintTitle}</p>
+                <p className="text-xs text-muted">
+                  {maintenance ? t.mod.maintOnText(maintenance.since.toLocaleString(intl, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })) : t.mod.maintOffText}
+                </p>
+                {maintenance?.message && <p className="mt-1 text-xs">« {maintenance.message} »</p>}
+              </div>
+            </div>
+            <SubmitButton className={maintenance ? "btn-accent px-4 py-2 text-sm" : "btn-ghost px-4 py-2 text-sm"}>{maintenance ? t.mod.maintOff : t.mod.maintOn}</SubmitButton>
+          </div>
+          {!maintenance && (
+            <input name="message" maxLength={500} placeholder={t.mod.maintMessagePh} aria-label={t.mod.maintMessagePh} className="mt-3 h-9 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none transition placeholder:text-muted focus:border-text" />
+          )}
+        </form>
+      )}
 
       <div className="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
         <Stat dark icon={Wallet} label={t.mod.revenue} value={formatAmount(current.qubik, locale)} delta={previous && delta(current.qubik, previous.qubik, locale)} note={t.mod.revenueNote} />

@@ -15,6 +15,7 @@ import { deleteStored } from "@/lib/storage";
 import { enqueueAnalysis, kickAiQueue, stopLiveReanalyses } from "@/lib/ai/run";
 import { grantFounderIfEligible } from "@/lib/sellers";
 import { compressStoredImages } from "@/lib/image-compression";
+import { setMaintenance } from "@/lib/maintenance";
 import { formatPauseEnd, fromBrusselsInput, MAX_COOLDOWN_HOURS, PUBLISH_PAUSE_DAYS, setGlobalCooldownHours } from "@/lib/publish-pause";
 
 function refreshSite() {
@@ -100,6 +101,17 @@ export async function setGlobalCooldown(formData: FormData) {
   if (!Number.isFinite(hours) || hours < 0) return;
   await setGlobalCooldownHours(hours);
   await logModeration({ moderatorId: admin.id, action: "PUBLISH_COOLDOWN", targetType: "site", targetId: "global", label: "Tous les vendeurs", note: `${Math.round(hours)} h` });
+  refreshSite();
+}
+
+// Mode maintenance (propriétaire du site seulement) : on = "1" pour fermer le site aux visiteurs, "0" pour le rouvrir
+export async function setMaintenanceMode(formData: FormData) {
+  const admin = await requireAdmin();
+  if (admin.id !== (await siteOwnerId())) return;
+  const on = formData.get("on") === "1";
+  const message = String(formData.get("message") ?? "").trim().slice(0, 500) || null;
+  await setMaintenance(on, on ? message : null);
+  await logModeration({ moderatorId: admin.id, action: on ? "MAINTENANCE_ON" : "MAINTENANCE_OFF", targetType: "site", targetId: "maintenance", label: "Site", note: on ? message : null });
   refreshSite();
 }
 

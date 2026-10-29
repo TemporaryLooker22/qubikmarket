@@ -21,13 +21,15 @@ import { botName, recordBotView } from "@/lib/analytics";
 import { Analytics } from "@vercel/analytics/next";
 import { DEMO_ENABLED } from "@/lib/demo";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { isOpenDuringMaintenance, maintenanceState } from "@/lib/maintenance";
+import { MaintenanceScreen } from "@/components/MaintenanceScreen";
 import "./globals.css";
 
 // Police du site : Plus Jakarta Sans, chargée et hébergée par Next.js
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakarta" });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const { t } = await getDictionary();
+  const [{ t }, maintenance] = await Promise.all([getDictionary(), maintenanceState()]);
   return {
     metadataBase: new URL(SITE_URL),
     title: { default: t.meta.title, template: "%s · Qubik" },
@@ -36,12 +38,24 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: { type: "website", siteName: SITE_NAME, title: t.meta.title, description: t.meta.description, url: SITE_URL },
     twitter: { card: "summary_large_image", title: t.meta.title, description: t.meta.description },
     // Mode démo : faux produits et images d'autres créateurs, on demande à Google de ne pas indexer le site
-    ...(DEMO_ENABLED && { robots: { index: false, follow: false } }),
+    // (et pendant une maintenance, pour que Google n'enregistre pas la page de maintenance)
+    ...((DEMO_ENABLED || maintenance) && { robots: { index: false, follow: false } }),
   };
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [user, { locale, t }, requestHeaders, cookieStore] = await Promise.all([getCurrentUser(), getDictionary(), headers(), cookies()]);
+  const [user, { locale, t }, requestHeaders, cookieStore, maintenance] = await Promise.all([getCurrentUser(), getDictionary(), headers(), cookies(), maintenanceState()]);
+
+  // Mode maintenance : les visiteurs voient seulement la page de maintenance (les modérateurs gardent l'accès)
+  if (maintenance && user?.role !== "ADMIN" && !isOpenDuringMaintenance(requestHeaders.get("x-pathname") ?? "/")) {
+    return (
+      <html lang={locale} className={jakarta.variable}>
+        <body className="font-sans antialiased">
+          <MaintenanceScreen title={t.maintenance.title} text={t.maintenance.text} message={maintenance.message} login={t.maintenance.login} />
+        </body>
+      </html>
+    );
+  }
   // Statistiques : les robots (Google…) n'exécutent pas toujours la page, on les compte ici, côté serveur
   const bot = botName(requestHeaders.get("user-agent") ?? "");
   if (bot) {
@@ -70,7 +84,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang={locale} className={jakarta.variable}>
       <body className="flex min-h-screen flex-col font-sans antialiased">
         <LocaleProvider locale={locale}>
-          {showProjectsBanner && <ProjectsBanner />}
+          {/* Rappel pour les modérateurs : le site est fermé aux visiteurs */}
+          {maintenance && user?.role === "ADMIN" && (
+            <div className="bg-bad px-4 py-2 text-center text-sm font-semibold text-white">
+              {t.maintenance.adminBar}{" "}
+              <Link href="/admin" className="underline">
+                {t.maintenance.adminBarLink}
+              </Link>
+            </div>
+          )}
+          {showProjectsBanner && !maintenance && <ProjectsBanner />}
           <Navbar user={user ? { username: user.username, email: user.email, role: user.role, isSeller, avatarUrl: user.avatarUrl } : null} pendingCount={pendingCount} unreadCount={unreadCount} chatUnread={chatUnread} />
 
           <main className="flex-1 pb-16">{children}</main>

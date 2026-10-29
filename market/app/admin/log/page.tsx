@@ -30,6 +30,8 @@ const TONES: Record<string, "ok" | "warn" | "bad" | "off"> = {
   EARNINGS_RELEASE: "ok",
   EARNINGS_HOLD: "warn",
   EARNINGS_PAYOUT: "ok",
+  MAINTENANCE_ON: "bad",
+  MAINTENANCE_OFF: "ok",
 };
 
 // Modération → Journal : toutes les décisions, les plus récentes d'abord
