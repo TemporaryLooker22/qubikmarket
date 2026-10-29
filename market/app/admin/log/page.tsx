@@ -27,6 +27,7 @@ const TONES: Record<string, "ok" | "warn" | "bad" | "off"> = {
   ROLE_REVOKE: "off",
   PROJECT_RELEASE: "ok",
   PROJECT_REFUND: "warn",
+  EARNINGS_RELEASE: "ok",
 };
 
 // Modération → Journal : toutes les décisions, les plus récentes d'abord

@@ -3,7 +3,8 @@ import { Ban, Search, Undo2, Users } from "lucide-react";
 import { db } from "@/lib/db";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatAmount, formatDate } from "@/lib/i18n/format";
-import { banMember, resumePublishing, setGlobalCooldown, setMemberCooldown, setModerator, unbanMember } from "@/app/moderation-actions";
+import { banMember, releaseSellerEarnings, resumePublishing, setGlobalCooldown, setMemberCooldown, setModerator, unbanMember } from "@/app/moderation-actions";
+import { SubmitButton } from "@/components/SubmitButton";
 import { getCurrentUser, siteOwnerId } from "@/lib/auth";
 import { formatPauseEnd, globalCooldownHours, MAX_COOLDOWN_HOURS, publishCooldown, publishPause, PUBLISH_PAUSE_DAYS, toBrusselsInput } from "@/lib/publish-pause";
 import { PublishPauseForm } from "@/components/admin/PublishPauseForm";
@@ -49,6 +50,15 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
     member ? publishPause(member.id) : null,
     member ? publishCooldown(member.id) : null,
   ]);
+  // Gains pas encore versés du membre (panneau « Débloquer et verser », propriétaire seulement)
+  const pending =
+    member && isOwner
+      ? await db.sellerEarning.findMany({
+          where: { sellerId: member.id, status: "PENDING", payoutId: null },
+          orderBy: { availableAt: "asc" },
+          select: { id: true, amountCents: true, availableAt: true },
+        })
+      : [];
   const hoursField = "h-9 w-24 rounded-lg border border-border bg-card px-3 text-sm outline-none transition focus:border-text";
 
   const userHref = (userId: string) => `/admin/users?${new URLSearchParams({ ...(query && { q: query }), id: userId })}`;
@@ -215,6 +225,28 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
                   </div>
                 </form>
               </div>
+            )}
+
+            {/* Gains en attente : le propriétaire peut lever le délai de sécurité et verser tout de suite */}
+            {pending.length > 0 && (
+              <form action={releaseSellerEarnings} className="mt-4 rounded-2xl border border-border p-4">
+                <input type="hidden" name="userId" value={member.id} />
+                <p className="text-sm font-semibold">{t.mod.earningsTitle(formatAmount(pending.reduce((n, e) => n + e.amountCents, 0), locale))}</p>
+                <ul className="mt-2 space-y-1 text-sm">
+                  {pending.map((e) => (
+                    <li key={e.id} className="flex items-center justify-between gap-3">
+                      <span>{formatAmount(e.amountCents, locale)}</span>
+                      <span className="text-xs text-muted">{e.availableAt > new Date() ? t.mod.earningsHeld(formatDate(e.availableAt, locale)) : t.mod.earningsReady}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
+                  <p className="min-w-0 max-w-xl text-xs text-muted">{t.mod.earningsText}</p>
+                  <SubmitButton className="btn-ghost px-4 py-2 text-sm" pendingText={t.mod.earningsRunning}>
+                    {t.mod.earningsButton}
+                  </SubmitButton>
+                </div>
+              </form>
             )}
 
             {/* Rôle de modérateur : seul le propriétaire du site peut le donner ou le retirer */}
