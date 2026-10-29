@@ -78,8 +78,8 @@ export async function runWeeklyPayouts(now = new Date()): Promise<Result[]> {
 
 // Versement d'un vendeur : additionne ses gains disponibles et les lui vire s'ils atteignent son minimum.
 // Utilisé chaque lundi pour tous les vendeurs, par le bouton « Encaisser maintenant » du propriétaire
-// et par « Débloquer et verser » de la Modération (minCents : minimum de versement imposé, sinon celui du vendeur).
-export async function payoutSeller(seller: { id: string; stripeAccountId: string }, ownerId: string | null, now = new Date(), minCents?: number): Promise<Result> {
+// et par Modération → Revenus (minCents : minimum imposé, sinon celui du vendeur ; earningIds : seulement ces gains).
+export async function payoutSeller(seller: { id: string; stripeAccountId: string }, ownerId: string | null, now = new Date(), minCents?: number, earningIds?: string[]): Promise<Result> {
   if (!stripe) throw new Error("Stripe n'est pas configuré");
   const accountId = seller.stripeAccountId;
   // On revérifie auprès de Stripe juste avant de virer (le compte peut avoir été restreint entre-temps)
@@ -94,7 +94,7 @@ export async function payoutSeller(seller: { id: string; stripeAccountId: string
   // Prépare le versement en base : les gains sont réservés pour lui (une autre exécution ne peut pas les reprendre)
   const payout = await db.$transaction(async (tx) => {
     const earnings = await tx.sellerEarning.findMany({
-      where: { sellerId: seller.id, status: "PENDING", payoutId: null, availableAt: { lte: now } },
+      where: { sellerId: seller.id, status: "PENDING", payoutId: null, availableAt: { lte: now }, ...(earningIds && { id: { in: earningIds } }) },
       select: { id: true, amountCents: true },
     });
     const total = earnings.reduce((n, e) => n + e.amountCents, 0);

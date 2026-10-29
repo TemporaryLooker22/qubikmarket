@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Briefcase, ChartLine, Flag, LayoutDashboard, MessagesSquare, Package, ScrollText, ShieldCheck, Star, Users, type LucideIcon } from "lucide-react";
+import { Banknote, Briefcase, ChartLine, Flag, LayoutDashboard, MessagesSquare, Package, ScrollText, ShieldCheck, Star, Users, type LucideIcon } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { useActiveTabScroll } from "@/components/useActiveTabScroll";
 
-type Props = { username: string; counts: { queue: number; flags: number; reports: number; chats: number; projects: number } };
+type Props = { username: string; owner?: boolean; counts: { queue: number; flags: number; reports: number; chats: number; projects: number } };
 
 // Menu de la modération : colonne à gauche sur ordinateur, rangée d'onglets qui défile sur téléphone
-export function AdminNav({ username, counts }: Props) {
+export function AdminNav({ username, owner, counts }: Props) {
   const { t } = useI18n();
   const pathname = usePathname();
   const navRef = useActiveTabScroll<HTMLElement>(pathname);
@@ -23,6 +23,8 @@ export function AdminNav({ username, counts }: Props) {
     { href: "/admin/projects", label: t.mod.menu.projects, icon: Briefcase, count: counts.projects },
     { href: "/admin/resources", label: t.mod.menu.resources, icon: Package },
     { href: "/admin/users", label: t.mod.menu.users, icon: Users },
+    // Revenus des vendeurs : seulement pour le propriétaire du site
+    ...(owner ? [{ href: "/admin/earnings", label: t.mod.menu.earnings, icon: Banknote }] : []),
     { href: "/admin/log", label: t.mod.menu.log, icon: ScrollText },
   ];
 

@@ -15,8 +15,6 @@ import { deleteStored } from "@/lib/storage";
 import { enqueueAnalysis, kickAiQueue, stopLiveReanalyses } from "@/lib/ai/run";
 import { grantFounderIfEligible } from "@/lib/sellers";
 import { compressStoredImages } from "@/lib/image-compression";
-import { payoutSeller } from "@/lib/payouts";
-import { isDemoMode } from "@/lib/payments";
 import { formatPauseEnd, fromBrusselsInput, MAX_COOLDOWN_HOURS, PUBLISH_PAUSE_DAYS, setGlobalCooldownHours } from "@/lib/publish-pause";
 
 function refreshSite() {
@@ -103,32 +101,6 @@ export async function setGlobalCooldown(formData: FormData) {
   await setGlobalCooldownHours(hours);
   await logModeration({ moderatorId: admin.id, action: "PUBLISH_COOLDOWN", targetType: "site", targetId: "global", label: "Tous les vendeurs", note: `${Math.round(hours)} h` });
   refreshSite();
-}
-
-// « Débloquer et verser » (propriétaire du site seulement) : met fin au délai de sécurité des gains
-// en attente du vendeur, puis lui vire tout de suite ce qui est disponible (sans minimum de versement).
-// Si son compte Stripe n'est pas prêt, les gains restent disponibles et partent au prochain versement du lundi.
-export async function releaseSellerEarnings(formData: FormData) {
-  const admin = await requireAdmin();
-  const ownerId = await siteOwnerId();
-  if (admin.id !== ownerId) return;
-  const seller = await db.user.findUnique({ where: { id: String(formData.get("userId")) }, select: { id: true, username: true, stripeAccountId: true } });
-  if (!seller) return;
-  const now = new Date();
-  const { count } = await db.sellerEarning.updateMany({
-    where: { sellerId: seller.id, status: "PENDING", payoutId: null, availableAt: { gt: now } },
-    data: { availableAt: now },
-  });
-  let note = `${count} gain(s) débloqué(s)`;
-  if (seller.stripeAccountId && !isDemoMode) {
-    const result = await payoutSeller({ id: seller.id, stripeAccountId: seller.stripeAccountId }, ownerId, now, 1);
-    note += result.status === "PAID" ? ` · ${(result.amountCents / 100).toFixed(2).replace(".", ",")} € versés` : ` · pas versé (${result.reason ?? "échec"})`;
-  } else {
-    note += " · pas de compte Stripe : versement au prochain lundi";
-  }
-  await logModeration({ moderatorId: admin.id, action: "EARNINGS_RELEASE", targetType: "user", targetId: seller.id, label: seller.username, note });
-  revalidatePath("/admin/users");
-  revalidatePath("/dashboard/sales");
 }
 
 // Nommer un membre modérateur, ou lui retirer ce rôle (seulement le propriétaire du site, jamais sur lui-même)
